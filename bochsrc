@@ -1,0 +1,3 @@
+ata0-master: type=disk, path="disk.img", mode=flat
+boot: disk
+display_library: x, options="gui_debug"
