@@ -15,7 +15,7 @@ static const uint32_t k_itoa_masks[][10] =
     { 0         , 1         , 1         , 1         , 1         , 1         , 1         , 1         , 1         , 1         },
 };
 
-static unsigned char k_nibble_lut[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+static const unsigned char k_nibble_lut[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 uint32_t k_strlen(unsigned char *buf)
 {
@@ -43,7 +43,7 @@ uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value)
         
         uvalue = (uint32_t)value;
         
-        while(uvalue < k_itoa_masks[mask_index][1] && mask_index < 10)
+        while(uvalue < k_itoa_masks[mask_index][1] && mask_index < 9)
         {
             mask_index++;
         }
@@ -118,9 +118,9 @@ uint32_t k_xtoa(unsigned char *buffer, int32_t buffer_size, uint64_t value)
     return len;
 }
 
-void k_ftoa(unsigned char *buf, int32_t buf_size, uint32_t v)
+uint32_t k_ftoa(unsigned char *buffer, int32_t buffer_size, float value)
 {
-
+    return 0;
 }
 
 uint32_t k_strcat(unsigned char *buffer, int32_t buffer_size, unsigned char *str)
@@ -174,8 +174,13 @@ void k_vasfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, va
     uint32_t dword_arg = 0;
     uint32_t modifier = K_FMT_MODIFIER_NONE;
     unsigned char *str_arg;
+    
 
-    while(fmt[in_index])
+    /* account for null terminator. This will tell all the subsequent code how much space they have in the buffer, and will guarantee
+    we'll have space for the null terminator */
+    buffer_size--;
+
+    while(fmt[in_index] && out_index < buffer_size)
     {
         buffer[out_index] = '\0';
 

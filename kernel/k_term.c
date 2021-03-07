@@ -28,8 +28,6 @@ void k_term_init()
             vga_buffer[column + offset] = entry;
         }
     }
-
-    k_puts("initializing terminal...\nterminal initialized!\n");
 }
 
 void k_putchar(unsigned char c)

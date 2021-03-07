@@ -10,9 +10,9 @@ uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value);
 
 uint32_t k_xtoa(unsigned char *buffer, int32_t buffer_size, uint64_t value);
 
-uint32_t k_strcat(unsigned char *buffer, int32_t buffer_size, unsigned char *str);
+uint32_t k_ftoa(unsigned char *buffer, int32_t buffer_size, float value);
 
-void k_ftoa(unsigned char *buf, int32_t buf_size, uint32_t v);
+uint32_t k_strcat(unsigned char *buffer, int32_t buffer_size, unsigned char *str);
 
 void k_sfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, ...);
 

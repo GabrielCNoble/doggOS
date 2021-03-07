@@ -23,7 +23,7 @@ boot:
 read_packet:
 size:       .byte 0x10
 res:        .byte 0x0
-count:      .short 0x8
+count:      .short 0x0020
 offset:     .short 0x7e00
 segment:    .short 0x0000
 lba:        .long 0x00000001
