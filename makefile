@@ -19,7 +19,7 @@ DISK_NAME := disk.img
 disk: $(OBJ) $(LINKER_SCRIPT)
 	i686-elf-ld -T $(LINKER_SCRIPT) --oformat binary -o $(IMG_NAME) -nostdlib $(OBJ)
 	dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
-	dd conv=notrunc if=$(IMG_NAME) of=$(DISK_NAME) count=32
+	dd conv=notrunc if=$(IMG_NAME) of=$(DISK_NAME)
 
 clean:
 	rm -f $(OBJ)

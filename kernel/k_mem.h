@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+struct k_mem_alloc_t
+{
+    struct k_mem_alloc_t *next;
+    struct k_mem_alloc_t *prev;
+    uint32_t size;
+};
 
 enum K_MEM_RANGE_TYPES
 {
@@ -21,5 +27,9 @@ struct k_mem_range_t
 
 
 void k_mem_init();
+
+void *k_mem_alloc(uint32_t size);
+
+void k_mem_free(void *mem);
 
 #endif

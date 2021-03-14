@@ -7,7 +7,6 @@
 
 void k_main()
 {
-    k_inportd(0x1234);
     k_term_init();
     k_mem_init();
     k_pci_init();
