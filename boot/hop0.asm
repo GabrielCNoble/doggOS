@@ -5,9 +5,9 @@
 .global _start 
 
 _start:
-    jmp boot
+    jmp hop0_start
 
-boot:
+hop0_start:
     
     cli
     cld
@@ -15,17 +15,17 @@ boot:
     mov ah, 0x42
     mov si, offset h0_read_packet
     int 0x13
-    jmp 0x0000:0x7e00
+    jmp 0x0fff:hop1_start
     hlt
 
-.align 4
+.balign 4
 .global h0_read_packet
 h0_read_packet:
 size:       .byte 0x10
 res:        .byte 0x0
 count:      .short 0x0001
-offset:     .short 0x7e00
-segment:    .short 0x0000
+offset:     .short hop1_start
+segment:    .short 0x0fff
 lba:        .quad 0x00000001
 
 .fill 0x1fe - (. - _start)

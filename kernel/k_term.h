@@ -25,6 +25,8 @@ enum K_VGA_COLOR
 
 void k_term_init();
 
+void k_term_check_buffer();
+
 void k_putchar(unsigned char c);
 
 void k_puts(unsigned char *s);
@@ -34,6 +36,8 @@ void k_printf(unsigned char *fmt, ...);
 uint8_t k_vga_attrib(uint8_t foreground, uint8_t background);
 
 uint16_t k_vga_char(unsigned char c, uint8_t color);
+
+void k_term_clear();
 
 #endif
 

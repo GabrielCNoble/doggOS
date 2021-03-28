@@ -4,7 +4,7 @@ ASMSRC := $(wildcard $(BOOT_DIR)/*.asm) $(wildcard $(KERNEL_DIR)/*.asm)
 CSRC := $(wildcard $(KERNEL_DIR)/*.c)
 CINC := $(wildcard $(KERNEL_DIR)/*.h)
 OBJ := $(ASMSRC:.asm=.o) $(CSRC:.c=.o)
-GCC_FLAGS := -std=gnu99 -ffreestanding -lgcc -g -masm=intel
+GCC_FLAGS := -std=gnu99 -ffreestanding -lgcc -masm=intel
 
 LINKER_SCRIPT := linker.ld
 IMG_NAME := img.bin

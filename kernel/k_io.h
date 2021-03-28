@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "k_defs.h"
+#include "k_dev.h"
 
 extern fastcall void k_outportb(uint8_t value, uint16_t port);
 

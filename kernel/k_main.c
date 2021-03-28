@@ -7,8 +7,5 @@
 
 void k_main()
 {
-    k_term_init();
-    k_mem_init();
-    k_pci_init();
     return;
 }

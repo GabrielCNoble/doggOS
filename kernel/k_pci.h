@@ -146,8 +146,6 @@ struct k_pci_device_t
 
 void k_pci_init();
 
-uint32_t k_pci_read_dword(uint32_t base_address, uint8_t index);
-
 uint32_t k_pci_read_header(uint8_t bus, uint8_t device, uint8_t function, union k_pci_header_t *header);
 
 void k_pci_discover_devices(uint8_t bus);

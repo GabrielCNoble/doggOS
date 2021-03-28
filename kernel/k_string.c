@@ -236,7 +236,7 @@ void k_vasfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, va
             buffer[out_index++] = fmt[in_index++];
         }
     }
-
+    
     buffer[out_index] = '\0';
 }
 

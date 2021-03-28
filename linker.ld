@@ -8,7 +8,7 @@ SECTIONS
         boot/hop0.o(.data)
     }
 
-    .hop1 0x7e00 : AT (0x0200) 
+    .hop1 0x7fff : AT (0x0200) 
     {
         boot/hop1.o(.text)
         boot/hop1.o(.data)
@@ -16,7 +16,8 @@ SECTIONS
     
     . = 0x0500;
     k_kernel_start = .;
-    .k_main : AT (0x0600) 
+    k_kernel_sector = 12;
+    .k_main k_kernel_start : AT (k_kernel_sector * 0x0200) 
     {
         kernel/*(.text)
         kernel/*(.data)

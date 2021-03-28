@@ -1,18 +1,12 @@
 .intel_syntax noprefix
 .code16
-
-
 .section .text  
 
-_start:
-    jmp _kern16_start
-
-_kern16_start:
-    mov ax, offset gdt_end - gdt_start - 1
-    mov [gdt_size], ax
-    mov eax, offset gdt_start
-    mov dword ptr [gdt_offset], eax
-    lgdt [gdt_ptr]
+.global hop1_start
+hop1_start:
+    /* push the kernel stack waaaay forward, so the following function
+    call won't potentially trash any of the data structures defined here */
+    mov esp, 0x7ffff
 
     /* we'll need dx here for a division, so we preserve it,
     since it contains the number of the driver we got loaded from */
@@ -33,11 +27,14 @@ _kern16_start:
 _exact_div:
     /* number of sectors */
     mov word ptr [si + 2], ax
-    /* offset of where to drop the data. Segment remains the same */
+    /* offset */
     mov ax, 0x0500
     mov word ptr [si + 4], ax
-    /* we'll start reading from the fourth sector */
-    mov eax, 0x00000003
+    /* segment */
+    mov ax, 0
+    mov word ptr [si + 6], ax
+    /* we'll start reading from the fifth sector */
+    mov eax, offset k_kernel_sector
     mov dword ptr [si + 8], eax
     /* restore the drive info */
     mov dx, cx
@@ -45,6 +42,13 @@ _exact_div:
     /* do the thing */
     int 0x13
 
+    /* load the gdt */
+    mov ax, offset k_mem_gdt_end
+    sub ax, offset k_mem_gdt - 1
+    mov [gdt_size], ax
+    mov eax, offset k_mem_gdt
+    mov dword ptr [gdt_offset], eax
+    lgdt [gdt_ptr]
 
     /* query the memory map of the machine */
     mov ax, ds
@@ -79,51 +83,18 @@ _exact_div:
 
         _mem_map_loop_end:
 
-
-
+    /* enable protected mode */
     mov eax, cr0
-    /* set protected mode bit */
     or eax, 0x1
-    /* activate protected mode */
     mov cr0, eax
-    /* reload code segment descriptor */
-    call 0x0010:_set_cs
 
-_set_cs:
-
-.code32
-    mov ax, 0x8
-    mov ss, ax
-    mov ds, ax
-    call k_main
-    cli
-    hlt
+    /* finally, start initializing kernel stuff */
+    call 0x0010:k_init_a
  
 .section .data
+.align 4
 gdt_ptr:
 gdt_size: .short 0
 gdt_offset: .int 0
 
-.align 4
-gdt_start:
-/* throw-away gdt, only for the sake of entering protected mode */
-null_segment: .short 0, 0, 0, 0
-data_segment: .short 0xffff, 0x0000, 0x8000|0x1000|0x0200, 0x0040|0x000f
-code_segment: .short 0xffff, 0x0000, 0x8000|0x1000|0x0a00, 0x0040|0x000f
-gdt_end:
-
-.align 4
-.global k_mem_range_count
-k_mem_range_count: .int 0
-
-.align 8
-.global k_mem_ranges
-k_mem_ranges:
-mem_map_start:
-.rept 32
-.quad 0 /* range base address */
-.quad 0 /* range length */
-.quad 0 /* range type */
-.endr
-mem_map_end:
 
