@@ -3,10 +3,16 @@
 
 #include <stdint.h>
 
-struct k_mem_alloc_t
+// struct k_mem_alloc_t
+// {
+//     struct k_mem_alloc_t *next;
+//     struct k_mem_alloc_t *prev;
+//     uint32_t size;
+// };
+
+struct k_mem_block_t
 {
-    struct k_mem_alloc_t *next;
-    struct k_mem_alloc_t *prev;
+    uint32_t base;
     uint32_t size;
 };
 
@@ -34,6 +40,47 @@ enum K_MEM_SEG_DESC_FLAGS
     K_MEM_SEG_DESC_FLAG_GRANULARITY = 1 << 23,
 };
 
+
+enum K_MEM_SEG_FLAGS
+{
+    /* accessed */
+    K_MEM_SEG_FLAG_A = 1 << 8,
+    /* code segment when set, data segment otherwise */
+    K_MEM_SEG_FLAG_C = 1 << 11
+};
+
+enum K_MEM_DSEG_FLAGS
+{
+    /* read/write segment when set, read-only otherwise */
+    K_MEM_DSEG_FLAG_RW = 1 << 9,
+    /* expand down segment */
+    K_MEM_DSEG_FLAG_E = 1 << 10,
+};
+
+enum K_MEM_CSEG_FLAGS
+{
+    /* execute/read segment when set, execute-only otherwise */
+    K_MEM_CSEG_FLAG_ER = 1 << 9,
+    /* conforming segment (not to be confused with K_MEM_SEG_FLAG_C, 
+        which tells whether the segment is a code or data segment) */
+    K_MEM_CSEG_FLAG_C = 1 << 10
+};
+
+enum K_MEM_SYS_SEG_TYPES
+{
+    K_MEM_SYS_SEG_TYPE_TSS16_AVAL = 1 << 8,
+    K_MEM_SYS_SEG_TYPE_LDT = 2 << 8,
+    K_MEM_SYS_SEG_TYPE_TSS16_BUSY = 3 << 8,
+    K_MEM_SYS_SEG_TYPE_CG16 = 4 << 8,
+    K_MEM_SYS_SEG_TYPE_TG = 5 << 8,
+    K_MEM_SYS_SEG_TYPE_IG16 = 6 << 8,
+    K_MEM_SYS_SEG_TYPE_TG16 = 7 << 8,
+    K_MEM_SYS_SEG_TYPE_TSS32_AVAL = 9 << 8,
+    K_MEM_SYS_SEG_TYPE_TSS32_BUSY = 11 << 8,
+    K_MEM_SYS_SEG_TYPE_CG32 = 12 << 8,
+    K_MEM_SYS_SEG_TYPE_IG32 = 14 << 8,
+    K_MEM_SYS_SEG_TYPE_TG32 = 15 << 8
+};
 struct k_mem_seg_desc_t
 {
     uint32_t dw0;
@@ -41,7 +88,12 @@ struct k_mem_seg_desc_t
 };
 
 
-#define K_MEM_BIG_PAGE_PHYS_ADDR_MASK 0xffc00000
+#define K_MEM_BIG_PAGE_ADDR_MASK 0xffc00000
+#define K_MEM_SMALL_PAGE_ADDR_MASK 0xfffff000
+#define K_MEM_SMALL_PAGE_USED_BYTE_MASK 0x0001ffff
+#define K_MEM_SMALL_PAGE_USED_BYTE_SHIFT 15
+#define K_MEM_SMALL_PAGE_USED_BIT_MASK 0x00000007
+#define K_MEM_SMALL_PAGE_USED_BIT_SHIFT 12
 
 enum K_MEM_PENTRY_FLAGS
 {
@@ -66,14 +118,22 @@ struct k_mem_pentry_t
     uint32_t entry;
 };
 
+#define K_MEM_USED_PAGE_BITS 1
+// struct k_mem_pstate_t
+// {
+//     struct k_mem_pentry_t *free_pages;
+//     uint32_t free_page_cursor;
+//     uint8_t *used_pages;
+// };
+
 
 void k_mem_init();
 
-void *k_mem_alloc(uint32_t size);
+uint32_t k_mem_alloc_page();
 
-void *k_mem_realloc(void *memory, uint32_t new_size);
+void k_mem_free_page(uint32_t page);
 
-void k_mem_free(void *mem);
+// struct k
 
 extern void k_mem_enable_paging();
 

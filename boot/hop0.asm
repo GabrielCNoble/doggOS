@@ -30,5 +30,3 @@ lba:        .quad 0x00000001
 
 .fill 0x1fe - (. - _start)
 .short 0xaa55
-    
-

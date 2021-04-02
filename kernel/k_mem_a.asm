@@ -44,6 +44,12 @@ k_mem_gdt_desc_count: .int 9
 
 /* memory ranges */
 .balign 8
+.global k_mem_low_range
+k_mem_low_range:
+.quad 0
+.quad 0
+.quad 0
+
 .global k_mem_ranges
 k_mem_ranges:
 .rept 32
@@ -57,8 +63,8 @@ k_mem_range_count: .int 0
 
 /* page directories */
 .balign 4096
-.global k_mem_pentries
-k_mem_pentries:
+.global k_mem_pdirs
+k_mem_pdirs:
 .rept 1024
 .int 0
 .endr 

@@ -70,13 +70,31 @@ _exact_div:
         jc _mem_map_loop_end
         
         /* test whether this range is available */
-        cmp dword ptr es:[di + 16], 0x1
+        cmp dword ptr es:[edi + 16], 1
         jnz _mem_map_loop_start
 
         /* test whether this range has a non-zero size */
-        cmp dword ptr es:[di + 8], 0x0
+        cmp dword ptr es:[edi + 8], 0
         jz _mem_map_loop_start
         /* range available */
+
+        /* test whether this range is the lower memory */
+        cmp dword ptr es:[edi], 0
+        /* not low memory */
+        jnz _append_range
+        /* is low memory, so to simplify things in the kernel code we'll put it in a separate variable */
+        mov esi, 0
+    _copy_low_range:
+        /* we'll be moving 3 qwords here... */
+        mov ecx, dword ptr es:[edi + esi * 4]
+        mov dword ptr [k_mem_low_range + esi * 4], ecx
+        cmp esi, 5
+        jz _mem_map_loop_start
+        inc esi
+        jmp _copy_low_range
+        
+
+    _append_range:
         add di, 24
         inc dword ptr [k_mem_range_count]
         jmp _mem_map_loop_start
@@ -96,5 +114,3 @@ _exact_div:
 gdt_ptr:
 gdt_size: .short 0
 gdt_offset: .int 0
-
-
