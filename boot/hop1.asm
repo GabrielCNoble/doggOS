@@ -44,7 +44,7 @@ _exact_div:
 
     /* load the gdt */
     mov ax, offset k_mem_gdt_end
-    sub ax, offset k_mem_gdt - 1
+    sub ax, offset k_mem_gdt + 1
     mov [gdt_size], ax
     mov eax, offset k_mem_gdt
     mov dword ptr [gdt_offset], eax

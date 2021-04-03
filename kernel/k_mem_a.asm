@@ -40,7 +40,7 @@ r3_code_segment: .short 0xffff, 0x0000, 0xe000|0x1000|0x0a00, 0x00c0|0x000f
 k_mem_gdt_end:
 
 .global k_mem_gdt_desc_count
-k_mem_gdt_desc_count: .int 9
+k_mem_gdt_desc_count: .int 10
 
 /* memory ranges */
 .balign 8
