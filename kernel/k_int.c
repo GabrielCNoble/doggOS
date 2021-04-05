@@ -28,47 +28,47 @@ void k_int_init()
     k_int_lidt();
 }
 
-void k_int0_handler(uint32_t eip, uint16_t cs)
+void k_int_int0_handler(uint32_t eip, uint16_t cs)
 {
     k_printf("division by zero at %x:%x\n", (uint32_t)cs, eip);
 }
 
-void k_int3_handler(uint32_t eip, uint16_t cs)
+void k_int_int3_handler(uint32_t eip, uint16_t cs)
 {
     k_printf("breakpoint! next instruction at %x:%x\n", (uint32_t)cs, eip);
 }
 
-void k_int4_handler(uint32_t eip, uint16_t cs)
+void k_int_int4_handler(uint32_t eip, uint16_t cs)
 {
     k_printf("overflow! next instruction at %x: %x\n", (uint32_t)cs, eip);
 }
 
-void k_int5_handler(uint32_t eip, uint16_t cs)
+void k_int_int5_handler(uint32_t eip, uint16_t cs)
 {
 
 }
 
-void k_int6_handler(uint32_t eip, uint16_t cs)
+void k_int_int6_handler(uint32_t eip, uint16_t cs)
 {
     k_printf("invalid instruction at %x:%x\n", (uint32_t)cs, eip);
 }
 
-void k_int7_handler(uint32_t eip, uint16_t cs)
+void k_int_int7_handler(uint32_t eip, uint16_t cs)
 {
     k_printf("device not available at %x:%x\n", (uint32_t)cs, eip);
 }
 
-void k_int8_handler()
+void k_int_int8_handler()
 {
     k_printf("double fault!\n");
 }
 
-void k_int13_handler(uint32_t error, uint32_t eip, uint16_t cs)
+void k_int_int13_handler(uint32_t error, uint32_t eip, uint16_t cs)
 {
     k_printf("general protection fault at %x:%x, with error %x\n", (uint32_t)cs, eip, error);
 }
 
-void k_int14_handler(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs)
+void k_int_int14_handler(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs)
 {
     k_printf("page fault at %x:%x\n", (uint32_t)cs, eip);
 
@@ -96,7 +96,7 @@ void k_int14_handler(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs
     }
 }
 
-void k_intn_handler()
+void k_int_intn_handler()
 {
     k_printf("this exception has not been implemented!\n");
 }

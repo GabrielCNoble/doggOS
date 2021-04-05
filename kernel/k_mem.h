@@ -87,13 +87,31 @@ struct k_mem_seg_desc_t
     uint32_t dw1;
 };
 
+enum K_MEM_PAGE_FLAGS
+{
+    K_MEM_PAGE_FLAG_USED = 1,
+    K_MEM_PAGE_FLAG_HEAD = 1 << 1,
+    K_MEM_PAGE_FLAG_LAST
+};
 
+#define K_MEM_USED_PAGE_BITS 2
+
+#define K_MEM_INVALID_PAGE 0x00000000
 #define K_MEM_BIG_PAGE_ADDR_MASK 0xffc00000
 #define K_MEM_SMALL_PAGE_ADDR_MASK 0xfffff000
-#define K_MEM_SMALL_PAGE_USED_BYTE_MASK 0x0001ffff
-#define K_MEM_SMALL_PAGE_USED_BYTE_SHIFT 15
-#define K_MEM_SMALL_PAGE_USED_BIT_MASK 0x00000007
-#define K_MEM_SMALL_PAGE_USED_BIT_SHIFT 12
+#define K_MEM_SMALL_PAGE_USED_BYTE_MASK 0x0003ffff
+#define K_MEM_SMALL_PAGE_USED_BYTE_SHIFT 14
+#define K_MEM_SMALL_PAGE_USED_BYTE_INDEX(entry) (((entry) >> K_MEM_SMALL_PAGE_USED_BYTE_SHIFT) & K_MEM_SMALL_PAGE_USED_BYTE_MASK)
+#define K_MEM_SMALL_PAGE_USED_BIT_MASK 0x00000006
+#define K_MEM_SMALL_PAGE_USED_BIT_SHIFT 11
+#define K_MEM_SMALL_PAGE_USED_BIT_INDEX(entry) (((entry) >> K_MEM_SMALL_PAGE_USED_BIT_SHIFT) & K_MEM_SMALL_PAGE_USED_BIT_MASK)
+#define K_MEM_PENTRY0_SHIFT 22
+#define K_MEM_PENTRY1_SHIFT 12
+#define K_MEM_PENTRY_INDEX_MASK 0x000003ff
+#define K_MEM_PENTRY_ADDR_MASK 0xfffff000
+#define K_MEM_PENTRY1_ADDRESS(entry) ((struct k_mem_pentry_t *)((entry) & K_MEM_PENTRY_ADDR_MASK))
+#define K_MEM_PENTRY0_INDEX(address) ((address >> K_MEM_PENTRY0_SHIFT) & K_MEM_PENTRY_INDEX_MASK)
+#define K_MEM_PENTRY1_INDEX(address) ((address >> K_MEM_PENTRY1_SHIFT) & K_MEM_PENTRY_INDEX_MASK)
 
 enum K_MEM_PENTRY_FLAGS
 {
@@ -113,33 +131,35 @@ enum K_MEM_PENTRY_FLAGS
     K_MEM_PENTRY_FLAG_BIG_PAGE_PAT = 1 << 12,
 };
 
+enum K_MEM_PAGING_STATUS
+{
+    K_MEM_PAGING_STATUS_OK = 0,
+    K_MEM_PAGING_STATUS_NO_PTABLE = 1,
+    K_MEM_PAGING_STATUS_PAGED = 2,
+    K_MEM_PAGING_STATUS_NOT_PAGED = 3,
+};
+
 struct k_mem_pentry_t
 {
     uint32_t entry;
 };
-
-#define K_MEM_USED_PAGE_BITS 1
-// struct k_mem_pstate_t
-// {
-//     struct k_mem_pentry_t *free_pages;
-//     uint32_t free_page_cursor;
-//     uint8_t *used_pages;
-// };
 
 
 void k_mem_init();
 
 uint32_t k_mem_alloc_page();
 
-void k_mem_free_page(uint32_t page);
+uint32_t k_mem_alloc_pages(uint32_t count);
 
-// struct k
+void k_mem_free_page(uint32_t page);
 
 extern void k_mem_enable_paging();
 
 extern void k_mem_disable_paging();
 
-uint32_t k_mem_page_mem(uint32_t physical_address, uint32_t linear_address, uint32_t big_page);
+uint32_t k_mem_map_address(struct k_mem_pentry_t *page_dir, uint32_t page, uint32_t address, uint32_t flags);
+
+uint32_t k_mem_unmap_address(struct k_mem_pentry_t *page_dir, uint32_t address);
 
 
 #endif

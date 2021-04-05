@@ -61,29 +61,33 @@ enum K_INT_PF_FLAGS
 
 void k_int_init();
 
+extern void k_int_disable_interrupts();
+
+extern void k_int_enable_interrupts();
+
 extern void k_int_lidt();
 
-void k_int0_handler(uint32_t eip, uint16_t cs);
+void k_int_int0_handler(uint32_t eip, uint16_t cs);
 
-void k_int1_handler();
+void k_int_int1_handler();
 
-void k_int3_handler(uint32_t eip, uint16_t cs);
+void k_int_int3_handler(uint32_t eip, uint16_t cs);
 
-void k_int4_handler(uint32_t eip, uint16_t cs);
+void k_int_int4_handler(uint32_t eip, uint16_t cs);
 
-void k_int5_handler(uint32_t eip, uint16_t cs);
+void k_int_int5_handler(uint32_t eip, uint16_t cs);
 
-void k_int6_handler(uint32_t eip, uint16_t cs);
+void k_int_int6_handler(uint32_t eip, uint16_t cs);
 
-void k_int7_handler(uint32_t eip, uint16_t cs);
+void k_int_int7_handler(uint32_t eip, uint16_t cs);
 
-void k_int8_handler();
+void k_int_int8_handler();
 
-void k_int13_handler(uint32_t error, uint32_t eip, uint16_t cs);
+void k_int_int13_handler(uint32_t error, uint32_t eip, uint16_t cs);
 
-void k_int14_handler(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs);
+void k_int_int14_handler(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs);
 
-void k_intn_handler();
+void k_int_intn_handler();
 
 
 
