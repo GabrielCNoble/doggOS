@@ -3,10 +3,21 @@
 
 .section .text
 
-.global k_mem_enable_paging
-k_mem_enable_paging:
-    mov eax, offset k_mem_pdirs
+.global k_mem_load_pstate
+k_mem_load_pstate:
+    mov eax, dword ptr [esp + 4]
+    mov eax, dword ptr [eax]
     mov cr3, eax
+    ret
+
+.global k_mem_paging_enabled
+k_mem_paging_enabled:
+    mov eax, cr0
+    and eax, 0x80000000
+    ret
+
+.global k_mem_enable_paging_a
+k_mem_enable_paging_a:
     mov eax, cr4
     or eax, 0x00000010
     mov cr4, eax
@@ -15,8 +26,8 @@ k_mem_enable_paging:
     mov cr0, eax
     ret
 
-.global k_mem_disable_paging
-k_mem_disable_paging:
+.global k_mem_disable_paging_a
+k_mem_disable_paging_a:
     mov eax, cr0
     and eax, 0x7fffffff
     mov cr0, eax

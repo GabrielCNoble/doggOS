@@ -8,32 +8,12 @@ void k_init()
     k_int_init();
     k_mem_init();
     k_term_init();
+    k_printf("everything is fine...\n");
 
-    uint32_t pages = k_mem_alloc_pages(3);
-    k_printf("page %x allocated\n", pages);
-    
-    
-    k_mem_free_page(pages);
-    k_mem_free_page(pages + 4096);
-    k_mem_free_page(pages + 8192);
-    // #define COUNT 8
-    // uint32_t pages[COUNT];
 
-    // for(uint32_t page_index = 0; page_index < COUNT; page_index++)
-    // {
-    //     pages[page_index] = k_mem_alloc_page();
-    //     k_printf("%x ", pages[page_index]);
-    // }
-    // k_printf("\n");
+    uint16_t *a = (uint16_t *)0x800000;
+    uint16_t *b = (uint16_t *)0xa00000;
 
-    // for(uint32_t page_index = 0; page_index < COUNT; page_index++)
-    // {
-    //     k_mem_free_page(pages[page_index]);
-    // }
-
-    // for(uint32_t page_index = 0; page_index < COUNT; page_index++)
-    // {
-    //     pages[page_index] = k_mem_alloc_page();
-    //     k_printf("%x ", pages[page_index]);
-    // }
+    *a = 5;
+    k_printf("%d\n", (uint32_t)*b);
 }

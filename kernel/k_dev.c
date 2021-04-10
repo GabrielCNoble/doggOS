@@ -10,8 +10,7 @@ struct k_device_t *k_last_device = NULL;
 
 void k_dev_init()
 {
-    /* contiguous block to avoid the risk of having devices scattered around the heap */
-    // k_device_mem = k_mem_alloc(K_DEV_MEM_SIZE);
+    
 }
 
 struct k_device_t *k_dev_alloc_device(uint32_t size)
@@ -42,13 +41,13 @@ struct k_device_t *k_dev_alloc_device(uint32_t size)
     // return device;
 }
 
-void k_dev_disk_read(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count)
-{
+// void k_dev_disk_read(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count)
+// {
 
-}
+// }
 
-void k_dev_disk_write(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count)
-{
+// void k_dev_disk_write(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count)
+// {
 
-}
+// }
 

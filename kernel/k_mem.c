@@ -13,13 +13,15 @@ extern uint32_t k_mem_gdt_desc_count;
 extern struct k_mem_seg_desc_t k_mem_gdt[]; 
 
 extern struct k_mem_pentry_t k_mem_pdirs[];
+// struct k_mem_pentry_t *k_mem_ptables;
+struct k_mem_pstate_t *k_mem_pstate;
 
 extern uint32_t k_kernel_start;
 extern uint32_t k_kernel_end;
 
 uint8_t *k_mem_used_pages;
-struct k_mem_pentry_t *k_mem_free_pages;
-uint32_t k_mem_free_pages_cursor;
+struct k_mem_pentry_t *k_mem_avail_pages;
+uint32_t k_mem_avail_pages_cursor;
 struct k_test_t
 {
     struct k_test_t *next;
@@ -92,7 +94,7 @@ void k_mem_init()
     }
 
 
-    k_mem_free_pages = (struct k_mem_pentry_t *)((uint32_t)lowest_range->base);
+    k_mem_avail_pages = (struct k_mem_pentry_t *)((uint32_t)lowest_range->base);
     lowest_range->base += free_page_header_bytes;
     k_mem_used_pages = (uint8_t *)((uint32_t)lowest_range->base);
     lowest_range->base += used_page_bytes;
@@ -109,7 +111,7 @@ void k_mem_init()
         k_mem_range_count--;
     }
 
-    k_mem_free_pages_cursor = 0xffffffff;
+    k_mem_avail_pages_cursor = 0xffffffff;
     
     for(uint32_t range_index = 0; range_index < k_mem_range_count; range_index++)
     {
@@ -119,32 +121,41 @@ void k_mem_init()
 
         for(uint32_t page_index = 0; page_index < page_count; page_index++)
         {
-            k_mem_free_pages_cursor++;
-            struct k_mem_pentry_t *entry = k_mem_free_pages + k_mem_free_pages_cursor;
+            k_mem_avail_pages_cursor++;
+            struct k_mem_pentry_t *entry = k_mem_avail_pages + k_mem_avail_pages_cursor;
             entry->entry = page_address;
             page_address += 4096;
         }
     }
 
+    k_mem_pstate = k_mem_create_pstate();
     uint32_t address = 0;
+
+    k_mem_map_address(k_mem_pstate, 0xb8000, 0x800000, K_MEM_PENTRY_FLAG_READ_WRITE);
+    // k_mem_map_address(k_mem_pstate, 0xb8000, 0xa00000, K_MEM_PENTRY_FLAG_READ_WRITE);
 
     while(address < k_mem_total)
     {
-        k_mem_map_address(k_mem_pdirs, address, address, K_MEM_PENTRY_FLAG_BIG_PAGE);    
-        address += 0x00400000;
+        if(address != 0xa00000)
+        {
+            k_mem_map_address(k_mem_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE);
+        }
+        address += 0x00001000;
     }
-
+    
+    k_mem_load_pstate(k_mem_pstate);
     k_mem_enable_paging();
+    k_mem_map_address(K_MEM_ACTIVE_PSTATE_ADDRESS, 0xb8000, 0xa00000, K_MEM_PENTRY_FLAG_READ_WRITE);
 }
 
 uint32_t k_mem_alloc_page()
 {
     uint32_t page_address = K_MEM_INVALID_PAGE;
 
-    if(k_mem_free_pages_cursor != 0xffffffff)
+    if(k_mem_avail_pages_cursor != 0xffffffff)
     {
-        struct k_mem_pentry_t *entry = k_mem_free_pages + k_mem_free_pages_cursor;
-        k_mem_free_pages_cursor--;
+        struct k_mem_pentry_t *entry = k_mem_avail_pages + k_mem_avail_pages_cursor;
+        k_mem_avail_pages_cursor--;
         uint32_t byte_index = K_MEM_SMALL_PAGE_USED_BYTE_INDEX(entry->entry);
         uint32_t bit_index = K_MEM_SMALL_PAGE_USED_BIT_INDEX(entry->entry);
         k_mem_used_pages[byte_index] |= (K_MEM_PAGE_FLAG_USED | K_MEM_PAGE_FLAG_HEAD) << bit_index;
@@ -193,14 +204,14 @@ uint32_t k_mem_alloc_pages(uint32_t count)
 {
     uint32_t page_address = K_MEM_INVALID_PAGE;
     uint32_t entries_sorted = 0;
-    if(k_mem_free_pages_cursor != 0xffffffff && k_mem_free_pages_cursor >= count)
+    if(k_mem_avail_pages_cursor != 0xffffffff && k_mem_avail_pages_cursor >= count)
     {
         _try_again:
 
-        uint32_t entry_count = k_mem_free_pages_cursor - count;
+        uint32_t entry_count = k_mem_avail_pages_cursor - count;
         for(uint32_t entry_index = 0; entry_index <= entry_count; entry_index++)
         {
-            struct k_mem_pentry_t *head_entry = k_mem_free_pages + entry_index;
+            struct k_mem_pentry_t *head_entry = k_mem_avail_pages + entry_index;
             struct k_mem_pentry_t *first_entry = head_entry;
 
             for(uint32_t next_entry_index = 1; next_entry_index < count; next_entry_index++)
@@ -209,7 +220,7 @@ uint32_t k_mem_alloc_pages(uint32_t count)
                 uint32_t second_entry_page = second_entry->entry & K_MEM_SMALL_PAGE_ADDR_MASK;
                 uint32_t first_entry_page = first_entry->entry & K_MEM_SMALL_PAGE_ADDR_MASK;
                 /* likely not the ideal thing to do here. Could be more efficient to try
-                both combinations, and swap the entries if those point to contiguous pages */
+                both combinations, and swap the entries if those point to adjacent pages */
                 if(first_entry_page > second_entry_page || second_entry_page - first_entry_page > 4096)
                 {
                     head_entry = NULL;
@@ -242,7 +253,7 @@ uint32_t k_mem_alloc_pages(uint32_t count)
 
         if(page_address == K_MEM_INVALID_PAGE && !entries_sorted)
         {
-            k_mem_sort_entries(0, k_mem_free_pages_cursor + 1, k_mem_free_pages);
+            k_mem_sort_entries(0, k_mem_avail_pages_cursor + 1, k_mem_avail_pages);
             entries_sorted = 1;
             goto _try_again;
         }
@@ -251,7 +262,7 @@ uint32_t k_mem_alloc_pages(uint32_t count)
     return page_address;
 }
 
-void k_mem_free_page(uint32_t page_address)
+void k_mem_free_pages(uint32_t page_address)
 {
     if(page_address != K_MEM_INVALID_PAGE)
     {
@@ -264,8 +275,8 @@ void k_mem_free_page(uint32_t page_address)
             do
             {
                 k_mem_used_pages[byte_index] &= ~valid_bits;
-                k_mem_free_pages_cursor++;
-                struct k_mem_pentry_t *entry = k_mem_free_pages + k_mem_free_pages_cursor;
+                k_mem_avail_pages_cursor++;
+                struct k_mem_pentry_t *entry = k_mem_avail_pages + k_mem_avail_pages_cursor;
                 entry->entry = page_address; 
                 page_address += 4096;
                 byte_index = K_MEM_SMALL_PAGE_USED_BYTE_INDEX(page_address);
@@ -277,9 +288,63 @@ void k_mem_free_page(uint32_t page_address)
     }
 }
 
-uint32_t k_mem_map_address(struct k_mem_pentry_t *page_dir, uint32_t page, uint32_t address, uint32_t flags)
+struct k_mem_pstate_t *k_mem_create_pstate()
 {
-    struct k_mem_pentry_t *page_entry = page_dir + K_MEM_PENTRY0_INDEX(address);
+    uint32_t pages[3];
+    struct k_mem_pstate_t *pstate;
+
+    for(uint32_t page_index = 0; page_index < 3; page_index++)
+    {
+        pages[page_index] = k_mem_alloc_page();
+    }
+
+    pstate = (struct k_mem_pstate_t *)pages[0];
+    pstate->phys_page_dir = (struct k_mem_pentry_t *)pages[1];
+    pstate->page_dir = pstate->phys_page_dir;
+    pstate->self_table = (struct k_mem_pentry_t *)pages[2];
+
+    struct k_mem_pentry_t *self_dir_entry = pstate->phys_page_dir + K_MEM_PSTATE_SELF_DIR_INDEX;
+    self_dir_entry->entry = pages[2] | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE;
+
+    for(uint32_t entry_index = 0; entry_index < 3; entry_index++)
+    {
+        struct k_mem_pentry_t *self_table_entry = pstate->self_table + K_MEM_PSTATE_SELF_TABLE_FIRST_INDEX + entry_index;
+        self_table_entry->entry = pages[entry_index] | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE;
+    }
+
+    return pstate;
+}
+
+extern void k_mem_enable_paging_a();
+
+void k_mem_enable_paging()
+{
+    k_mem_enable_paging_a();
+    struct k_mem_pstate_t *pstate = K_MEM_ACTIVE_PSTATE_ADDRESS;
+    pstate->page_dir = K_MEM_ACTIVE_PSTATE_DIRS_ADDRESS;
+}
+
+extern void k_mem_disable_paging_a();
+
+void k_mem_disable_paging()
+{
+    struct k_mem_pstate_t *pstate = K_MEM_ACTIVE_PSTATE_ADDRESS;
+    pstate->page_dir = pstate->phys_page_dir;
+    k_mem_disable_paging_a();
+}
+
+uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address, uint32_t lin_address, uint32_t flags)
+{
+    uint32_t dir_index = K_MEM_PDIR_INDEX(lin_address);
+    uint32_t table_index = K_MEM_PTABLE_INDEX(lin_address);
+    if(dir_index == K_MEM_PSTATE_SELF_DIR_INDEX)
+    {
+        return K_MEM_PAGING_STATUS_NOT_ALLOWED;
+    }
+
+    struct k_mem_pentry_t *page_entry = pstate->page_dir + dir_index;
+
+    /* TODO: handle entries marked as not present */
 
     if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
     {
@@ -289,52 +354,135 @@ uint32_t k_mem_map_address(struct k_mem_pentry_t *page_dir, uint32_t page, uint3
             return K_MEM_PAGING_STATUS_PAGED;
         }
 
-        page_entry = K_MEM_PENTRY1_ADDRESS(page_entry->entry) + K_MEM_PENTRY1_INDEX(address);
+        if(pstate == K_MEM_ACTIVE_PSTATE_ADDRESS)
+        {
+            /* we're modifying the active paging structures, so accesses to the page tables are done
+            through the 'hardcoded' addresses  */
+            page_entry = K_MEM_ACTIVE_PSTATE_PTABLE_ADDRESS(dir_index);
+        }
+        else
+        {
+            /* those paging structures are not being used, so we just access their fields normally, as
+            if paging is disabled */
+            page_entry = K_MEM_PTABLE_ADDRESS(page_entry->entry);
+        }
+
+        page_entry += table_index;
 
         if(page_entry->entry & K_MEM_PENTRY_FLAG_USED) 
         {
             /* this entry already maps an address to a normal page */
             return K_MEM_PAGING_STATUS_PAGED;
         }
+
+        /* if we got here, it means this the page directory entry references a page 
+        table and now we have a pointer to it */
     }
-
-    if(!(flags & K_MEM_PENTRY_FLAG_BIG_PAGE) && (page_entry->entry & K_MEM_PENTRY_ADDR_MASK) == 0)
+    else
     {
-        // uint32_t page_table = k_mem_alloc_page();
+        /* if we got here the page directory entry is not being used, and we need to check what size of
+        page we'll be mapping. If it's a big page, all we have to do is point the directory entry to the
+        physical page and set some flags. Otherwise, we'll be mapping a normal page, and we'll need to
+        first allocate a page to hold the directory's page table, map this page, then set up the physical
+        page address and flags we want to actually map. */
 
-        // if(page_table == K_MEM_INVALID_PAGE)
-        // {
-        //     /* this will trigger swapping */
-        //     return K_MEM_PAGING_STATUS_NO_PTABLE;
-        // }
+        if(!(flags & K_MEM_PENTRY_FLAG_BIG_PAGE) && (page_entry->entry & K_MEM_PENTRY_ADDR_MASK) == 0)
+        {
+            /* if we got here we'll be mapping a normal page and the page directory doesn't have a page 
+            table, so we allocate and map a physical page that will hold the page table we need. */
 
-        // page_entry->entry = page_table | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
-        // page_entry = K_MEM_PENTRY1_ADDRESS(page_entry->entry) + K_MEM_PENTRY1_INDEX(address);
+            uint32_t page_table = k_mem_alloc_page();
+
+            if(page_table == K_MEM_INVALID_PAGE)
+            {
+                return K_MEM_PAGING_STATUS_NO_PTABLE;
+            }
+
+            uint32_t entry_value = page_table | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
+            /* this page directory now has a page table allocated to it. */
+            page_entry->entry = entry_value;
+            /* we also need to map this page through the self table. */
+            if(pstate == K_MEM_ACTIVE_PSTATE_ADDRESS)
+            {
+                /* we're modifying the active paging structures, so we access the self page tables through the 
+                'hardcoded' address. */
+                page_entry = K_MEM_ACTIVE_PSTATE_SELF_TABLE_ADDRESS + dir_index;
+                page_entry->entry = entry_value;
+                page_entry = K_MEM_ACTIVE_PSTATE_PTABLE_ADDRESS(dir_index);
+            }
+            else
+            {
+                /* those paging structures are not being used, so we just access their fields normally, as if 
+                paging is disabled. */
+                page_entry = pstate->self_table + dir_index;
+                page_entry->entry = entry_value;
+                page_entry = (struct k_mem_pentry_t *)page_table;
+            }
+
+            page_entry += table_index;
+        }
     }
     
-    page_entry->entry = page | flags | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED;
+    page_entry->entry = phys_address | flags | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED;
 
     return K_MEM_PAGING_STATUS_OK;
 }
 
-uint32_t k_mem_unmap_address(struct k_mem_pentry_t *page_dir, uint32_t address)
+uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t address)
 {    
-    struct k_mem_pentry_t *page_entry = page_dir + K_MEM_PENTRY0_INDEX(address);
+    // struct k_mem_pentry_t *page_entry = page_dir + K_MEM_PENTRY0_INDEX(address);
 
-    if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
+    // if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
+    // {
+    //     if(!(page_entry->entry & K_MEM_PENTRY_FLAG_BIG_PAGE))
+    //     {
+    //         page_entry = (struct k_mem_pentry_t *)(page_entry->entry & K_MEM_PENTRY_ADDR_MASK);
+    //         page_entry += K_MEM_PENTRY1_INDEX(address);
+    //     }
+
+    //     if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
+    //     {
+    //         page_entry->entry &= ~(K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT);
+    //         return K_MEM_PAGING_STATUS_OK;
+    //     }
+    // }
+
+    // return K_MEM_PAGING_STATUS_PAGED;
+}
+
+void k_mem_create_heap(struct k_mem_heap_t *heap, uint32_t size)
+{
+    uint32_t page_count = size / 4096;
+
+    if(size % 4096)
     {
-        if(!(page_entry->entry & K_MEM_PENTRY_FLAG_BIG_PAGE))
-        {
-            page_entry = (struct k_mem_pentry_t *)(page_entry->entry & K_MEM_PENTRY_ADDR_MASK);
-            page_entry += K_MEM_PENTRY1_INDEX(address);
-        }
-
-        if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
-        {
-            page_entry->entry &= ~(K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT);
-            return K_MEM_PAGING_STATUS_OK;
-        }
+        page_count++;
     }
 
-    return K_MEM_PAGING_STATUS_PAGED;
+
 }
+
+void k_mem_destroy_heap(struct k_mem_heap_t *heap)
+{
+
+}
+// struct k_mem_balloc_t k_mem_create_balloc(uint32_t page_count)
+// {
+//     struct k_mem_balloc_t balloc = {};
+
+//     balloc.first_page = k_mem_alloc_pages(page_count);
+//     balloc.page_count = page_count;
+
+//     return balloc;
+// }
+
+// void k_mem_destroy_balloc(struct k_mem_balloc_t *balloc)
+// {
+//     if(balloc && balloc->first_page != K_MEM_INVALID_PAGE)
+//     {
+//         k_mem_free_pages(balloc->first_page);
+//         balloc->first_page = K_MEM_INVALID_PAGE;
+//         balloc->page_count = 0;
+//         balloc->cursor = 0;
+//     }
+// }

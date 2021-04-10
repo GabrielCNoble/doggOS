@@ -12,8 +12,8 @@ and prd entries. Space for this will be allocated and properly devided by k_ahci
 enum K_DEVICE_TYPE
 {
     K_DEVICE_TYPE_NONE = 0,
-    K_DEVICE_TYPE_DISK = 1,
-    K_DEVICE_TYPE_NETWORK = 2,
+    K_DEVICE_TYPE_DISK_CONTROLLER = 1,
+    K_DEVICE_TYPE_NETWORK_ADAPTER = 2,
 };
 
 struct k_device_t
@@ -26,23 +26,23 @@ struct k_device_t
 /* generic disk device. As is this is just a dummy device, that does nothing.
 Depending on the actual device, more fields may be present at the end of the 
 struct, and those fields will be used by the appropriate read/write functions */
-struct k_disk_device_t
-{
-    struct k_device_t *next;
-    struct k_device_t *prev;
-    uint32_t type;
+// struct k_disk_device_t
+// {
+//     struct k_device_t *next;
+//     struct k_device_t *prev;
+//     uint32_t type;
 
-    void (*read)(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
-    void (*write)(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
-};
+//     void (*read)(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
+//     void (*write)(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
+// };
 
 void k_dev_init();
 
 struct k_device_t *k_dev_alloc_device(uint32_t size);
 
-void k_dev_disk_read(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
+// void k_dev_disk_read(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
 
-void k_dev_disk_write(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
+// void k_dev_disk_write(struct k_disk_device_t *device, void *buffer, uint32_t buffer_size, uint32_t address, uint32_t count);
 
 
 #endif

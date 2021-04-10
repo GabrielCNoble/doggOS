@@ -3,20 +3,9 @@
 #include "k_term.h"
 
 
-
-// uint32_t k_function_count = 0;
-// struct k_pci_function_t k_functions[32];
-
-// uint32_t k_device_count = 0;
-// struct k_pci_device_t k_devices[32];
-
-
-// char temp_src[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-// char temp_dst[sizeof(temp_src)];
-
-void k_pci_init()
+void k_pci_enumerate()
 {
-    k_pci_enumerate();
+    k_pci_discover_devices(0);
 }
 
 uint32_t k_pci_read_header(uint8_t bus, uint8_t device, uint8_t function, union k_pci_header_t *header)
@@ -94,34 +83,6 @@ void k_pci_discover_devices(uint8_t bus)
     //         }
 
     //         k_puts("\n");
-    //     }
-    // }
-}
-
-void k_pci_enumerate()
-{
-    k_pci_discover_devices(0);
-
-    // k_outportb(0x00, 0x000f);
-    // k_outportb(0x00, 0x000c);
-
-
-
-    // k_printf("0x%x 0x%x\n", b0, b1);
-
-    // for(uint32_t device_index = 0; device_index < k_device_count; device_index++)
-    // {
-    //     struct k_pci_device_t *device = k_devices + device_index;
-    //     for(uint32_t function_index = 0; function_index < device->function_count; function_index++)
-    //     {
-    //         struct k_pci_function_t *function = device->functions + function_index;
-    //         if(function->header.device_class == K_PCI_DEVICE_CLASS_MASS_STORAGE_CONTROLLER &&
-    //            function->header.device_subclass == K_PCI_MASS_STORAGE_DEVICE_SUBCLASS_AHCI_CONTROLLER)
-    //         {
-    //             uint32_t *regs = (uint32_t *)(function->header.type0.base_address_regs[5] & 0xffffff00);
-    //             k_printf("0x%x\n", regs[4]);
-    //             return;
-    //         }
     //     }
     // }
 }

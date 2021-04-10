@@ -144,13 +144,11 @@ struct k_pci_device_t
     uint32_t function_count;
 };
 
-void k_pci_init();
+void k_pci_enumerate();
 
 uint32_t k_pci_read_header(uint8_t bus, uint8_t device, uint8_t function, union k_pci_header_t *header);
 
 void k_pci_discover_devices(uint8_t bus);
-
-void k_pci_enumerate();
 
 
 
