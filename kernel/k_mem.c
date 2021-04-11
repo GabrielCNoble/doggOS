@@ -131,21 +131,14 @@ void k_mem_init()
     k_mem_pstate = k_mem_create_pstate();
     uint32_t address = 0;
 
-    k_mem_map_address(k_mem_pstate, 0xb8000, 0x800000, K_MEM_PENTRY_FLAG_READ_WRITE);
-    // k_mem_map_address(k_mem_pstate, 0xb8000, 0xa00000, K_MEM_PENTRY_FLAG_READ_WRITE);
-
     while(address < k_mem_total)
     {
-        if(address != 0xa00000)
-        {
-            k_mem_map_address(k_mem_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE);
-        }
+        k_mem_map_address(k_mem_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE);
         address += 0x00001000;
     }
     
     k_mem_load_pstate(k_mem_pstate);
     k_mem_enable_paging();
-    k_mem_map_address(K_MEM_ACTIVE_PSTATE_ADDRESS, 0xb8000, 0xa00000, K_MEM_PENTRY_FLAG_READ_WRITE);
 }
 
 uint32_t k_mem_alloc_page()
@@ -315,6 +308,11 @@ struct k_mem_pstate_t *k_mem_create_pstate()
     return pstate;
 }
 
+void k_mem_destroy_pstate(struct k_mem_pstate_t *pstate)
+{
+
+}
+
 extern void k_mem_enable_paging_a();
 
 void k_mem_enable_paging()
@@ -428,26 +426,52 @@ uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address,
     return K_MEM_PAGING_STATUS_OK;
 }
 
-uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t address)
+uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t lin_address)
 {    
-    // struct k_mem_pentry_t *page_entry = page_dir + K_MEM_PENTRY0_INDEX(address);
+    uint32_t dir_index = K_MEM_PDIR_INDEX(lin_address);
+    uint32_t table_index = K_MEM_PTABLE_INDEX(lin_address);
 
-    // if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
-    // {
-    //     if(!(page_entry->entry & K_MEM_PENTRY_FLAG_BIG_PAGE))
-    //     {
-    //         page_entry = (struct k_mem_pentry_t *)(page_entry->entry & K_MEM_PENTRY_ADDR_MASK);
-    //         page_entry += K_MEM_PENTRY1_INDEX(address);
-    //     }
+    if(dir_index == K_MEM_PSTATE_SELF_DIR_INDEX)
+    {
+        return K_MEM_PAGING_STATUS_NOT_ALLOWED;
+    }
 
-    //     if(page_entry->entry & K_MEM_PENTRY_FLAG_USED)
-    //     {
-    //         page_entry->entry &= ~(K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT);
-    //         return K_MEM_PAGING_STATUS_OK;
-    //     }
-    // }
+    struct k_mem_pentry_t *page_entry = pstate->page_dir + dir_index;
 
-    // return K_MEM_PAGING_STATUS_PAGED;
+    if(!(page_entry->entry & K_MEM_PENTRY_FLAG_USED))
+    {
+        /* not being used for a big page/doesn't reference a page table */
+        return K_MEM_PAGING_STATUS_NOT_PAGED;
+    }
+
+    if(!(page_entry->entry & K_MEM_PENTRY_FLAG_BIG_PAGE))
+    {
+        /* if we get here, we know for sure the directory isn't mapping a big page,
+        and that it has a page table allocated to it. */
+        if(pstate == K_MEM_ACTIVE_PSTATE_ADDRESS)
+        {
+            page_entry = K_MEM_ACTIVE_PSTATE_PTABLE_ADDRESS(dir_index);
+            /* this works but... won't invalidate only the entry that maps this linear address to the 
+            physical address. It will also invalidate the entry that maps the self table to the its 
+            physical page, which is... bad.  */
+            k_mem_invalidate_tlb(lin_address);
+        }
+        else
+        {
+            page_entry = K_MEM_PTABLE_ADDRESS(page_entry->entry);
+        }
+
+        page_entry += table_index;
+
+        if(!(page_entry->entry & K_MEM_PENTRY_FLAG_USED))
+        {
+            return K_MEM_PAGING_STATUS_NOT_PAGED;
+        }
+    }
+
+    page_entry->entry = 0;
+
+    return K_MEM_PAGING_STATUS_OK;
 }
 
 void k_mem_create_heap(struct k_mem_heap_t *heap, uint32_t size)

@@ -16,8 +16,7 @@ void k_term_init()
 {
     vga_width = 80;
     vga_height = 25;
-    // vga_buffer = (uint16_t *) 0xb8000;
-    vga_buffer = (uint16_t *)0xa00000;
+    vga_buffer = (uint16_t *) 0xb8000;
     vga_cur_color = k_vga_attrib(K_VGA_COLOR_WHITE, K_VGA_COLOR_BLACK);
     k_term_clear();
 

@@ -216,6 +216,8 @@ void k_mem_free_pages(uint32_t page_address);
 
 struct k_mem_pstate_t *k_mem_create_pstate();
 
+void k_mem_destroy_pstate(struct k_mem_pstate_t *pstate);
+
 extern void k_mem_load_pstate(struct k_mem_pstate_t *pstate);
 
 extern uint32_t k_mem_paging_enabled();
@@ -226,7 +228,9 @@ void k_mem_disable_paging();
 
 uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address, uint32_t lin_address, uint32_t flags);
 
-uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t address);
+uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t lin_address);
+
+extern void k_mem_invalidate_tlb(uint32_t address);
 
 void k_mem_create_heap(struct k_mem_heap_t *heap, uint32_t size);
 

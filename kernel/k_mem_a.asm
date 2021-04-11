@@ -33,6 +33,12 @@ k_mem_disable_paging_a:
     mov cr0, eax
     ret
 
+.global k_mem_invalidate_tlb
+k_mem_invalidate_tlb:
+    mov eax, dword ptr [esp + 4]
+    invlpg dword ptr [eax]
+    ret
+
 .section .data
 /* gdt */
 .balign 8
