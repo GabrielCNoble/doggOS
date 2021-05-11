@@ -168,7 +168,7 @@ void k_mem_init()
     entry = page_table + K_MEM_PSTATE_DIR_PAGE_INDEX;
     entry->entry = ((uint32_t)page_dir) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
     /* map the page that contains the page table */
-    entry = page_table + K_MEM_PSTATE_TABLE_PAGE_INDEX;
+    entry = page_table + K_MEM_PSTATE_LAST_TABLE_PAGE_INDEX;
     entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE; 
     /* point the last page directory entry to the page table we just set up */
     entry = page_dir + K_MEM_PSTATE_DIR_INDEX;
@@ -194,8 +194,13 @@ void k_mem_init()
         k_mem_map_address(k_mem_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE);
         address += 0x00001000;
     }
-    
+
     k_mem_load_pstate(k_mem_pstate);
+    for(uint32_t range_index = 0; range_index < k_mem_range_count; range_index++)
+    {
+        struct k_mem_range_t *range = k_mem_ranges + range_index;
+        k_mem_add_block(range->base, range->size);
+    }
 }
 
 uint32_t k_mem_alloc_page()
@@ -339,28 +344,29 @@ void k_mem_free_pages(uint32_t page_address)
 }
 struct k_mem_pstate_t *k_mem_create_pstate()
 {
-    uint32_t pages[3];
+    uint32_t pages[4];
+    uint32_t page_count = (K_MEM_PSTATE_LAST_TABLE_LAST_INDEX - K_MEM_PSTATE_LAST_TABLE_FIRST_INDEX) + 1;
 
-    for(uint32_t page_index = 0; page_index < 3; page_index++)
+    for(uint32_t page_index = 0; page_index < page_count; page_index++)
     {
         pages[page_index] = k_mem_alloc_page();
     }
 
-    struct k_mem_pstate_t *pstate = (struct k_mem_pstate_t *)k_mem_map_temp(pages[0]);
-    pstate->page_dir = (struct k_mem_pentry_t *)pages[1];
-    pstate->last_table = (struct k_mem_pentry_t *)pages[2];
+    struct k_mem_pstate_t *pstate = (struct k_mem_pstate_t *)k_mem_map_temp(pages[1]);
+    pstate->page_dir = (struct k_mem_pentry_t *)pages[2];
+    pstate->last_table = (struct k_mem_pentry_t *)pages[3];
 
-    struct k_mem_pentry_t *self_dir_entry = (struct k_mem_pentry_t *)k_mem_map_temp(pages[1]) + K_MEM_PSTATE_DIR_INDEX;
-    self_dir_entry->entry = pages[2] | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE;
+    struct k_mem_pentry_t *self_dir_entry = (struct k_mem_pentry_t *)k_mem_map_temp(pages[2]) + K_MEM_PSTATE_DIR_INDEX;
+    self_dir_entry->entry = pages[3] | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE;
 
-    struct k_mem_pentry_t *self_table = ((struct k_mem_pentry_t *)k_mem_map_temp(pages[2])) + K_MEM_PSTATE_LAST_TABLE_FIRST_INDEX;
-    for(uint32_t entry_index = 0; entry_index < 3; entry_index++)
+    struct k_mem_pentry_t *self_table = ((struct k_mem_pentry_t *)k_mem_map_temp(pages[3])) + K_MEM_PSTATE_LAST_TABLE_FIRST_INDEX;
+    for(uint32_t entry_index = 0; entry_index < page_count; entry_index++)
     {
         struct k_mem_pentry_t *self_table_entry = self_table + entry_index;
         self_table_entry->entry = pages[entry_index] | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE;
     }
 
-    return (struct k_mem_pstate_t *)pages[0];
+    return (struct k_mem_pstate_t *)pages[1];
 }
 
 void k_mem_destroy_pstate(struct k_mem_pstate_t *pstate)
@@ -376,11 +382,11 @@ void k_mem_load_pstate(struct k_mem_pstate_t *pstate)
 
 uint32_t k_mem_map_temp(uint32_t phys_address)
 {
-    struct k_mem_pentry_t *scratch_entry = K_MEM_ACTIVE_PSTATE_TABLE_ADDRESS + K_MEM_PSTATE_TEMP_PAGE_INDEX;
+    struct k_mem_pentry_t *scratch_entry = K_MEM_ACTIVE_PSTATE_LAST_TABLE + K_MEM_PSTATE_TEMP_PAGE_INDEX;
     phys_address = phys_address & K_MEM_SMALL_PAGE_ADDR_MASK;
     scratch_entry->entry = phys_address | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
-    k_mem_invalidate_tlb((uint32_t)K_MEM_ACTIVE_PSTATE_TEMP_ADDRESS);
-    return (uint32_t)K_MEM_ACTIVE_PSTATE_TEMP_ADDRESS;
+    k_mem_invalidate_tlb((uint32_t)K_MEM_ACTIVE_PSTATE_TEMP_PAGE);
+    return (uint32_t)K_MEM_ACTIVE_PSTATE_TEMP_PAGE;
 }
 
 uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address, uint32_t lin_address, uint32_t flags)
@@ -394,15 +400,17 @@ uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address,
         return K_MEM_PAGING_STATUS_NOT_ALLOWED;
     }
 
-    if(pstate == K_MEM_ACTIVE_PSTATE_ADDRESS)
+    if(pstate == K_MEM_ACTIVE_PSTATE)
     {
-        page_entry = K_MEM_ACTIVE_PSTATE_DIR_ADDRESS + dir_index;
+        page_entry = K_MEM_ACTIVE_PSTATE_PDIR + dir_index;
     }
     else
     {
         pstate = (struct k_mem_pstate_t *)k_mem_map_temp((uint32_t)pstate);
         page_entry = ((struct k_mem_pentry_t *)k_mem_map_temp((uint32_t)pstate->page_dir)) + dir_index;
     }
+
+    // k_printf("a\n");
 
     /* TODO: handle entries marked as not present */
 
@@ -448,7 +456,7 @@ uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address,
 
             page_entry->entry = page_table | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
             /* now we temporarily map the physical page that contains the new page table, so we can modify it */
-            page_entry = ((struct k_mem_pentry_t *)k_mem_map_temp(page_entry->entry)) + table_index;
+            page_entry = ((struct k_mem_pentry_t *)k_mem_map_temp(page_table)) + table_index;
         }
     }
     
@@ -462,9 +470,9 @@ uint32_t k_mem_address_mapped(struct k_mem_pstate_t *pstate, uint32_t address)
     uint32_t dir_index = K_MEM_PDIR_INDEX(address);
     struct k_mem_pentry_t *page_entry = NULL;
 
-    if(pstate == K_MEM_ACTIVE_PSTATE_ADDRESS)
+    if(pstate == K_MEM_ACTIVE_PSTATE)
     {
-        page_entry = K_MEM_ACTIVE_PSTATE_DIR_ADDRESS + dir_index;
+        page_entry = K_MEM_ACTIVE_PSTATE_PDIR + dir_index;
     }
     else
     {
@@ -506,9 +514,9 @@ uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t lin_address
         return K_MEM_PAGING_STATUS_NOT_ALLOWED;
     }
 
-    if(pstate == K_MEM_ACTIVE_PSTATE_ADDRESS)
+    if(pstate == K_MEM_ACTIVE_PSTATE)
     {
-        page_entry = K_MEM_ACTIVE_PSTATE_DIR_ADDRESS + dir_index;
+        page_entry = K_MEM_ACTIVE_PSTATE_PDIR + dir_index;
     }
     else
     {
@@ -541,90 +549,172 @@ uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t lin_address
     return K_MEM_PAGING_STATUS_OK;
 }
 
-struct k_mem_heap_t *k_mem_create_heap(struct k_mem_pstate_t *pstate, uint32_t start_address, uint32_t size)
+void k_mem_add_block(uint32_t block_address, uint32_t block_size)
 {
-    struct k_mem_heap_t *heap = NULL;    
-    struct k_mem_block_t *header = NULL;
-    uint32_t header_address = start_address + sizeof(struct k_mem_heap_t);
-    uint32_t align = header_address % sizeof(struct k_mem_block_t);
-
-    if(align)
+    
+    if(block_size >= sizeof(struct k_mem_block_t) + K_MEM_MIN_ALLOC_SIZE)
     {
-        align = sizeof(struct k_mem_block_t) - align;
-        header_address += align;
-    }
+        block_size -= sizeof(struct k_mem_block_t);
 
-    uint32_t block_address = header_address + sizeof(struct k_mem_block_t);
-    uint32_t used_size = block_address - start_address;
-
-    if(used_size < size)
-    {
-        size -= used_size;
-
-        if(size >= K_MEM_MIN_ALLOC_SIZE)
+        if(!k_mem_address_mapped(K_MEM_ACTIVE_PSTATE, block_address))
         {
-            heap = (struct k_mem_heap_t *)start_address;
-            header = (struct k_mem_block_t *)header_address;
-            uint32_t next_block_page = (header_address & K_MEM_PENTRY_ADDR_MASK) + 0x1000;
+            uint32_t page = k_mem_alloc_page();
+            k_mem_map_address(K_MEM_ACTIVE_PSTATE, page, block_address, K_MEM_PENTRY_FLAG_READ_WRITE);
+        }
 
-            if(!k_mem_address_mapped(pstate, start_address))
+        uint32_t next_page_address = (block_address & K_MEM_PENTRY_ADDR_MASK) + 0x1000;
+
+        if(next_page_address - block_address < sizeof(struct k_mem_block_t))
+        {
+            uint32_t page = k_mem_alloc_page();
+            k_mem_map_address(K_MEM_ACTIVE_PSTATE, page, next_page_address, K_MEM_PENTRY_FLAG_READ_WRITE);
+        }
+
+        struct k_mem_block_t *block = (struct k_mem_block_t *)block_address;
+        block->size = block_size;
+        block->next = NULL;
+        block->prev = NULL;
+
+        k_mem_free(block + 1);
+    }
+}
+
+void *k_mem_alloc(uint32_t size, uint32_t align)
+{
+    uint32_t block_address = k_mem_reserve(size, align);
+    uint32_t first_block_page = (block_address & K_MEM_PENTRY_ADDR_MASK);
+    uint32_t last_block_page = (block_address + size) & K_MEM_PENTRY_ADDR_MASK;
+
+    if(block_address)
+    {
+        for(uint32_t block_page = first_block_page; block_page <= last_block_page; block_page += 0x1000)
+        {
+            if(!k_mem_address_mapped(K_MEM_ACTIVE_PSTATE, block_page))
             {
-                /* the page that contains the heap struct is not mapped, so we need to allocate
-                and map it here */
-                uint32_t start_page = k_mem_alloc_page();
-                k_mem_map_address(pstate, start_page, start_address, K_MEM_PENTRY_FLAG_READ_WRITE);
+                uint32_t page = k_mem_alloc_page();
+                k_mem_map_address(K_MEM_ACTIVE_PSTATE, page, block_page, K_MEM_PENTRY_FLAG_READ_WRITE);
             }
-
-            if(header_address >= next_block_page || next_block_page - header_address < sizeof(struct k_mem_heap_t))
-            {
-                /* the heap manager straddles two pages, so we need to check if the next page
-                after start_address is also mapped */
-                if(!k_mem_address_mapped(pstate, next_block_page))
-                {
-                    /* next page is not paged, so we allocate a new page and map it */
-                    uint32_t next_page = k_mem_alloc_page();
-                    k_mem_map_address(pstate, next_page, next_block_page, K_MEM_PENTRY_FLAG_READ_WRITE);
-                }
-            }
-
-            heap->block_count = 1;
-            heap->blocks = header;
-            heap->last_block = header;
-            heap->pstate = pstate;
-
-            header->size = size;
-            header->next = NULL;
-            header->prev = NULL;
         }
     }
 
-    return heap;
+    return (void *)block_address;
 }
 
-void *k_mem_alloc(struct k_mem_heap_t *heap, uint32_t size, uint32_t align)
+uint32_t k_mem_reserve(uint32_t size, uint32_t align)
 {
+    struct k_mem_heap_t *heap = K_MEM_ACTIVE_PSTATE_HEAP_MANAGER;
+    struct k_mem_block_t *block = heap->blocks;
 
+    if(!align)
+    {
+        align = 1;
+    }
+
+    if(size < K_MEM_MIN_ALLOC_SIZE)
+    {
+        size = K_MEM_MIN_ALLOC_SIZE;
+    }
+
+    while(block)
+    {
+        uint32_t block_address = (uint32_t)(block + 1);
+        uint32_t address_align = block_address % align;
+        uint32_t block_size = block->size;
+
+        if(address_align)
+        {
+            address_align = align - address_align;
+            block_address += address_align;
+            block_size -= address_align;
+        }
+        
+        if(block_size >= size)
+        {
+            if(block_size > size)
+            {
+                uint32_t new_block_address = block_address + size;
+                address_align = new_block_address % sizeof(struct k_mem_block_t );
+
+                if(address_align)
+                {
+                    address_align = sizeof(struct k_mem_block_t ) - address_align;
+                    new_block_address += address_align;
+                    size += address_align;
+                }
+
+                uint32_t new_block_size = block_size - size;
+
+                if(size < block_size && new_block_size >= sizeof(struct k_mem_block_t) + K_MEM_MIN_ALLOC_SIZE)
+                {
+                    if(!k_mem_address_mapped(K_MEM_ACTIVE_PSTATE, new_block_address))
+                    {
+                        uint32_t page = k_mem_alloc_page();
+                        k_mem_map_address(K_MEM_ACTIVE_PSTATE, new_block_address, page, K_MEM_PENTRY_FLAG_READ_WRITE);
+                    }
+
+                    struct k_mem_block_t *new_block = (struct k_mem_block_t *)new_block_address;
+                    new_block->size = new_block_size - sizeof(struct k_mem_block_t);
+                    new_block->next = block->next;
+                    if(new_block->next) 
+                    {
+                        new_block->next->prev = new_block;
+                    }
+
+                    new_block->prev = block;
+                    block->next = new_block;
+                }
+            }
+
+            block->size = size;
+
+            if(block->prev)
+            {
+                block->prev->next = block->next;
+            }
+            else
+            {
+                heap->blocks = block->next;
+            }
+
+            if(block->next)
+            {
+                block->next->prev = block->prev;
+            }
+            else
+            {
+                heap->last_block = block->prev;
+            }
+
+            block->next = NULL;
+            block->prev = NULL;
+
+            return block_address;
+        }
+
+        block = block->next;
+    }
+
+    return 0;
 }
 
-uint32_t k_mem_reserve(struct k_mem_heap_t *heap, uint32_t size, uint32_t align)
+void k_mem_free(void *memory) 
 {
+    struct k_mem_heap_t *heap = K_MEM_ACTIVE_PSTATE_HEAP_MANAGER;
+    struct k_mem_block_t *block = (struct k_mem_block_t *)memory - 1;
 
+    block->next = NULL;
+    block->prev = NULL;
+
+    if(!heap->blocks)
+    {
+        heap->blocks = block;
+    }
+    else
+    {
+        block->prev = heap->last_block;
+        heap->last_block->next = block;
+    }
+
+    heap->last_block = block;
+    heap->block_count++;
 }
-
-void k_mem_free(struct k_mem_heap_t *heap, void *memory) 
-{
-
-}
-
-// {
-//     heap->block_count = 1;
-//     heap->page_state = page_state;
-
-//     uint32_t block_page = k_mem_alloc_page();
-//     // k_mem_map_address()
-// }
-
-// void k_mem_destroy_heap(struct k_mem_heap_t *heap)
-// {
-
-// }

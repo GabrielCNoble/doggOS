@@ -106,22 +106,25 @@ enum K_MEM_PAGE_FLAGS
 4 pages used by the page state */
 #define K_MEM_PSTATE_DIR_INDEX 0x000003ff
 
-#define K_MEM_PSTATE_TEMP_PAGE_INDEX 0x000003fc
+#define K_MEM_PSTATE_TEMP_PAGE_INDEX 0x000003fb
+
+#define K_MEM_PSTATE_HEAP_MANAGER_PAGE_INDEX 0x000003fc
 /* page table index that points to the page that contains the page state struct */
 #define K_MEM_PSTATE_PAGE_INDEX 0x000003fd
 /* page table index that points to the page that contains the page state page directory */
 #define K_MEM_PSTATE_DIR_PAGE_INDEX 0x000003fe
 /* page table index that points to the page that contains the page table the maps the
 pages that contain the page state (PHEW!) */
-#define K_MEM_PSTATE_TABLE_PAGE_INDEX 0x000003ff
+#define K_MEM_PSTATE_LAST_TABLE_PAGE_INDEX 0x000003ff
 
-#define K_MEM_PSTATE_LAST_TABLE_FIRST_INDEX K_MEM_PSTATE_PAGE_INDEX
+#define K_MEM_PSTATE_LAST_TABLE_FIRST_INDEX K_MEM_PSTATE_HEAP_MANAGER_PAGE_INDEX
 #define K_MEM_PSTATE_LAST_TABLE_LAST_INDEX K_MEM_PSTATE_LAST_TABLE_PAGE_INDEX
 
-#define K_MEM_ACTIVE_PSTATE_TEMP_ADDRESS ((struct k_mem_pentry_t *)0xffffc000)
-#define K_MEM_ACTIVE_PSTATE_ADDRESS ((struct k_mem_pstate_t *)0xffffd000) 
-#define K_MEM_ACTIVE_PSTATE_DIR_ADDRESS ((struct k_mem_pentry_t *)0xffffe000)
-#define K_MEM_ACTIVE_PSTATE_TABLE_ADDRESS ((struct k_mem_pentry_t *)0xfffff000)
+#define K_MEM_ACTIVE_PSTATE_TEMP_PAGE ((struct k_mem_pentry_t *)0xffffb000)
+#define K_MEM_ACTIVE_PSTATE_HEAP_MANAGER ((struct k_mem_heap_t *)0xffffc000)
+#define K_MEM_ACTIVE_PSTATE ((struct k_mem_pstate_t *)0xffffd000) 
+#define K_MEM_ACTIVE_PSTATE_PDIR ((struct k_mem_pentry_t *)0xffffe000)
+#define K_MEM_ACTIVE_PSTATE_LAST_TABLE ((struct k_mem_pentry_t *)0xfffff000)
 
 // #define K_MEM_ACTIVE_PSTATE_SELF_TABLE_ENTRY_ADDRESS(dir_index) (K_MEM_ACTIVE_PSTATE_SELF_TABLE_ADDRESS + dir_index)
 // #define K_MEM_ACTIVE_PSTATE_PTABLE_BASE_ADDRESS (0xffc00000)
@@ -297,14 +300,14 @@ uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t lin_address
 
 extern void k_mem_invalidate_tlb(uint32_t lin_address);
 
-struct k_mem_heap_t *k_mem_create_heap(struct k_mem_pstate_t *pstate, uint32_t start_address, uint32_t size);
+void k_mem_add_block(uint32_t block_address, uint32_t block_size);
 
-void *k_mem_alloc(struct k_mem_heap_t *heap, uint32_t size, uint32_t align);
+void *k_mem_alloc(uint32_t size, uint32_t align);
 
-uint32_t k_mem_reserve(struct k_mem_heap_t *heap, uint32_t size, uint32_t align);
+uint32_t k_mem_reserve(uint32_t size, uint32_t align);
 
-void k_mem_free(struct k_mem_heap_t *heap, void *memory);  
+void k_mem_defrag();
 
-// void k_mem_destroy_heap(struct k_mem_heap_t *heap);
+void k_mem_free(void *memory);  
 
 #endif
