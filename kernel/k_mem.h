@@ -74,103 +74,6 @@ struct k_mem_seg_desc_t
     uint32_t dw1;
 };
 
-enum K_MEM_PAGE_FLAGS
-{
-    K_MEM_PAGE_FLAG_USED = 1,
-    K_MEM_PAGE_FLAG_HEAD = 1 << 1,
-    K_MEM_PAGE_FLAG_LAST
-};
-
-#define K_MEM_USED_PAGE_BITS 2
-
-#define K_MEM_INVALID_PAGE 0x00000000
-#define K_MEM_BIG_PAGE_ADDR_MASK 0xffc00000
-#define K_MEM_SMALL_PAGE_ADDR_MASK 0xfffff000
-#define K_MEM_SMALL_PAGE_USED_BYTE_MASK 0x0003ffff
-#define K_MEM_SMALL_PAGE_USED_BYTE_SHIFT 14
-#define K_MEM_SMALL_PAGE_USED_BYTE_INDEX(entry) (((entry) >> K_MEM_SMALL_PAGE_USED_BYTE_SHIFT) & K_MEM_SMALL_PAGE_USED_BYTE_MASK)
-#define K_MEM_SMALL_PAGE_USED_BIT_MASK 0x00000006
-#define K_MEM_SMALL_PAGE_USED_BIT_SHIFT 11
-#define K_MEM_SMALL_PAGE_USED_BIT_INDEX(entry) (((entry) >> K_MEM_SMALL_PAGE_USED_BIT_SHIFT) & K_MEM_SMALL_PAGE_USED_BIT_MASK)
-#define K_MEM_PDIR_SHIFT 22
-#define K_MEM_PTABLE_SHIFT 12
-#define K_MEM_PENTRY_INDEX_MASK 0x000003ff
-#define K_MEM_PENTRY_ADDR_MASK 0xfffff000
-
-#define K_MEM_PTABLE_INDEX(address) ((address >> K_MEM_PTABLE_SHIFT) & K_MEM_PENTRY_INDEX_MASK)
-#define K_MEM_PTABLE_ADDRESS(entry) ((struct k_mem_pentry_t *)((entry) & K_MEM_PENTRY_ADDR_MASK))
-#define K_MEM_PDIR_INDEX(address) ((address >> K_MEM_PDIR_SHIFT) & K_MEM_PENTRY_INDEX_MASK)
-
-
-/* page directory that contains the page table that containst the 
-4 pages used by the page state */
-#define K_MEM_PSTATE_DIR_INDEX 0x000003ff
-
-#define K_MEM_PSTATE_TEMP_PAGE_INDEX 0x000003fb
-
-#define K_MEM_PSTATE_HEAP_MANAGER_PAGE_INDEX 0x000003fc
-/* page table index that points to the page that contains the page state struct */
-#define K_MEM_PSTATE_PAGE_INDEX 0x000003fd
-/* page table index that points to the page that contains the page state page directory */
-#define K_MEM_PSTATE_DIR_PAGE_INDEX 0x000003fe
-/* page table index that points to the page that contains the page table the maps the
-pages that contain the page state (PHEW!) */
-#define K_MEM_PSTATE_LAST_TABLE_PAGE_INDEX 0x000003ff
-
-#define K_MEM_PSTATE_LAST_TABLE_FIRST_INDEX K_MEM_PSTATE_HEAP_MANAGER_PAGE_INDEX
-#define K_MEM_PSTATE_LAST_TABLE_LAST_INDEX K_MEM_PSTATE_LAST_TABLE_PAGE_INDEX
-
-#define K_MEM_ACTIVE_PSTATE_TEMP_PAGE ((struct k_mem_pentry_t *)0xffffb000)
-#define K_MEM_ACTIVE_PSTATE_HEAP_MANAGER ((struct k_mem_heap_t *)0xffffc000)
-#define K_MEM_ACTIVE_PSTATE ((struct k_mem_pstate_t *)0xffffd000) 
-#define K_MEM_ACTIVE_PSTATE_PDIR ((struct k_mem_pentry_t *)0xffffe000)
-#define K_MEM_ACTIVE_PSTATE_LAST_TABLE ((struct k_mem_pentry_t *)0xfffff000)
-
-// #define K_MEM_ACTIVE_PSTATE_SELF_TABLE_ENTRY_ADDRESS(dir_index) (K_MEM_ACTIVE_PSTATE_SELF_TABLE_ADDRESS + dir_index)
-// #define K_MEM_ACTIVE_PSTATE_PTABLE_BASE_ADDRESS (0xffc00000)
-// #define K_MEM_ACTIVE_PSTATE_PTABLE_ADDRESS(dir_index) ((struct k_mem_pentry_t *)(K_MEM_ACTIVE_PSTATE_PTABLE_BASE_ADDRESS + ((dir_index) << K_MEM_PAGE_TABLE_SHIFT)))
-
-enum K_MEM_PENTRY_FLAGS
-{
-    K_MEM_PENTRY_FLAG_PRESENT = 1,
-    K_MEM_PENTRY_FLAG_READ_WRITE = 1 << 1,
-    K_MEM_PENTRY_FLAG_USER_SUPERVISOR = 1 << 2,
-    K_MEM_PENTRY_FLAG_PAGE_WRITE_THROUGH = 1 << 3,
-    K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE = 1 << 4,
-    K_MEM_PENTRY_FLAG_ACCESSED = 1 << 5,
-    K_MEM_PENTRY_FLAG_DIRTY = 1 << 6,
-    K_MEM_PENTRY_FLAG_BIG_PAGE = 1 << 7,
-    K_MEM_PENTRY_FLAG_GLOBAL = 1 << 8,
-    K_MEM_PENTRY_FLAG_USED = 1 << 9,
-
-
-    K_MEM_PENTRY_FLAG_SMALL_PAGE_PAT = 1 << 7,
-    K_MEM_PENTRY_FLAG_BIG_PAGE_PAT = 1 << 12,
-};
-
-enum K_MEM_PAGING_STATUS
-{
-    K_MEM_PAGING_STATUS_OK = 0,
-    K_MEM_PAGING_STATUS_NO_PTABLE = 1,
-    K_MEM_PAGING_STATUS_ALREADY_USED = 2,
-    K_MEM_PAGING_STATUS_NOT_PAGED = 3,
-    K_MEM_PAGING_STATUS_NOT_ALLOWED = 4,
-};
-
-struct k_mem_pentry_t
-{
-    uint32_t entry;
-};
-
-// struct k_mem_plist_t
-// {
-//     struct k_mem_pentry_t entries[1024];
-// };
-struct k_mem_pstate_t
-{
-    struct k_mem_pentry_t *page_dir;
-    struct k_mem_pentry_t *last_table;
-};
 
 
 /* 0 - 255 bytes */
@@ -252,13 +155,137 @@ struct k_mem_block_t
     // uint32_t size;
 };
 
-struct k_mem_heap_t
+struct k_mem_heapm_t
 {
-    struct k_mem_pstate_t *pstate;
     struct k_mem_block_t *blocks;
     struct k_mem_block_t *last_block;
     uint32_t block_count;
 };
+
+
+enum K_MEM_PAGE_FLAGS
+{
+    K_MEM_PAGE_FLAG_USED = 1,
+    K_MEM_PAGE_FLAG_HEAD = 1 << 1,
+    K_MEM_PAGE_FLAG_LAST
+};
+
+#define K_MEM_USED_PAGE_BITS 2
+
+#define K_MEM_4KB_ADDRESS_OFFSET 0x00001000u
+#define K_MEM_4MB_ADDRESS_OFFSET 0x00400000u
+
+#define K_MEM_INVALID_PAGE 0x00000000u
+#define K_MEM_BIG_PAGE_ADDR_MASK 0xffc00000u
+#define K_MEM_SMALL_PAGE_ADDR_MASK 0xfffff000u
+#define K_MEM_SMALL_PAGE_USED_BYTE_MASK 0x0003ffffu
+#define K_MEM_SMALL_PAGE_USED_BYTE_SHIFT 14
+#define K_MEM_SMALL_PAGE_USED_BYTE_INDEX(entry) (((entry) >> K_MEM_SMALL_PAGE_USED_BYTE_SHIFT) & K_MEM_SMALL_PAGE_USED_BYTE_MASK)
+#define K_MEM_SMALL_PAGE_USED_BIT_MASK 0x00000006u
+#define K_MEM_SMALL_PAGE_USED_BIT_SHIFT 11
+#define K_MEM_SMALL_PAGE_USED_BIT_INDEX(entry) (((entry) >> K_MEM_SMALL_PAGE_USED_BIT_SHIFT) & K_MEM_SMALL_PAGE_USED_BIT_MASK)
+#define K_MEM_PDIR_SHIFT 22
+#define K_MEM_PDIR_ADDRESS_OFFSET K_MEM_4MB_ADDRESS_OFFSET
+#define K_MEM_PTABLE_SHIFT 12
+#define K_MEM_PTABLE_ADDRESS_OFFSET K_MEM_4KB_ADDRESS_OFFSET
+#define K_MEM_PENTRY_INDEX_MASK 0x000003ffu
+#define K_MEM_PENTRY_ADDR_MASK 0xfffff000u
+
+#define K_MEM_PTABLE_INDEX(address) ((address >> K_MEM_PTABLE_SHIFT) & K_MEM_PENTRY_INDEX_MASK)
+#define K_MEM_PTABLE_ADDRESS(entry) ((struct k_mem_pentry_t *)((entry) & K_MEM_PENTRY_ADDR_MASK))
+#define K_MEM_PDIR_INDEX(address) ((address >> K_MEM_PDIR_SHIFT) & K_MEM_PENTRY_INDEX_MASK)
+
+
+/* page directory index of where the pstate and all the ptables are mapped */
+#define K_MEM_PSTATE_SELF_PDIR_INDEX 0x000003ffu
+/* page directory index of the last usable page directory. Because the last three entries of a pstate 
+page table are used for its three pages, and the remaining entries each represent a page table used by
+a page dir, the entries 0x3ff, 0x3fe and 0x3fd are not available to map page tables for page dir entries.
+This effectively makes the last 12MB of the 4GB address space not usable. */
+#define K_MEM_PSTATE_LAST_USABLE_PDIR_INDEX 0x000003fcu
+/* page table index of the page that contains the pstate */
+#define K_MEM_PSTATE_SELF_PTABLE_INDEX 0x000003fdu
+/* page table index of the page that contains the pstate pdir */
+#define K_MEM_PSTATE_PDIR_PTABLE_INDEX 0x000003feu
+/* page table index of the page that contains the pstate ptable */
+#define K_MEM_PSTATE_PTABLE_PTABLE_INDEX 0x000003ffu
+
+#define K_MEM_ACTIVE_PSTATE ((struct k_mem_pstate_p *)0xffffd000)
+#define K_MEM_ACTIVE_PSTATE_HEAP_MANAGER ((struct k_mem_heapm_t *)(K_MEM_ACTIVE_PSTATE + offsetof(struct k_mem_pstate_p, heapm))) 
+#define K_MEM_ACTIVE_PSTATE_PDIR ((struct k_mem_pentry_t *)0xffffe000)
+#define K_MEM_ACTIVE_PSTATE_PTABLE ((struct k_mem_pentry_t *)0xfffff000)
+#define K_MEM_ACTIVE_PSTATE_PDIR_PTABLES ((struct k_mem_pentry_page_t *)0xffc00000)
+
+enum K_MEM_PENTRY_FLAGS
+{
+    K_MEM_PENTRY_FLAG_PRESENT = 1,
+    K_MEM_PENTRY_FLAG_READ_WRITE = 1 << 1,
+    K_MEM_PENTRY_FLAG_USER_SUPERVISOR = 1 << 2,
+    K_MEM_PENTRY_FLAG_PAGE_WRITE_THROUGH = 1 << 3,
+    K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE = 1 << 4,
+    K_MEM_PENTRY_FLAG_ACCESSED = 1 << 5,
+    K_MEM_PENTRY_FLAG_DIRTY = 1 << 6,
+    K_MEM_PENTRY_FLAG_BIG_PAGE = 1 << 7,
+    K_MEM_PENTRY_FLAG_GLOBAL = 1 << 8,
+    K_MEM_PENTRY_FLAG_USED = 1 << 9,
+
+
+    K_MEM_PENTRY_FLAG_SMALL_PAGE_PAT = 1 << 7,
+    K_MEM_PENTRY_FLAG_BIG_PAGE_PAT = 1 << 12,
+};
+
+enum K_MEM_PAGING_STATUS
+{
+    K_MEM_PAGING_STATUS_OK = 0,
+    K_MEM_PAGING_STATUS_NO_PTABLE = 1,
+    K_MEM_PAGING_STATUS_ALREADY_USED = 2,
+    K_MEM_PAGING_STATUS_NOT_PAGED = 3,
+    K_MEM_PAGING_STATUS_NOT_ALLOWED = 4,
+};
+
+
+struct k_mem_pentry_t
+{
+    uint32_t entry;
+};
+
+struct k_mem_pentry_page_t
+{
+    struct k_mem_pentry_t entries[1024];
+};
+
+/* this struct contains the address of the three physical pages used by a pstate */ 
+struct k_mem_pstate_t
+{
+    /* page that contains this struct */
+    uint32_t self_page;
+    /* page that contains the page directory used by this pstate */
+    uint32_t pdir_page;
+    /* page that contains the page table used by this pstate. This is a "special" page table, because not only 
+    it maps the three physical pages used by the pstate to the three fixed linear addresses 0xffffd000, 0xffffe000 
+    and 0xfffff000 (K_MEM_ACTIVE_PSTATE, K_MEM_ACTIVE_PSTATE_PDIR and K_MEM_ACTIVE_PSTATE_PTABLE, respectivelly), 
+    but is also used to map the physical pages that the page directory uses for its page tables, so they're can be 
+    modified. This makes them accessible from addresses 0xffc00000 to 0xffffc000, where 0xffc00000 is the page table 
+    of the first page directory entry and 0xffffc000 is the page table of the last usable page directory. Since the 
+    last three entries of this page table are being used for the pstate, and each remaining entry represent the page 
+    table of a page directory entry, it means that the last 12MB of linear addresses aren't available for use by 
+    anything else. That sounds like a lot, but it amounts to 1/341 of the 4GB address space, so it's not terrible. */
+    uint32_t ptable_page;
+};
+struct k_mem_pstate_p
+{
+    struct k_mem_heapm_t heapm;
+    /* linear address of the page dir. This is valid only when this pstate is mapped. */
+    struct k_mem_pentry_t *page_dir;
+    /* linear address of the page tables used by the page directory */
+    struct k_mem_pentry_page_t *page_dir_ptables;
+    /* linear address of the page that contains the page table */
+    struct k_mem_pentry_t *page_table;
+};
+
+/*===========================================================================*/
+/*===========================================================================*/
+/*===========================================================================*/
 
 void k_mem_init();
 
@@ -268,15 +295,21 @@ uint32_t k_mem_alloc_pages(uint32_t count);
 
 void k_mem_free_pages(uint32_t page_address);
 
-// void *k_mem_malloc(uint32_t size);
+/*===========================================================================*/
+/*===========================================================================*/
+/*===========================================================================*/
 
-// void k_mem_free(void *memory);
+struct k_mem_pstate_t k_mem_create_pstate();
 
-struct k_mem_pstate_t *k_mem_create_pstate();
+struct k_mem_pstate_p *k_mem_map_pstate(struct k_mem_pstate_t *pstate);
+
+struct k_mem_pstate_p *k_mem_map_pstate_to_address(struct k_mem_pstate_t *pstate, uint32_t map_address);
+
+void k_mem_unmap_pstate(struct k_mem_pstate_p *pstate);
 
 void k_mem_destroy_pstate(struct k_mem_pstate_t *pstate);
 
-extern void k_mem_load_page_dir(struct k_mem_pentry_t *page_dir);
+extern void k_mem_load_page_dir(uint32_t pdir_page);
 
 void k_mem_load_pstate(struct k_mem_pstate_t *pstate);
 
@@ -290,21 +323,31 @@ extern void k_mem_disable_paging();
 
 uint32_t k_mem_map_temp(uint32_t phys_address);
 
-uint32_t k_mem_map_address(struct k_mem_pstate_t *pstate, uint32_t phys_address, uint32_t lin_address, uint32_t flags);
+uint32_t k_mem_map_address(struct k_mem_pstate_p *pstate, uint32_t phys_address, uint32_t lin_address, uint32_t flags);
 
 uint32_t k_mem_set_entry(struct k_mem_pentry_t *dir_entry, struct k_mem_pentry_t *page_entry, uint32_t phys_address, uint32_t flags);
 
-uint32_t k_mem_address_mapped(struct k_mem_pstate_t *pstate, uint32_t address);
+uint32_t k_mem_address_mapped(struct k_mem_pstate_p *pstate, uint32_t address);
 
-uint32_t k_mem_unmap_address(struct k_mem_pstate_t *pstate, uint32_t lin_address);
+uint32_t k_mem_unmap_address(struct k_mem_pstate_p *pstate, uint32_t lin_address);
 
 extern void k_mem_invalidate_tlb(uint32_t lin_address);
 
+/*===========================================================================*/
+/*===========================================================================*/
+/*===========================================================================*/
+
 void k_mem_add_block(uint32_t block_address, uint32_t block_size);
+
+uint32_t k_mem_reserve_block(uint32_t size, uint32_t align);
+
+void k_mem_release_block(uint32_t address);
 
 void *k_mem_alloc(uint32_t size, uint32_t align);
 
-uint32_t k_mem_reserve(uint32_t size, uint32_t align);
+uint32_t k_mem_commit(uint32_t address, uint32_t size);
+
+uint32_t k_mem_commit_ctg(uint32_t address, uint32_t size);
 
 void k_mem_defrag();
 

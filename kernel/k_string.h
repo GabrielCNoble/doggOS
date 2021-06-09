@@ -18,4 +18,6 @@ void k_sfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, ...)
 
 void k_vasfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, va_list args);
 
+void k_memcpy(void *dst, void *src, uint32_t size);
+
 #endif

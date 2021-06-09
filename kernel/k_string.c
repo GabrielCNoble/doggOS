@@ -240,7 +240,15 @@ void k_vasfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, va
     buffer[out_index] = '\0';
 }
 
-
+void k_memcpy(void *dst, void *src, uint32_t size)
+{
+    uint8_t *in = (char *)src;
+    uint8_t *out = (char *)dst;
+    for(uint32_t index = 0; index < size; index++)
+    {
+        out[index] = in[index];
+    }
+}
 
 
 
