@@ -17,6 +17,7 @@ void k_term_init()
     vga_width = 80;
     vga_height = 25;
     vga_buffer = (uint16_t *) 0xb8000;
+    // vga_buffer = (uint16_t *)0xf80000;
     vga_cur_color = k_vga_attrib(K_VGA_COLOR_WHITE, K_VGA_COLOR_BLACK);
     k_term_clear();
 
@@ -39,7 +40,7 @@ void k_term_check_buffer()
     // }
 }
 
-void k_putchar(unsigned char c)
+void k_putchar(char c)
 {
     if(c == '\n')
     {
@@ -65,7 +66,7 @@ void k_putchar(unsigned char c)
     }
 }
 
-void k_puts(unsigned char *s)
+void k_puts(char *s)
 {
     uint32_t index = 0;
 
@@ -77,10 +78,10 @@ void k_puts(unsigned char *s)
 }
 // #define SIZE 512
 
-void k_printf(unsigned char *fmt, ...)
+void k_printf(char *fmt, ...)
 {
     va_list args;
-    unsigned char buffer[512];
+    char buffer[512];
 
     va_start(args, fmt);
     k_vasfmt(buffer, 511, fmt, args);
@@ -94,7 +95,7 @@ uint8_t k_vga_attrib(uint8_t foreground, uint8_t background)
     return foreground | (background << 4);
 }
 
-uint16_t k_vga_char(unsigned char c, uint8_t color)
+uint16_t k_vga_char(char c, uint8_t color)
 {
     return (uint16_t)c | ((uint16_t)color << 8);
 }
