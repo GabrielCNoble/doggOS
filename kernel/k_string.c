@@ -17,16 +17,17 @@ static const uint32_t k_itoa_masks[][10] =
 
 static const unsigned char k_nibble_lut[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-uint32_t k_strlen(unsigned char *buf)
+uint32_t k_strlen(char *buf)
 {
     uint32_t index = 0;
     while(buf[index] != '\0') index++;
     return index;
 }
 
-uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value)
+uint32_t k_itoa(char *buffer, int32_t buffer_size, int32_t value)
 {
     uint32_t mask_index = 0;
+    uint32_t buffer_length;
     uint32_t uvalue = 0;
     uint32_t index = 0;
     uint32_t digit = 0;
@@ -34,6 +35,7 @@ uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value)
 
     if(buffer_size > 0)
     {
+        buffer_length = (uint32_t)buffer_size;
         sign = value < 0;
         
         if((uint32_t)value > 0x80000000)
@@ -48,9 +50,9 @@ uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value)
             mask_index++;
         }
 
-        buffer_size--;
+        buffer_length--;
 
-        if(sign + 10 - mask_index <= buffer_size)
+        if(sign + 10 - mask_index <= buffer_length)
         {
             /* we have enough space, ignoring the null terminator (it has been accounted for) */
             if(sign)
@@ -58,7 +60,7 @@ uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value)
                 buffer[index++] = '-';
             }
 
-            while(mask_index < 10 && index < buffer_size)
+            while(mask_index < 10 && index < buffer_length)
             {
                 digit = uvalue / k_itoa_masks[mask_index][1];
                 buffer[index++] = '0' + digit;
@@ -73,7 +75,7 @@ uint32_t k_itoa(unsigned char *buffer, int32_t buffer_size, int32_t value)
     return index;
 }
 
-uint32_t k_xtoa(unsigned char *buffer, int32_t buffer_size, uint64_t value)
+uint32_t k_xtoa(char *buffer, int32_t buffer_size, uint64_t value)
 {
     uint64_t mask = 0xf000000000000000;
     int32_t index = 0;
@@ -118,22 +120,27 @@ uint32_t k_xtoa(unsigned char *buffer, int32_t buffer_size, uint64_t value)
     return len;
 }
 
-uint32_t k_ftoa(unsigned char *buffer, int32_t buffer_size, float value)
+uint32_t k_ftoa(char *buffer, int32_t buffer_size, float value)
 {
+    (void)buffer;
+    (void)buffer_size;
+    (void)value;
     return 0;
 }
 
-uint32_t k_strcat(unsigned char *buffer, int32_t buffer_size, unsigned char *str)
+uint32_t k_strcat(char *buffer, int32_t buffer_size, char *str)
 {
-    int32_t length;
-    int32_t index = 0;
+    uint32_t length;
+    uint32_t buffer_length;
+    uint32_t index = 0;
 
     if(buffer_size > 0)
     {
+        buffer_length = (uint32_t)buffer_size;
         length = k_strlen(str) + 1;
         index = k_strlen(buffer);
 
-        if(index + length < buffer_size)
+        if(index + length < buffer_length)
         {
             buffer += index;
             uint32_t str_index = 0;
@@ -151,7 +158,7 @@ uint32_t k_strcat(unsigned char *buffer, int32_t buffer_size, unsigned char *str
     return index;
 }
 
-void k_sfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, ...)
+void k_sfmt(char *buffer, int32_t buffer_size, char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -166,84 +173,89 @@ enum K_FMT_MODIFIER_TYPE
     K_FMT_MODIFIER_LONG_LONG
 };
 
-void k_vasfmt(unsigned char *buffer, int32_t buffer_size, unsigned char *fmt, va_list args)
+void k_vasfmt(char *buffer, int32_t buffer_size, char *fmt, va_list args)
 {
     uint32_t in_index = 0;
     uint32_t out_index = 0;
     uint64_t qword_arg = 0;
     uint32_t dword_arg = 0;
     uint32_t modifier = K_FMT_MODIFIER_NONE;
-    unsigned char *str_arg;
+    uint32_t buffer_length;
+    char *str_arg;
     
-
-    /* account for null terminator. This will tell all the subsequent code how much space they have in the buffer, and will guarantee
-    we'll have space for the null terminator */
-    buffer_size--;
-
-    while(fmt[in_index] && out_index < buffer_size)
+    if(buffer_size > 0)
     {
-        buffer[out_index] = '\0';
+        /* account for null terminator. This will tell all the subsequent code how much space they have in the buffer, and will guarantee
+        we'll have space for the null terminator */
+        buffer_length = (uint32_t)buffer_size;
+        buffer_length--;
 
-        if(fmt[in_index] == '%')
+        while(fmt[in_index] && out_index < buffer_length)
         {
-            in_index++;
+            buffer[out_index] = '\0';
 
-            switch(fmt[in_index])
+            if(fmt[in_index] == '%')
             {
-                case 'l':
-                    in_index++;
-                    if(fmt[in_index] == 'l')
-                    {
+                in_index++;
+
+                switch(fmt[in_index])
+                {
+                    case 'l':
                         in_index++;
-                        modifier = K_FMT_MODIFIER_LONG_LONG;
-                    }
-                    else
-                    {
-                        modifier = K_FMT_MODIFIER_LONG;
-                    }
-                break;
-            }
+                        if(fmt[in_index] == 'l')
+                        {
+                            in_index++;
+                            modifier = K_FMT_MODIFIER_LONG_LONG;
+                        }
+                        else
+                        {
+                            modifier = K_FMT_MODIFIER_LONG;
+                        }
+                    break;
+                }
 
-            switch(fmt[in_index])
+                switch(fmt[in_index])
+                {
+                    case 'd':
+                        dword_arg = va_arg(args, uint32_t);
+                        out_index += k_itoa(buffer + out_index, buffer_length - out_index, dword_arg);
+                    break;
+
+                    case 'x':
+                        if(modifier == K_FMT_MODIFIER_LONG_LONG)
+                        {
+                            qword_arg = va_arg(args, uint64_t);
+                        }
+                        else
+                        {
+                            qword_arg = va_arg(args, uint32_t);
+                        }
+
+                        out_index += k_xtoa(buffer + out_index, buffer_length - out_index, qword_arg);
+                    break;
+
+                    case 's':
+                        str_arg = va_arg(args, char *);
+                        out_index += k_strcat(buffer + out_index, buffer_length - out_index, str_arg);
+                    break;
+                }
+                in_index++;
+            }
+            else
             {
-                case 'd':
-                    dword_arg = va_arg(args, uint32_t);
-                    out_index += k_itoa(buffer + out_index, buffer_size - out_index, dword_arg);
-                break;
-
-                case 'x':
-                    if(modifier == K_FMT_MODIFIER_LONG_LONG)
-                    {
-                        qword_arg = va_arg(args, uint64_t);
-                    }
-                    else
-                    {
-                        qword_arg = va_arg(args, uint32_t);
-                    }
-
-                    out_index += k_xtoa(buffer + out_index, buffer_size - out_index, qword_arg);
-                break;
-
-                case 's':
-                    str_arg = va_arg(args, unsigned char *);
-                    out_index += k_strcat(buffer + out_index, buffer_size - out_index, str_arg);
-                break;
+                buffer[out_index++] = fmt[in_index++];
             }
-            in_index++;
         }
-        else
-        {
-            buffer[out_index++] = fmt[in_index++];
-        }
+        
+        buffer[out_index] = '\0';
     }
-    
-    buffer[out_index] = '\0';
 }
 
 void k_memcpy(void *dst, void *src, uint32_t size)
 {
-    uint8_t *in = (char *)src;
-    uint8_t *out = (char *)dst;
+    unsigned char *in = (unsigned char *)src;
+    unsigned char *out = (unsigned char *)dst;
+
     for(uint32_t index = 0; index < size; index++)
     {
         out[index] = in[index];

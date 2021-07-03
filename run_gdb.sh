@@ -1,1 +1,1 @@
-qemu-system-i386 -machine q35 -hda disk.img -gdb tcp::26000 -S
+qemu-system-i386 -machine q35 -hda doggOS.img -gdb tcp::26000 -S

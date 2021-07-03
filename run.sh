@@ -1,1 +1,1 @@
-qemu-system-i386 -machine q35 -hda disk.img
+qemu-system-i386 -machine q35 -hda doggOS.img

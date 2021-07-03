@@ -1,4 +1,4 @@
-ata0-master: type=disk, path="disk.img", mode=flat
+ata0-master: type=disk, path="doggOS.img", mode=flat
 boot: disk
 display_library: x, options="gui_debug"
 memory: guest=512, host=512

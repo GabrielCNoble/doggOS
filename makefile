@@ -1,25 +1,35 @@
 BOOT_DIR := boot
+BOOT_OBJ := $(BOOT_DIR)/*.o
+BOOT_BIN := boot.bin
+
 KERNEL_DIR := kernel
-ASMSRC := $(wildcard $(BOOT_DIR)/*.asm) $(wildcard $(KERNEL_DIR)/*.asm)
-CSRC := $(wildcard $(KERNEL_DIR)/*.c)
-CINC := $(wildcard $(KERNEL_DIR)/*.h)
-OBJ := $(ASMSRC:.asm=.o) $(CSRC:.c=.o)
-GCC_FLAGS := -std=gnu99 -ffreestanding -lgcc -masm=intel
+KERNEL_OBJ := $(KERNEL_DIR)/*.o
+KERNEL_BIN := kernel.bin
+
+
+OBJ := $(BOOT_OBJ) $(KERNEL_OBJ)
 
 LINKER_SCRIPT := linker.ld
-IMG_NAME := img.bin
-DISK_NAME := disk.img
+IMG_NAME := doggOS.bin
+DISK_NAME := doggOS.img
 
-%.o: %.asm
-	i686-elf-as $< -o $@
+all: disk
 
-%.o: %.c $(CINC)
-	i686-elf-gcc -c $< -o $@ $(GCC_FLAGS)
+boot:
+	make -C $(BOOT_DIR)
 
-disk: $(OBJ) $(LINKER_SCRIPT)
+kernel:
+	make -C $(KERNEL_DIR)
+
+disk: boot kernel $(LINKER_SCRIPT)
 	i686-elf-ld -T $(LINKER_SCRIPT) --oformat binary -o $(IMG_NAME) -nostdlib $(OBJ)
 	dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
 	dd conv=notrunc if=$(IMG_NAME) of=$(DISK_NAME)
+
+%.o: %.c $(CINC)
+	i686-elf-gcc -c -Wall -Wextra $< -o $@ $(GCC_FLAGS)
+
+.PHONY: boot kernel disk
 
 clean:
 	rm -f $(OBJ)

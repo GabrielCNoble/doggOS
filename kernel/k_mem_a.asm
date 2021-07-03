@@ -3,32 +3,25 @@
 
 .section .text
 
-.global k_mem_load_page_dir
-k_mem_load_page_dir:
+.global k_mem_LoadPageDir
+k_mem_LoadPageDir:
     mov eax, dword ptr [esp + 4]
     mov cr3, eax
     ret
 
-/*.global k_mem_load_page_state
-k_mem_load_page_state:
-    mov eax, dword ptr [esp + 4]
-    mov eax, dword ptr [eax]
-    mov cr3, eax
-    ret */
-
-.global k_mem_get_pstate
-k_mem_get_pstate:
+.global k_mem_GetPState
+k_mem_GetPState:
     mov eax, cr3
     ret
 
-.global k_mem_paging_enabled
-k_mem_paging_enabled:
+.global k_mem_IsPagingEnabled
+k_mem_IsPagingEnabled:
     mov eax, cr0
     and eax, 0x80000000
     ret
 
-.global k_mem_enable_paging
-k_mem_enable_paging:
+.global k_mem_EnablePaging
+k_mem_EnablePaging:
     mov eax, cr4
     or eax, 0x00000010
     mov cr4, eax
@@ -37,15 +30,15 @@ k_mem_enable_paging:
     mov cr0, eax
     ret
 
-.global k_mem_disable_paging
-k_mem_disable_paging:
+.global k_mem_DisablePaging
+k_mem_DisablePaging:
     mov eax, cr0
     and eax, 0x7fffffff
     mov cr0, eax
     ret
 
-.global k_mem_invalidate_tlb
-k_mem_invalidate_tlb:
+.global k_mem_InvalidateTLB
+k_mem_InvalidateTLB:
     mov eax, dword ptr [esp + 4]
     invlpg dword ptr [eax]
     ret
@@ -58,12 +51,6 @@ k_mem_gdt:
 null_segment: .short 0, 0, 0, 0
 r0_data_segment: .short 0xffff, 0x0000, 0x8000|0x1000|0x0200, 0x00c0|0x000f
 r0_code_segment: .short 0xffff, 0x0000, 0x8000|0x1000|0x0a00, 0x00c0|0x000f
-/* r1_data_segment: .short 0xffff, 0x0000, 0xa000|0x1000|0x0200, 0x00c0|0x000f
-r1_code_segment: .short 0xffff, 0x0000, 0xa000|0x1000|0x0a00, 0x00c0|0x000f
-r2_data_segment: .short 0xffff, 0x0000, 0xc000|0x1000|0x0200, 0x00c0|0x000f
-r2_code_segment: .short 0xffff, 0x0000, 0xc000|0x1000|0x0a00, 0x00c0|0x000f
-r3_data_segment: .short 0xffff, 0x0000, 0xe000|0x1000|0x0200, 0x00c0|0x000f
-r3_code_segment: .short 0xffff, 0x0000, 0xe000|0x1000|0x0a00, 0x00c0|0x000f */
 .global k_mem_gdt_end
 k_mem_gdt_end:
 
@@ -88,11 +75,3 @@ k_mem_ranges:
 
 .global k_mem_range_count
 k_mem_range_count: .int 0
-
-/* page directories */
-/*.balign 4096
-.global k_mem_pdirs
-k_mem_pdirs:
-.rept 1024
-.int 0
-.endr */
