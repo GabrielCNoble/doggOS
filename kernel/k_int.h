@@ -11,8 +11,8 @@ struct k_int_desc_t
 
 enum K_INT_DESC_TYPES
 {
-    K_INT_DESC_TYPE_IG = 6 << 8,
-    K_INT_DESC_TYPE_TG = 7 << 8
+    K_INT_DESC_TYPE_INT_GATE = 6 << 8,
+    K_INT_DESC_TYPE_TRAP_GATE = 7 << 8
 };
 
 #define K_INT_DESCRIPTOR(offset, segment, type, flags) \
@@ -47,7 +47,16 @@ enum K_INT_HANDLERS
     /* general protection */
     K_INT_HANDLER_GP = 13,
     /* page fault */
-    K_INT_HANDLR_PF = 14,
+    K_INT_HANDLER_PF = 14,
+
+    K_INT_HANDLER_CMCI = 32,
+    K_INT_HANDLER_THERM = 33,
+    K_INT_HANDLER_LINT0 = 34,
+    K_INT_HANDLER_LINT1 = 35,
+    K_INT_HANDLER_ERROR = 36,
+    K_INT_HANDLER_TIMOUT = 37,
+    K_INT_HANDLER_RUN_THREAD = 38,
+    K_INT_HANDLER_LAST
 };
 
 enum K_INT_PF_FLAGS
@@ -59,35 +68,58 @@ enum K_INT_PF_FLAGS
     K_INT_PF_FLAG_INSTR_FETCH = 1 << 4,
 };
 
-void k_int_init();
+enum K_INT_ERROR_CODE_FLAGS
+{
+    K_INT_ERROR_CODE_FLAG_EXT = 1,
+    K_INT_ERROR_CODE_FLAG_DESC_LOC = 1 << 1,
+    K_INT_ERROR_CODE_FLAG_LDT = 1 << 2,
+};
+
+void k_int_Init();
 
 extern void k_int_disable_interrupts();
 
 extern void k_int_enable_interrupts();
 
-extern void k_int_lidt();
+extern void k_int_Lidt(struct k_int_desc_t *table, uint32_t entry_count);
 
-void k_int_int0_handler(uint32_t eip, uint16_t cs);
+// extern void k_int_IntN(uint8_t interrupt);
 
-void k_int_int1_handler();
+void k_int_Int0(uint32_t eip, uint16_t cs);
 
-void k_int_int3_handler(uint32_t eip, uint16_t cs);
+void k_int_Int1();
 
-void k_int_int4_handler(uint32_t eip, uint16_t cs);
+void k_int_Int3(uint32_t eip, uint16_t cs);
 
-void k_int_int5_handler(uint32_t eip, uint16_t cs);
+void k_int_Int4(uint32_t eip, uint16_t cs);
 
-void k_int_int6_handler(uint32_t eip, uint16_t cs);
+void k_int_Int5(uint32_t eip, uint16_t cs);
 
-void k_int_int7_handler(uint32_t eip, uint16_t cs);
+void k_int_Int6(uint32_t eip, uint16_t cs);
 
-void k_int_int8_handler();
+void k_int_Int7(uint32_t eip, uint16_t cs);
 
-void k_int_int13_handler(uint32_t error, uint32_t eip, uint16_t cs);
+void k_int_Int8();
 
-void k_int_int14_handler(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs);
+void k_int_Int13(uint32_t error, uint32_t eip, uint16_t cs);
 
-void k_int_intn_handler();
+void k_int_Int14(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs);
+
+void k_int_Intn();
+
+void k_int_Int32();
+
+void k_int_Int33();
+
+void k_int_Int34();
+
+void k_int_Int35();
+
+void k_int_Int36();
+
+void k_int_Int69();
+
+void k_int_HaltAndCatchFire();
 
 
 

@@ -1,7 +1,7 @@
 #include "k_pci.h"
-#include "k_io.h"
+#include "k_cpu.h"
 #include "k_term.h"
-#include "k_mem.h"
+#include "mem/k_mem.h"
 #include <stddef.h>
 
 struct k_pci_config_reg_t k_pci_config_regs[] =
@@ -36,8 +36,8 @@ uint32_t k_pci_config_reg_masks[] =
 uint32_t k_pci_read_header(uint8_t bus, uint8_t device, uint8_t function, union k_pci_header_t *header)
 {
     uint32_t config_address = K_PCI_DEVICE_CONFIG_ADDRESS(bus, device, function, 0x0);
-    k_outportd(config_address, K_PCI_CONFIG_ADDRESS);
-    header->dwords[0] = k_inportd(K_PCI_CONFIG_DATA);
+    k_cpu_OutD(config_address, K_PCI_CONFIG_ADDRESS);
+    header->dwords[0] = k_cpu_InD(K_PCI_CONFIG_DATA);
 
     if(header->vendor_id == K_PCI_INVALID_VENDOR_ID)
     {
@@ -47,8 +47,8 @@ uint32_t k_pci_read_header(uint8_t bus, uint8_t device, uint8_t function, union 
     for(uint32_t dword_index = 1; dword_index < 64; dword_index++)
     {
         config_address += 0x4;
-        k_outportd(config_address, K_PCI_CONFIG_ADDRESS);
-        header->dwords[dword_index] = k_inportd(K_PCI_CONFIG_DATA);
+        k_cpu_OutD(config_address, K_PCI_CONFIG_ADDRESS);
+        header->dwords[dword_index] = k_cpu_InD(K_PCI_CONFIG_DATA);
     }
 
     return 1;
@@ -57,15 +57,15 @@ uint32_t k_pci_read_header(uint8_t bus, uint8_t device, uint8_t function, union 
 uint32_t k_pci_read_dword(uint32_t base_address, uint32_t dword)
 {
     base_address += dword << 2;
-    k_outportd(base_address, K_PCI_CONFIG_ADDRESS);
-    return k_inportd(K_PCI_CONFIG_DATA);
+    k_cpu_OutD(base_address, K_PCI_CONFIG_ADDRESS);
+    return k_cpu_InD(K_PCI_CONFIG_DATA);
 }
 
 void k_pci_write_dword(uint32_t base_address, uint32_t dword, uint32_t value)
 {
     base_address += dword << 2;
-    k_outportd(base_address, K_PCI_CONFIG_ADDRESS);
-    k_outportd(value, K_PCI_CONFIG_DATA);
+    k_cpu_OutD(base_address, K_PCI_CONFIG_ADDRESS);
+    k_cpu_OutD(value, K_PCI_CONFIG_DATA);
 }
 
 uint16_t k_pci_read_word(uint32_t base_address, uint32_t word)
@@ -151,13 +151,13 @@ struct k_dev_device_t *k_pci_discover_device(uint8_t bus, uint8_t device)
             {
                 uint32_t base_address = K_PCI_DEVICE_CONFIG_ADDRESS(bus, device, function_index, 0);
 
-                struct k_pci_device_t *new_device = k_mem_alloc(sizeof(struct k_pci_device_t), sizeof(struct k_pci_device_t));
-                new_device->base.type = K_DEVICE_TYPE_PCI;
-                new_device->base.next = NULL;
+                // struct k_pci_device_t *new_device = k_mem_Alloc(sizeof(struct k_pci_device_t), 0);
+                // new_device->base.type = K_DEVICE_TYPE_PCI;
+                // new_device->base.next = NULL;
 
-                new_device->bus = bus;
-                new_device->device = device;
-                new_device->function = function_index;
+                // new_device->bus = bus;
+                // new_device->device = device;
+                // new_device->function = function_index;
 
                 uint32_t header_type = header.header_type & (~K_PCI_HEADER_TYPE_MULTIFUN);
 

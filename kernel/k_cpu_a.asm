@@ -1,0 +1,100 @@
+.intel_syntax noprefix
+.code32
+
+.section .text
+
+
+.global k_cpu_EnableInterrupts
+k_cpu_EnableInterrupts:
+    sti
+    ret
+
+.global k_cpu_DisableInterrupts
+k_cpu_DisableInterrupts:
+    cli
+    ret
+
+.global k_cpu_EnablePaging
+k_cpu_EnablePaging:
+    mov eax, cr4
+    or eax, 0x00000010
+    mov cr4, eax
+    mov eax, cr0
+    or eax, 0x80000000
+    mov cr0, eax
+    ret
+
+.global k_cpu_DisablePaging
+k_cpu_DisablePaging:
+    mov eax, cr0
+    and eax, 0x7fffffff
+    mov cr0, eax
+    ret
+
+.global k_cpu_IsPagingEnabled
+k_cpu_IsPagingEnabled:
+    mov eax, cr0
+    and eax, 0x80000000
+    ret
+
+.global k_cpu_InvalidateTLB
+k_cpu_InvalidateTLB:
+    mov eax, dword ptr [esp + 4]
+    invlpg dword ptr [eax]
+    ret
+
+.global k_cpu_Halt
+k_cpu_Halt:
+    hlt
+    ret
+
+.global k_cpu_OutB
+k_cpu_OutB:
+    mov al, cl
+    out dx, al
+    ret
+
+.global k_cpu_OutW
+k_cpu_OutW:
+    mov ax, cx
+    out dx, ax
+    ret
+
+.global k_cpu_OutD
+k_cpu_OutD:
+    mov eax, ecx
+    out dx, eax
+    ret
+
+.global k_cpu_InB
+k_cpu_InB:
+    mov dx, cx
+    in al, dx
+    ret
+
+.global k_cpu_InW
+k_cpu_InW:
+    mov dx, cx
+    in ax, dx
+    ret 
+
+.global k_cpu_InD
+k_cpu_InD:
+    mov dx, cx
+    in eax, dx
+    ret 
+
+.global k_cpu_WriteMSR
+k_cpu_WriteMSR:
+    mov ecx, dword ptr [esp + 4]
+    mov eax, dword ptr [esp + 8]
+    mov edx, dword ptr [esp + 12]
+    wrmsr 
+    ret
+
+.global k_cpu_ReadMSR
+k_cpu_ReadMSR:
+    mov ecx, dword ptr [esp + 4]
+    rdmsr
+    ret
+

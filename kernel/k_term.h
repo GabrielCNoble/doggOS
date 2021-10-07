@@ -35,9 +35,13 @@ void k_printf(char *fmt, ...);
 
 uint8_t k_vga_attrib(uint8_t foreground, uint8_t background);
 
-uint16_t k_vga_char(char c, uint8_t color);
+uint16_t k_vga_char(unsigned char c, uint8_t color);
 
 void k_term_clear();
+
+void k_term_SetColors(uint8_t foreground, uint8_t background);
+
+void k_term_SetCursorRow(uint32_t row);
 
 #endif
 

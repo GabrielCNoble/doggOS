@@ -2,4 +2,5 @@
 *.img
 *.o
 *.ini
+*.txt
 .vscode
