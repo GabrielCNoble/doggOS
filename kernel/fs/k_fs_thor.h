@@ -1,7 +1,7 @@
 #ifndef K_FS_THOR_H
 #define K_FS_THOR_H
 
-#include "k_fs_com.h"
+#include "k_defs.h"
 
 #define K_FS_THOR_LOGICAL_BLOCK_SIZE 0x1000
 

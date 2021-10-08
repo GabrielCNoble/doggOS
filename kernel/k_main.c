@@ -5,11 +5,10 @@
 
 void k_main()
 {
-    k_printf("OK!\n");
+    // k_printf("OK!\n");
     k_cpu_EnableInterrupts();
     k_term_clear();
 
-    // k_term_clear();
     asm volatile
     (
         "nop\n"
@@ -22,6 +21,9 @@ void k_main()
     k_proc_CreateThread(func1);
     k_proc_CreateThread(func2);
     k_proc_CreateThread(func3);
+    k_proc_CreateThread(func4);
+    k_proc_CreateThread(func5);
+    k_proc_CreateThread(func6);
     k_proc_RunScheduler();
     // k_apic_StartTimer(0x3ffffff);
     // k_printf("blah\n");

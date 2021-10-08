@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "mem/k_mem.h"
-#include "k_cpu.h"
+#include "cpu/k_cpu.h"
 
 enum K_PROC_ELF_TYPES
 {
@@ -86,22 +86,29 @@ enum K_PROC_THREAD_FLAGS
     K_PROC_THREAD_FLAG_SUSPENDED = 1,
 };
 
+// struct k_proc_thrd_t
+// {
+//     struct k_proc_thrd_t *next; // 0
+//     uint32_t tid;               // 4
+//     uint32_t flags;             // 8
+//     uint32_t eip;               // 12
+//     uint32_t esp;               // 16
+//     uint32_t ebp;               // 20
+//     uint32_t eax;               // 24
+//     uint32_t ebx;               // 28
+//     uint32_t ecx;               // 32
+//     uint32_t edx;               // 36
+//     uint32_t edi;               // 40
+//     uint32_t esi;               // 44
+//     uint32_t eif;               // 48
+//     uint32_t cs;                // 52
+// };
+
 struct k_proc_thrd_t
 {
-    struct k_proc_thrd_t *next; // 0
-    uint32_t tid;               // 4
-    uint32_t flags;             // 8
-    uint32_t eip;               // 12
-    uint32_t esp;               // 16
-    uint32_t ebp;               // 20
-    uint32_t eax;               // 24
-    uint32_t ebx;               // 28
-    uint32_t ecx;               // 32
-    uint32_t edx;               // 36
-    uint32_t edi;               // 40
-    uint32_t esi;               // 44
-    uint32_t eif;               // 48
-    uint32_t cs;                // 52
+    struct k_proc_thrd_t *next;
+    uint32_t tid;
+    struct k_cpu_tss_t tss;
 };
 
 #define K_PROC_MAX_SEG_DESCS 8
@@ -120,9 +127,13 @@ struct k_proc_state_t
 
 #define K_PROC_KERNEL_PID 0
 
+void k_proc_Init();
+
 uint32_t k_proc_CreateProcess(struct k_mem_pstate_t *pstate, uint32_t start_address, void *image, uint32_t size);
 
 struct k_proc_thrd_t *k_proc_CreateThread(void (*thread_fn)());
+
+void k_proc_QueueThread(struct k_proc_thrd_t *thread);
 
 void func1();
 
@@ -130,11 +141,19 @@ void func2();
 
 void func3();
 
+void func4();
+
+void func5();
+
+void func6();
+
+void func7();
+
 void k_proc_RunScheduler();
 
 void k_proc_Yield();
 
-extern void k_proc_SwitchToThread(struct k_proc_thrd_t *thread);
+extern void k_proc_RunThread(struct k_proc_thrd_t *thread);
 
 extern void k_proc_SaveThreadState();
 

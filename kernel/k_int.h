@@ -16,7 +16,9 @@ enum K_INT_DESC_TYPES
 };
 
 #define K_INT_DESCRIPTOR(offset, segment, type, flags) \
- (struct k_int_desc_t){.dw0 = ((uint32_t)(offset) & 0x0000ffff) | ((segment) << 16), .dw1 = ((uint32_t)(offset) & 0xffff0000) | (type) | K_INT_DESC_FLAG_PRESENT | (flags) }
+ (struct k_int_desc_t){ \
+     .dw0 = ((uint32_t)(offset) & 0x0000ffff) | ((segment) << 16), \
+     .dw1 = ((uint32_t)(offset) & 0xffff0000) | (type) | K_INT_DESC_FLAG_PRESENT | (flags) }
 
 enum K_INT_DESC_FLAGS
 {

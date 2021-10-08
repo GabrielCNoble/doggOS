@@ -2,7 +2,7 @@
 #define K_GFX_VGA_H
 
 #include <stdint.h>
-#include "../k_cpu.h"
+#include "../cpu/k_cpu.h"
 
 #define K_GFX_VGA_GFX_REG_ADDR_PORT 0x03ce
 #define K_GFX_VGA_GFX_REG_DATA_PORT 0x03cf

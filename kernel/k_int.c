@@ -1,6 +1,6 @@
 #include "k_int.h"
 #include "k_term.h"
-#include "k_cpu.h"
+#include "cpu/k_cpu.h"
 #include "k_rng.h"
 #include "k_apic.h"
 
@@ -23,7 +23,7 @@ extern void *k_int35_a;
 extern void *k_int36_a;
 extern void *k_int38_a;
 extern void *k_int69_a;
-extern void *k_proc_RunThread;
+extern void *k_proc_SwitchToThread;
 uint32_t blah;
 struct k_int_desc_t k_int_idt[K_INT_HANDLER_LAST];
 
@@ -54,7 +54,7 @@ void k_int_Init()
     k_int_idt[K_INT_HANDLER_LINT1] = K_INT_DESCRIPTOR(&k_int35_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     k_int_idt[K_INT_HANDLER_ERROR] = K_INT_DESCRIPTOR(&k_int36_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     k_int_idt[K_INT_HANDLER_TIMOUT] = K_INT_DESCRIPTOR(&k_int38_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_RUN_THREAD] = K_INT_DESCRIPTOR(&k_proc_RunThread, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_RUN_THREAD] = K_INT_DESCRIPTOR(&k_proc_SwitchToThread, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     k_int_Lidt(k_int_idt, K_INT_HANDLER_LAST);
 }
 

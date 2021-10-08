@@ -1,8 +1,8 @@
 #include <stddef.h>
 #include "k_mem.h"
-#include "k_mem_pstate.h"
+#include "k_pstate.h"
 #include "../k_term.h"
-#include "../k_cpu.h"
+#include "../cpu/k_cpu.h"
 
 
 // extern struct k_mem_range_t k_mem_low_range;

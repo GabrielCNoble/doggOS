@@ -8,9 +8,10 @@
 #include "k_term.h"
 #include "k_int.h"
 #include "k_dev.h"
-#include "k_cpu.h"
+#include "cpu/k_cpu.h"
 #include "k_rng.h"
 #include "k_apic.h"
+#include "k_proc.h"
 
 // #include "k_fs.h"
 

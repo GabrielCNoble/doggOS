@@ -139,4 +139,5 @@ void k_term_SetColors(uint8_t foreground, uint8_t background)
 void k_term_SetCursorRow(uint32_t row)
 {
     vga_cur_row = row;
+    vga_cur_column = 0;
 }

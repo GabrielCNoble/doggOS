@@ -76,8 +76,7 @@ k_atm_SpinLock:
         and eax, 0xfffffffe
         lea ebx, [eax + 1]
         lock cmpxchg dword ptr [ecx], ebx
-        pause
-        jz _spinlock_loop
+        jnz _spinlock_loop
     _spinlock_loop_exit:
     ret
 
