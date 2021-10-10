@@ -47,7 +47,7 @@ void k_mem_MapPStateToAddress(struct k_mem_pstate_h *pstate, uint32_t map_addres
         we want to map */
         struct k_mem_pentry_t *active_ptable_entry = K_MEM_ACTIVE_PSTATE_PTABLE_MAP_POINTER + dir_index;
 
-        active_pdir_entry->entry = pstate->ptable_page | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE;
+        active_pdir_entry->entry = pstate->ptable_page | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
         active_ptable_entry->entry = active_pdir_entry->entry;
 
         /* this address allows us to modify the contents of the physical page that backs the page table
@@ -71,7 +71,7 @@ void k_mem_MapPStateToAddress(struct k_mem_pstate_h *pstate, uint32_t map_addres
                 active_pdir_entry_ptable[entry_index].entry = 0;    
             }
 
-            uint32_t flags = K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE;
+            uint32_t flags = K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
 
             active_pdir_entry_ptable[K_MEM_PSTATE_SELF_PTABLE_INDEX].entry = pstate->self_page | flags;
             active_pdir_entry_ptable[K_MEM_PSTATE_PDIR_PTABLE_INDEX].entry = pstate->pdir_page | flags;
@@ -124,7 +124,7 @@ void k_mem_DestroyPState(struct k_mem_pstate_t *pstate)
 
 void k_mem_LoadPState(struct k_mem_pstate_h *pstate)
 {
-    k_mem_LoadPageDir(pstate->pdir_page);
+    k_cpu_Lcr3(pstate->pdir_page);
 }
 
 uint32_t k_mem_MapAddress(struct k_mem_pstate_t *mapped_pstate, uint32_t phys_address, uint32_t lin_address, uint32_t flags)
@@ -174,7 +174,8 @@ uint32_t k_mem_MapAddress(struct k_mem_pstate_t *mapped_pstate, uint32_t phys_ad
 
             uint32_t page_table = k_mem_AllocPage(0);
 
-            pentry->entry = page_table | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE;
+            pentry->entry = page_table | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT;
+            pentry->entry |= K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
             mapped_pstate->page_table[dir_index].entry = pentry->entry;
             pentry = mapped_pstate->page_dir_ptables[dir_index].entries;
 

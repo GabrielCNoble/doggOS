@@ -3,11 +3,11 @@
 
 .section .text
 
-.global k_mem_LoadPageDir
+/* .global k_mem_LoadPageDir
 k_mem_LoadPageDir:
     mov eax, dword ptr [esp + 4]
     mov cr3, eax
-    ret
+    ret */
 
 .global k_mem_GetPState
 k_mem_GetPState:

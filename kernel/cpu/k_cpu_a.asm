@@ -66,6 +66,17 @@ k_cpu_Ltr:
     ltr word ptr [esp + 4]
     ret
 
+.global k_cpu_Lcr3
+k_cpu_Lcr3:
+    mov eax, dword ptr [esp + 4]
+    mov cr3, eax
+    ret
+
+.global k_cpu_Rcr3
+k_cpu_Rcr3:
+    mov eax, cr3
+    ret
+
 .global k_cpu_OutB
 k_cpu_OutB:
     mov al, cl

@@ -195,7 +195,7 @@ enum K_MEM_PENTRY_FLAGS
     K_MEM_PENTRY_FLAG_PRESENT = 1,
     /* marks memory mapped as read/write. Otherwise, it's read only */
     K_MEM_PENTRY_FLAG_READ_WRITE = 1 << 1,
-    K_MEM_PENTRY_FLAG_USER_SUPERVISOR = 1 << 2,
+    K_MEM_PENTRY_FLAG_USER_MODE_ACCESS = 1 << 2,
     K_MEM_PENTRY_FLAG_PAGE_WRITE_THROUGH = 1 << 3,
     /* marks memory as not cacheable */
     K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE = 1 << 4,

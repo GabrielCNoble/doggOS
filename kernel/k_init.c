@@ -12,6 +12,4 @@ void stdcall k_Init(struct k_init_data_t *init_data)
     k_apic_Init();
     k_proc_Init();
     k_main();
-    // k_cpu_DisableInterrupts();
-    // k_cpu_Halt();
 }

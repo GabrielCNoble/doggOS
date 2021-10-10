@@ -33,12 +33,14 @@ enum K_CPU_SEG_DESC_TYPE
     K_CPU_SEG_DESC_TYPE_CODE_DATA = 1 << 12,
 };
 
+/* 4th word */
 enum K_CPU_SEG_GRAN
 {
     K_CPU_SEG_GRAN_BYTE = 0,
     K_CPU_SEG_GRAN_4KB = 1 << 7
 };
 
+/* 4th word, also known as D/B flag */
 enum K_CPU_SEG_OP_SIZE
 {
     K_CPU_SEG_OP_SIZE_16 = 0,
@@ -61,6 +63,7 @@ enum K_CPU_DSEG_FLAGS
     K_CPU_DSEG_FLAG_E = 1 << 10,
 };
 
+/* 3rd word */
 enum K_CPU_DSEG_TYPES
 {
     K_CPU_DSEG_TYPE_RO = K_CPU_SEG_DESC_TYPE_CODE_DATA,
@@ -83,6 +86,7 @@ enum K_CPU_CSEG_FLAGS
     K_CPU_CSEG_FLAG_C = 1 << 10
 };
 
+/* 3rd word */
 enum K_CPU_CSEG_TYPES
 {
     K_CPU_CSEG_TYPE_EO = K_CPU_SEG_FLAG_C | K_CPU_SEG_DESC_TYPE_CODE_DATA,
@@ -102,6 +106,7 @@ enum K_CPU_TSEG_FLAGS
     K_CPU_TSEG_FLAG_BUSY = 1 << 9
 };
 
+/* 3rd word */
 enum K_CPU_SSEG_TYPES
 {
     // K_CPU_SSEG_TYPE_TSS16_AVAL = K_CPU_SEG_DESC_TYPE_SYSTEM | 1 << 8,

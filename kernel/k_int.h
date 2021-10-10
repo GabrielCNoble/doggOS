@@ -46,6 +46,8 @@ enum K_INT_HANDLERS
     K_INT_HANDLER_NM = 7,
     /* double fault */
     K_INT_HANDLER_DF = 8,
+
+    K_INT_HANDLER_BAD_TSS = 10,
     /* general protection */
     K_INT_HANDLER_GP = 13,
     /* page fault */
@@ -103,9 +105,11 @@ void k_int_Int7(uint32_t eip, uint16_t cs);
 
 void k_int_Int8();
 
-void k_int_Int13(uint32_t error, uint32_t eip, uint16_t cs);
+void k_int_Int10(uint32_t error, uint32_t eip, uint32_t cs);
 
-void k_int_Int14(uint32_t address, uint32_t error, uint32_t eip, uint16_t cs);
+void k_int_Int13(uint32_t error, uint32_t eip, uint32_t cs);
+
+void k_int_Int14(uint32_t address, uint32_t error, uint32_t eip, uint32_t cs);
 
 void k_int_Intn();
 

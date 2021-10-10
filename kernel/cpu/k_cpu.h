@@ -23,6 +23,10 @@ extern void k_cpu_Lgdt(struct k_cpu_seg_desc_t *gdt, uint32_t seg_count);
 
 extern void k_cpu_Ltr(uint32_t selector);
 
+extern void k_cpu_Lcr3(uint32_t pdir);
+
+extern uint32_t k_cpu_Rcr3();
+
 extern fastcall void k_cpu_OutB(uint8_t value, uint16_t port);
 
 extern fastcall void k_cpu_OutW(uint16_t value, uint16_t port);

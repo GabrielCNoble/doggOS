@@ -163,7 +163,7 @@ _exact_div:
     mov gs, ax
 
     /* push the kernel stack to the end of the usable low memory */
-    mov esp, 0x7ffff
+    mov esp, 0x7fff0
 
     /* initialize the init data */
     mov eax, offset mem_ranges

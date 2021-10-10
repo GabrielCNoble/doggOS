@@ -34,35 +34,61 @@ k_atm_spnl_t k_proc_spinlock = 0;
 
 // }k_thread_stacks[2];
 
-#define K_PROC_THREAD_STACK_SIZE 4096
-extern struct k_mem_range_t *k_mem_ranges;
-extern uint32_t k_mem_range_count;
+#define K_PROC_THREAD_STACK_PAGE_COUNT 4
+// #define K_PROC_THREAD_STACK_SIZE 0x1000
+// extern struct k_mem_range_t *k_mem_ranges;
+// extern uint32_t k_mem_range_count;
 
-uint32_t k_proc_src_block;
-uint32_t k_proc_src_block_cursor = 0;
+// uint32_t k_proc_src_block;
+// uint32_t k_proc_src_block_cursor = 0;
 
 struct k_cpu_tss_t *k_proc_tss;
 struct k_cpu_seg_desc_t k_proc_gdt[] = 
-{
+{ 
     K_CPU_SEG_DESC(0x00000000u, 0x000000u, 0, 0, 0, 0, 0),
     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1), 
+    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
     K_CPU_SEG_DESC(0x00000000u, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1),
-};
+}; 
  
 void k_proc_Init()
 {
-    struct k_mem_range_t *last_range = k_mem_ranges + (k_mem_range_count - 1);
-    k_proc_src_block = (uint32_t)last_range->base;
+    k_proc_tss = (struct k_cpu_tss_t *)k_mem_AllocPage(0);   
+    k_proc_gdt[5] = K_CPU_SEG_DESC((uint32_t)k_proc_tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
+    k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, (uint32_t)k_proc_tss, (uint32_t)k_proc_tss, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
 
-    k_proc_tss = (struct k_cpu_tss_t *)k_proc_src_block;
-    k_proc_src_block_cursor += K_PROC_THREAD_STACK_SIZE;
-    k_proc_gdt[3] = K_CPU_SEG_DESC((uint32_t)k_proc_tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
+    uint32_t stack = k_mem_AllocPages(K_PROC_THREAD_STACK_PAGE_COUNT, 0);
+    k_proc_tss->ss0 = 0x0008;
+    k_proc_tss->esp0 = stack + 0x1000 * K_PROC_THREAD_STACK_PAGE_COUNT - 24;
+    for(uint32_t index = 0; index < K_PROC_THREAD_STACK_PAGE_COUNT; index++)
+    {
+        k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, stack + 0x1000 * index, stack + 0x1000 * index, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+    }
 
-    k_cpu_Lgdt(k_proc_gdt, sizeof(k_proc_gdt) / sizeof(struct k_cpu_seg_desc_t));
-    k_cpu_Ltr(0x18);
+    stack = k_mem_AllocPages(K_PROC_THREAD_STACK_PAGE_COUNT, 0);
+    k_proc_tss->ss1 = 0x0008;
+    k_proc_tss->esp1 = stack + 0x1000 * K_PROC_THREAD_STACK_PAGE_COUNT - 24;
+    for(uint32_t index = 0; index < K_PROC_THREAD_STACK_PAGE_COUNT; index++)
+    {
+        k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, stack + 0x1000 * index, stack + 0x1000 * index, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+    }
 
-    k_printf("range size: %d\n", (uint32_t)last_range->size);
+    stack = k_mem_AllocPages(K_PROC_THREAD_STACK_PAGE_COUNT, 0);
+    k_proc_tss->ss2 = 0x0008;
+    k_proc_tss->esp2 = stack + 0x1000 * K_PROC_THREAD_STACK_PAGE_COUNT - 24;
+    for(uint32_t index = 0; index < K_PROC_THREAD_STACK_PAGE_COUNT; index++)
+    {
+        k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, stack + 0x1000 * index, stack + 0x1000 * index, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+    }
+
+    // k_proc_tss->ss = 0x0008;
+    // k_proc_tss->esp = 0x0000;
+
+    k_printf("esp0 at: %x\n", k_proc_tss->esp0);
+    k_cpu_Lgdt(k_proc_gdt, 6);
+    k_cpu_Ltr(0x28);
 }
 
 uint32_t k_proc_CreateProcess(struct k_mem_pstate_t *pstate, uint32_t start_address, void *image, uint32_t size)
@@ -78,12 +104,12 @@ uint32_t k_proc_CreateProcess(struct k_mem_pstate_t *pstate, uint32_t start_addr
 struct k_proc_thrd_t *k_proc_CreateThread(void (*thread_fn)())
 {
     struct k_proc_thrd_t *thread = k_threads + k_thread_count;
-    struct k_mem_range_t *last_range = k_mem_ranges + (k_mem_range_count - 1);
-    uint8_t *stack = (uint8_t *)((uint32_t)last_range->base + k_thread_count * K_PROC_THREAD_STACK_SIZE);
+    uint32_t stack = k_mem_AllocPages(K_PROC_THREAD_STACK_PAGE_COUNT, 0);
+    
 
-    for(uint32_t page_index = 0; page_index <= K_PROC_THREAD_STACK_SIZE / 4096; page_index++)
+    for(uint32_t page_index = 0; page_index < K_PROC_THREAD_STACK_PAGE_COUNT; page_index++)
     {
-        k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, (uint32_t)stack + 4096 * page_index, (uint32_t)stack + 4096 * page_index, K_MEM_PENTRY_FLAG_READ_WRITE);
+        k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, (uint32_t)stack + 0x1000 * page_index, (uint32_t)stack + 0x1000 * page_index, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
     }
 
     thread->tid = k_thread_count;
@@ -93,19 +119,31 @@ struct k_proc_thrd_t *k_proc_CreateThread(void (*thread_fn)())
     thread->tss.edx = 0;
     thread->tss.edi = 0;
     thread->tss.esi = 0;
-    thread->tss.cs = 0x0010;
-    thread->tss.ds = 0x0008;
-    thread->tss.ss = 0x0008;
-    thread->tss.es = 0x0008;
-    thread->tss.fs = 0x0008;
-    thread->tss.gs = 0x0008;
+
+    thread->tss.cs = 0x0023;
+    thread->tss.ds = 0x001b;
+    thread->tss.ss = 0x001b;
+    thread->tss.es = 0x001b;
+    thread->tss.fs = 0x001b;
+    thread->tss.gs = 0x0000;
+
+    // thread->tss.cs = 0x0010;
+    // thread->tss.ds = 0x008;
+    // thread->tss.ss = 0x008;
+    // thread->tss.es = 0x008;
+    // thread->tss.fs = 0x008;
+    // thread->tss.gs = 0x008;
     thread->tss.eflags = K_CPU_STATUS_REG_INIT_VALUE | K_CPU_STATUS_FLAG_INT_ENABLE;
     
-    thread->tss.ebp = (uint32_t)(stack + K_PROC_THREAD_STACK_SIZE - 12);
+    thread->tss.ebp = stack + 0x1000 * K_PROC_THREAD_STACK_PAGE_COUNT - 12;
     thread->tss.esp = thread->tss.ebp;
     thread->tss.eip = (uint32_t)thread_fn;
 
+    thread->tss.cr3 = k_cpu_Rcr3(); 
+
     k_thread_count++;
+
+    k_printf("thread %d stack at %x\n", thread->tid, thread->tss.esp);
 
     return thread;
 }
@@ -199,10 +237,10 @@ void k_proc_RunScheduler()
 {
     uint32_t thread_index = 0;
     k_active_thread = &k_scheduler_thread;
-    // k_proc_SwitchToThread(NULL);
+    // k_proc_RunThread(NULL);
 
-    // k_scheduler_thread.tss.esp0 = k_scheduler_thread.tss.esp;
-    // k_scheduler_thread.tss.ss0 = k_scheduler_thread.tss.ss;
+    // k_proc_tss->esp0 = k_scheduler_thread.tss.esp;
+    // k_proc_tss->ss0 = k_scheduler_thread.tss.ss;
 
     // k_printf("scheduler: %x %x\n", k_scheduler_thread.tss.esp0, (uint32_t)k_scheduler_thread.tss.ss0);
 
@@ -214,7 +252,16 @@ void k_proc_RunScheduler()
             thread_index = next_thread;
             struct k_proc_thrd_t *thread = k_threads + next_thread;
             k_printf("\n");
-            k_apic_StartTimer(0x4fff);
+            asm volatile 
+            (
+                "nop\n"
+                "nop\n"
+                "nop\n"
+                "nop\n"
+                "nop\n"
+                "nop\n"
+            );
+            k_apic_StartTimer(0x7f);
             k_proc_RunThread(thread);
             k_apic_SignalFixedInterruptHandled();
         }

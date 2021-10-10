@@ -74,6 +74,11 @@ k_int8_a:
     popa
     iret
 
+.global k_int10_a
+k_int10_a:
+    call k_int_Int10
+    hlt
+
 .global k_int13_a
 k_int13_a:
     call k_int_Int13
@@ -81,13 +86,11 @@ k_int13_a:
 
 .global k_int14_a
 k_int14_a:
-    pusha
-    sub esp, 4
-    mov eax, cr2
-    mov [esp], eax
+    /* mov eax, cr2 */
+    mov eax, 0xfff3
+    push eax
     call k_int_Int14
-    add esp, 4
-    popa
+    pop eax
     hlt
     iret
 

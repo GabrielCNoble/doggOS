@@ -208,23 +208,23 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     struct k_mem_pentry_t *entry;
     /* map the page that contains the page directory */
     entry = page_table + K_MEM_PSTATE_PDIR_PTABLE_INDEX;
-    entry->entry = ((uint32_t)page_dir) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
+    entry->entry = ((uint32_t)page_dir) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
     /* map the page that contains the page table */
     entry = page_table + K_MEM_PSTATE_PTABLE_PTABLE_INDEX;
-    entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE; 
+    entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS; 
     /* point the last page directory entry to the page table we just set up */
     entry = page_dir + K_MEM_PSTATE_SELF_PDIR_INDEX;
-    entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE;
+    entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
     uint32_t address = 0;
 
     for(uint32_t entry_index = 0; entry_index < K_MEM_PSTATE_LAST_USABLE_PDIR_INDEX; entry_index++)
     {
         /* identity map the rest of the address space */
         struct k_mem_pentry_t *entry = page_dir + entry_index;
-        entry->entry = address | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_BIG_PAGE;
+        entry->entry = address | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_BIG_PAGE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
     }
 
-    k_mem_LoadPageDir((uint32_t)page_dir);
+    k_cpu_Lcr3((uint32_t)page_dir);
     k_cpu_EnablePaging();
 
     /* we need to create the kernel pstate sort of manually here, because the "full" mechanism relies on the 
@@ -249,20 +249,20 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     while(address < data_end)
     {
-        k_mem_MapAddress(&mapped_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE);
+        k_mem_MapAddress(&mapped_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
         address += K_MEM_4KB_ADDRESS_OFFSET;
     }
     k_mem_LoadPState(&k_mem_state.pstate); 
 
-    data_end = (data_end + 4093) & (~4093);
-    struct k_mem_bchunk_t *chunk = (struct k_mem_bchunk_t *)data_end;
-    uint32_t chunk_page = k_mem_AllocPage(0);
-    k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, chunk_page, (uint32_t)chunk, K_MEM_PENTRY_FLAG_READ_WRITE);
+    // data_end = (data_end + 4093) & (~4093);
+    // struct k_mem_bchunk_t *chunk = (struct k_mem_bchunk_t *)data_end;
+    // uint32_t chunk_page = k_mem_AllocPage(0);
+    // k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, chunk_page, (uint32_t)chunk, K_MEM_PENTRY_FLAG_READ_WRITE);
 
-    chunk->next = NULL;
-    chunk->prev = NULL;
+    // chunk->next = NULL;
+    // chunk->prev = NULL;
     /* last usable virtual address before the stuff reserved for the kernel */
-    chunk->size = ((K_MEM_4MB_ADDRESS_OFFSET * K_MEM_PSTATE_LAST_USABLE_PDIR_INDEX) | 0x003ff000) - data_end;
+    // chunk->size = ((K_MEM_4MB_ADDRESS_OFFSET * K_MEM_PSTATE_LAST_USABLE_PDIR_INDEX) | 0x003ff000) - data_end;
     // k_mem_state.vheap.first_free_chunk = chunk;
     // k_mem_state.vheap.last_free_chunk = chunk;
 

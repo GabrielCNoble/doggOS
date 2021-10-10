@@ -13,7 +13,7 @@ void k_mem_UnmapPState(struct k_mem_pstate_t *mapped_pstate);
 
 void k_mem_DestroyPState(struct k_mem_pstate_t *mapped_pstate);
 
-extern void k_mem_LoadPageDir(uint32_t pdir_page);
+// extern void k_mem_LoadPageDir(uint32_t pdir_page);
 
 void k_mem_LoadPState(struct k_mem_pstate_h *pstate);
 
