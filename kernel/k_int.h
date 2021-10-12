@@ -15,10 +15,10 @@ enum K_INT_DESC_TYPES
     K_INT_DESC_TYPE_TRAP_GATE = 7 << 8
 };
 
-#define K_INT_DESCRIPTOR(offset, segment, type, flags) \
+#define K_INT_DESCRIPTOR(offset, segment, dpl, type, flags) \
  (struct k_int_desc_t){ \
-     .dw0 = ((uint32_t)(offset) & 0x0000ffff) | ((segment) << 16), \
-     .dw1 = ((uint32_t)(offset) & 0xffff0000) | (type) | K_INT_DESC_FLAG_PRESENT | (flags) }
+     .dw0 = ((uint32_t)(offset) & 0x0000ffff) | ((uint32_t)(segment) << 16), \
+     .dw1 = ((uint32_t)(offset) & 0xffff0000) | (type) | K_INT_DESC_FLAG_PRESENT | (flags) | (K_CPU_SEG_DESC_DPL(dpl)) }
 
 enum K_INT_DESC_FLAGS
 {
@@ -59,7 +59,7 @@ enum K_INT_HANDLERS
     K_INT_HANDLER_LINT1 = 35,
     K_INT_HANDLER_ERROR = 36,
     K_INT_HANDLER_TIMOUT = 37,
-    K_INT_HANDLER_RUN_THREAD = 38,
+    K_INT_HANDLER_TIME_SLICE = 38,
     K_INT_HANDLER_LAST
 };
 
@@ -86,6 +86,8 @@ extern void k_int_disable_interrupts();
 extern void k_int_enable_interrupts();
 
 extern void k_int_Lidt(struct k_int_desc_t *table, uint32_t entry_count);
+
+void k_int_SetHandler(uint32_t vector, uint32_t handler);
 
 // extern void k_int_IntN(uint8_t interrupt);
 

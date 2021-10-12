@@ -247,7 +247,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     address = 0;
 
-    while(address < data_end)
+    while(address <= data_end)
     {
         k_mem_MapAddress(&mapped_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
         address += K_MEM_4KB_ADDRESS_OFFSET;

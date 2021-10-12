@@ -52,6 +52,7 @@ k_cpu_Halt:
 k_cpu_Lgdt:
     mov eax, dword ptr [esp + 4]
     mov ebx, dword ptr [esp + 8]
+    mov ecx, dword ptr [esp + 12]
     sub esp, 6
     shl ebx, 3
     dec ebx
@@ -59,11 +60,20 @@ k_cpu_Lgdt:
     mov dword ptr [esp + 2], eax
     lgdt [esp]
     add esp, 6
+    
+    push ecx
+    mov ecx, offset _change_cs
+    push ecx
+    jmp dword ptr [esp]
+    _change_cs:
+    pop ecx
+    pop ecx
     ret
 
 .global k_cpu_Ltr
 k_cpu_Ltr:
-    ltr word ptr [esp + 4]
+    mov eax, dword ptr [esp + 4]
+    ltr ax
     ret
 
 .global k_cpu_Lcr3

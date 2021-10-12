@@ -60,19 +60,21 @@ k_int5_a:
 k_int6_a:
     call k_int_Int6
     hlt
-    iret
 
 .global k_int7_a
 k_int7_a:
     call k_int_Int7
     iret
 
+.global k_int8_temp_a
+k_int8_temp_a:
+    call k_int_Int8
+    iret
+
 .global k_int8_a
 k_int8_a:
-    pusha
     call k_int_Int8
-    popa
-    iret
+    hlt
 
 .global k_int10_a
 k_int10_a:
@@ -85,9 +87,9 @@ k_int13_a:
     hlt
 
 .global k_int14_a
-k_int14_a:
+k_int14_a:    
     /* mov eax, cr2 */
-    mov eax, 0xfff3
+    mov eax, 0xb00b1e5
     push eax
     call k_int_Int14
     pop eax

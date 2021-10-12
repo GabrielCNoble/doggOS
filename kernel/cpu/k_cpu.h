@@ -1,7 +1,6 @@
 #ifndef K_CPU_H
 #define K_CPU_H
 
-#include <stdint.h>
 #include "../k_defs.h"
 #include "k_defs.h"
 
@@ -19,7 +18,7 @@ extern void k_cpu_InvalidateTLB(uint32_t address);
 
 extern void k_cpu_Halt();
 
-extern void k_cpu_Lgdt(struct k_cpu_seg_desc_t *gdt, uint32_t seg_count);
+extern void k_cpu_Lgdt(struct k_cpu_seg_desc_t *gdt, uint32_t seg_count, uint32_t next_cs);
 
 extern void k_cpu_Ltr(uint32_t selector);
 

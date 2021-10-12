@@ -84,31 +84,66 @@ struct k_proc_elfh_t
 enum K_PROC_THREAD_FLAGS
 {
     K_PROC_THREAD_FLAG_SUSPENDED = 1,
+    K_PROC_THREAD_FLAG_IO_BLOCKED = 1 << 1
 };
 
-// struct k_proc_thrd_t
-// {
-//     struct k_proc_thrd_t *next; // 0
-//     uint32_t tid;               // 4
-//     uint32_t flags;             // 8
-//     uint32_t eip;               // 12
-//     uint32_t esp;               // 16
-//     uint32_t ebp;               // 20
-//     uint32_t eax;               // 24
-//     uint32_t ebx;               // 28
-//     uint32_t ecx;               // 32
-//     uint32_t edx;               // 36
-//     uint32_t edi;               // 40
-//     uint32_t esi;               // 44
-//     uint32_t eif;               // 48
-//     uint32_t cs;                // 52
-// };
+/* if there's a stack change, the cpu will push 20 bytes worth of state onto the stack, 
+and 12 otherwise, so we allocate for the worst case */
+#define K_PROC_THREAD_STATE_PUSHED_BYTES (sizeof(uint32_t) * 5)
 
-struct k_proc_thrd_t
+/* eax, ebx, ecx, edx, eip, eflags, esp, ebp, edi, esi, cr3, ss, cs, ds, es, fs, gs */
+#define K_PROC_THREAD_STATE_REG_BYTES (sizeof(uint32_t) * 17)
+
+/* some extra space so the thread swich function has space to store its stuff */
+#define K_PROC_THREAD_STATE_EXTRA_BYTES (sizeof(uint32_t) * 10)
+
+
+#define K_PROC_THREAD_STATE_BYTES (K_PROC_THREAD_STATE_PUSHED_BYTES +  \
+                                   K_PROC_THREAD_STATE_REG_BYTES + \
+                                   K_PROC_THREAD_STATE_EXTRA_BYTES)
+
+#define K_PROC_THREAD_STATE_LAST_INDEX ((K_PROC_THREAD_STATE_BYTES / sizeof(uint32_t)) - 1)
+
+enum K_PROC_THREAD_STATE_REGS
 {
-    struct k_proc_thrd_t *next;
-    uint32_t tid;
-    struct k_cpu_tss_t tss;
+    K_PROC_THREAD_STATE_REG_EAX = 0,
+    K_PROC_THREAD_STATE_REG_EBX,
+    K_PROC_THREAD_STATE_REG_ECX,
+    K_PROC_THREAD_STATE_REG_EDX,
+    K_PROC_THREAD_STATE_REG_ESI,
+    K_PROC_THREAD_STATE_REG_EDI,
+    K_PROC_THREAD_STATE_REG_EBP,
+    K_PROC_THREAD_STATE_REG_CR3,
+
+    K_PROC_THREAD_STATE_REG_DS,
+    K_PROC_THREAD_STATE_REG_ES,
+    K_PROC_THREAD_STATE_REG_FS,
+
+
+    /* those two entries will be filled by the interrupt handler. The point of those entries
+    is to give the stack switching code a fixed location from where to read those values */
+    // K_PROC_THREAD_STATE_REG_ESP = (K_PROC_THREAD_STATE_BYTES / sizeof(uint32_t)) - 2,
+    // K_PROC_THREAD_STATE_REG_SS = K_PROC_THREAD_STATE_REG_ESP + 1
+};
+
+struct k_proc_tstate_t
+{
+    uint32_t state[K_PROC_THREAD_STATE_BYTES];
+};
+
+struct k_proc_thread_t
+{
+    struct k_proc_thread_t *next;   // 0
+
+    uint32_t tid;                   // 4
+    uint32_t flags;                 // 8
+
+    uint32_t stack_base;            // 12
+    uint32_t entry_point;           // 16
+    uint32_t code_seg;              // 20
+
+    uint32_t *start_esp;             // 24
+    uint32_t *current_esp;           // 28
 };
 
 #define K_PROC_MAX_SEG_DESCS 8
@@ -131,9 +166,9 @@ void k_proc_Init();
 
 uint32_t k_proc_CreateProcess(struct k_mem_pstate_t *pstate, uint32_t start_address, void *image, uint32_t size);
 
-struct k_proc_thrd_t *k_proc_CreateThread(void (*thread_fn)());
+struct k_proc_thread_t *k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level);
 
-void k_proc_QueueThread(struct k_proc_thrd_t *thread);
+void k_proc_InitThread(struct k_proc_thread_t *thread, void (*thread_fn)(), uint32_t privilege_level);
 
 void func1();
 
@@ -151,10 +186,10 @@ void func7();
 
 void k_proc_RunScheduler();
 
+// void k_proc_Yield();
+
 void k_proc_Yield();
 
-extern void k_proc_RunThread(struct k_proc_thrd_t *thread);
-
-extern void k_proc_SaveThreadState();
+extern void k_proc_SwitchToThread(struct k_proc_thread_t *thread);
 
 #endif

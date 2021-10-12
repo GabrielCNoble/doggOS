@@ -2,12 +2,17 @@
 #include "k_atm.h"
 #include "k_apic.h"
 #include "k_proc.h"
+#include "k_int.h"
+
+extern void *k_int8_a;
 
 void k_main()
 {
     // k_printf("OK!\n");
     k_cpu_EnableInterrupts();
-    // k_term_clear();
+    k_term_clear();
+
+    // k_int_SetHandler(K_INT_HANDLER_DF, (uint32_t)&k_int8_a);
 
     asm volatile
     (
@@ -18,10 +23,10 @@ void k_main()
         "nop\n"
         "nop\n"
     );
-    k_proc_CreateThread(func1);
-    // k_proc_CreateThread(func2);
-    // k_proc_CreateThread(func3);
-    // k_proc_CreateThread(func4);
+    k_proc_CreateThread(func1, 3);
+    k_proc_CreateThread(func2, 0);
+    k_proc_CreateThread(func3, 3);
+    k_proc_CreateThread(func4, 0);
     // k_proc_CreateThread(func5);
     // k_proc_CreateThread(func6);
     k_proc_RunScheduler();

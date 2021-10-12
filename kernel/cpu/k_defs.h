@@ -1,6 +1,8 @@
 #ifndef K_CPU_DEFS_H
 #define K_CPU_DEFS_H
 
+#include <stdint.h>
+
 enum K_CPU_STATUS_FLAGS
 {
     K_CPU_STATUS_FLAG_CARRY = 1,
@@ -24,6 +26,7 @@ enum K_CPU_STATUS_FLAGS
     K_CPU_STATUS_FLAG_VINT_PENDING = 1 << 20,
     K_CPU_STATUS_FLAG_ID = 1 << 21,
 };
+
 
 #define K_CPU_STATUS_REG_INIT_VALUE 0x00000002
 
@@ -145,12 +148,19 @@ struct k_cpu_seg_desc_t
 
 #define K_CPU_SEG_DESC(base, limit, seg_type, dpl, gran, op_size, present) \
     ((struct k_cpu_seg_desc_t){ \
-        .v.w.w0 = ((uint16_t)limit), \
-        .v.w.w1 = ((uint16_t)base), \
-        .v.w.w2 = (((uint32_t)(base) >> 16) & 0xff) | (seg_type) | (K_CPU_SEG_DESC_DPL(dpl)) | ((uint16_t)(present) << 15), \
-        .v.w.w3 = (((uint32_t)limit >> 16) & 0xf) | (op_size) | (gran) | (((uint32_t)base >> 24) & 0xf)})
+        .v.w.w0 = ((limit)), \
+        .v.w.w1 = ((base)), \
+        .v.w.w2 = ((((uint32_t)(base)) >> 16) & 0xff) | (seg_type) | (K_CPU_SEG_DESC_DPL(dpl)) | ((uint16_t)(present) << 15), \
+        .v.w.w3 = ((((uint32_t)(limit)) >> 16) & 0xf) | (op_size) | (gran) | ((((uint32_t)(base)) >> 16) & 0xff00)})
 
-struct k_cpu_tss_t
+enum K_CPU_SEG_SEL_FLAGS
+{
+    K_CPU_SEG_SEL_FLAG_TI = 1 << 2
+};
+
+#define K_CPU_SEG_SEL(index, rpl, ti) ((index << 3) | (ti) | (rpl & 0x3))
+
+struct k_cpu_tss_t 
 {
     uint16_t prev_link; // 0
     uint16_t res0;      // 2

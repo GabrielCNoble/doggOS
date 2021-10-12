@@ -12,6 +12,7 @@ extern void *k_int4_a;
 extern void *k_int5_a;
 extern void *k_int6_a;
 extern void *k_int7_a;
+extern void *k_int8_temp_a;
 extern void *k_int8_a;
 extern void *k_int10_a;
 extern void *k_int13_a;
@@ -24,7 +25,7 @@ extern void *k_int35_a;
 extern void *k_int36_a;
 extern void *k_int38_a;
 extern void *k_int69_a;
-extern void *k_proc_SwitchToThread;
+extern void *k_proc_PreemptCurrentThread;
 uint32_t blah;
 struct k_int_desc_t k_int_idt[K_INT_HANDLER_LAST];
 
@@ -143,28 +144,33 @@ void k_int_Init()
 {
     for(uint32_t exception = K_INT_HANDLER_DE; exception < K_INT_HANDLER_LAST; exception++)
     {
-        k_int_idt[exception] = K_INT_DESCRIPTOR(&k_intn_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT); 
+        k_int_idt[exception] = K_INT_DESCRIPTOR(&k_intn_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT); 
     }
 
-    k_int_idt[K_INT_HANDLER_DE] = K_INT_DESCRIPTOR(&k_int0_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_NMI] = K_INT_DESCRIPTOR(&k_int2_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_BP] = K_INT_DESCRIPTOR(&k_int3_a, 0x10, K_INT_DESC_TYPE_TRAP_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_OF] = K_INT_DESCRIPTOR(&k_int4_a, 0x10, K_INT_DESC_TYPE_TRAP_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_BR] = K_INT_DESCRIPTOR(&k_int5_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_UD] = K_INT_DESCRIPTOR(&k_int6_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_NM] = K_INT_DESCRIPTOR(&k_int7_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_DF] = K_INT_DESCRIPTOR(&k_int8_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_BAD_TSS] = K_INT_DESCRIPTOR(&k_int10_a, 0x23, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_GP] = K_INT_DESCRIPTOR(&k_int13_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_PF] = K_INT_DESCRIPTOR(&k_int14_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_CMCI] = K_INT_DESCRIPTOR(&k_int32_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_THERM] = K_INT_DESCRIPTOR(&k_int33_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_LINT0] = K_INT_DESCRIPTOR(&k_int34_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_LINT1] = K_INT_DESCRIPTOR(&k_int35_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_ERROR] = K_INT_DESCRIPTOR(&k_int36_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_TIMOUT] = K_INT_DESCRIPTOR(&k_int38_a, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_RUN_THREAD] = K_INT_DESCRIPTOR(&k_proc_SwitchToThread, 0x10, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_DE] = K_INT_DESCRIPTOR(&k_int0_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_NMI] = K_INT_DESCRIPTOR(&k_int2_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_BP] = K_INT_DESCRIPTOR(&k_int3_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_TRAP_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_OF] = K_INT_DESCRIPTOR(&k_int4_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_TRAP_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_BR] = K_INT_DESCRIPTOR(&k_int5_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_UD] = K_INT_DESCRIPTOR(&k_int6_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_NM] = K_INT_DESCRIPTOR(&k_int7_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_DF] = K_INT_DESCRIPTOR(&k_int8_temp_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_BAD_TSS] = K_INT_DESCRIPTOR(&k_int10_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_GP] = K_INT_DESCRIPTOR(&k_int13_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_PF] = K_INT_DESCRIPTOR(&k_int14_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_CMCI] = K_INT_DESCRIPTOR(&k_int32_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_THERM] = K_INT_DESCRIPTOR(&k_int33_a, 0x13, 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_LINT0] = K_INT_DESCRIPTOR(&k_int34_a, 0x13, 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_LINT1] = K_INT_DESCRIPTOR(&k_int35_a, 0x13, 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_ERROR] = K_INT_DESCRIPTOR(&k_int36_a, 0x13, 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_TIMOUT] = K_INT_DESCRIPTOR(&k_int38_a, 0x13, 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_INT_HANDLER_TIME_SLICE] = K_INT_DESCRIPTOR(&k_proc_PreemptCurrentThread, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     k_int_Lidt(k_int_idt, K_INT_HANDLER_LAST);
+}
+
+void k_int_SetHandler(uint32_t vector, uint32_t handler)
+{
+    k_int_idt[vector] = K_INT_DESCRIPTOR(handler, K_CPU_SEG_SEL(6, 0, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
 }
 
 void k_int_Int0(uint32_t eip, uint16_t cs)
@@ -229,35 +235,8 @@ void k_int_Int13(uint32_t error, uint32_t eip, uint32_t cs)
 
 void k_int_Int14(uint32_t address, uint32_t error, uint32_t eip, uint32_t cs)
 {
-    k_printf("page fault at %x:%x\n", cs, eip);
+    k_printf("page fault at %x:%x, with error %x\n", cs, eip, error);
     k_printf(k_int_pf_messages[error], address);
-
-    // if(!(error & K_INT_PF_FLAG_NON_PAGED))
-    // {
-    //     if(error & K_INT_PF_FLAG_WRITE)
-    //     {
-    //         k_printf("attempt to write to unpaged address %x\n", address);
-    //     }
-    //     else
-    //     {
-    //         if(error & K_INT_PF_FLAG_INSTR_FETCH)
-    //         {
-    //             k_printf("attempt to fetch instructions from unpaged address %x\n", address);
-    //         }
-    //         else
-    //         {
-    //             k_printf("attempt to read from unpaged address %x\n", address);
-    //         }
-    //     }
-    // }
-    // else if(error & K_INT_PF_FLAG_RES)
-    // {
-    //     k_printf("couldn't translate address %x due to set reserved bits in paging structs", address);
-    // }
-    // else if
-    // {
-    //     k_printf("unknown error code %x\n", error);
-    // }
 }
 
 void k_int_Intn()
