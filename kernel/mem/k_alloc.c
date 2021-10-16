@@ -2,6 +2,7 @@
 #include "k_phys.h"
 #include "k_pmap.h"
 #include "../k_int.h"
+#include "../k_term.h"
 
 uint16_t k_mem_small_bucket_sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
 
@@ -24,125 +25,6 @@ uint32_t k_mem_BigChunkIndexFromSize(uint32_t size)
 
 void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, uint32_t size)
 {
-    (void)heap;
-    (void)size;
-    return NULL;
-}
-
-void k_mem_BigReallocFree(struct k_mem_bheap_t *heap, void *memory, uint32_t size)
-{
-    (void)heap;
-    (void)memory;
-    (void)size;
-}
-
-void k_mem_BigFree(struct k_mem_bheap_t *heap, void *memory)
-{
-    (void)heap;
-    (void)memory;
-}
-
-uint32_t k_mem_SmallBucketIndexFromSize(uint32_t size)
-{
-    for(uint32_t bucket_index = 0; bucket_index < K_MEM_SMALL_BUCKET_COUNT; bucket_index++)
-    {
-        if(size <= k_mem_small_bucket_sizes[bucket_index])
-        {
-            return bucket_index;
-        }
-    }
-
-    return 0xffffffff;
-}
-
-void k_mem_InitChunkPageToBucket(uint32_t bucket_index)
-{
-    (void)bucket_index;
-}
-
-void *k_mem_SmallAlloc(struct k_mem_sheap_t *heap, uint32_t size)
-{
-    (void)heap;
-    uint32_t bucket_index = k_mem_SmallBucketIndexFromSize(size);
-    (void)bucket_index;
-    void *memory = NULL;
-
-    // if(bucket_index != 0xffffffff)
-    // {
-    //     struct k_mem_sbucket_t *bucket = k_mem_state.vheap.buckets + bucket_index;
-
-    //     if(!bucket->first_chunk)
-    //     {
-    //         struct k_mem_scpage_t *new_page;
-    //         struct k_mem_bchunk_t *best_chunk;
-    //         struct k_mem_bchunk_t *big_chunk = k_mem_state.vheap.first_free_chunk;
-
-    //         while(big_chunk)
-    //         {
-    //             if(!best_chunk || big_chunk->size < best_chunk->size)
-    //             {
-    //                 best_chunk = big_chunk;
-    //             }
-
-    //             big_chunk = big_chunk->next;
-    //         }
-
-    //         if(best_chunk->size == 1)
-    //         {
-    //             // k_mem_state.vheap.first_free_chunk = big_chunk->next;
-    //         }
-    //         else
-    //         {
-    //             // struct k_mem_bchunk_t *new_first_chunk = (struct k_mem_bchunk_t *)((uint32_t)big_chunk + 4096);
-    //             // new_first_chunk->next = big_chunk->next;
-    //             // new_first_chunk->size = big_chunk->size - 1;
-
-    //             // if(big_chunk->next)
-    //             // {
-    //             //     big_chunk->next->prev = new_first_chunk;
-    //             // }
-
-    //             // k_mem_state.vheap.first_free_chunk = new_first_chunk;
-
-    //             // if(big_chunk == k_mem_state.vheap.first_free_chunk)
-    //             // {
-    //             //     k_mem_state.vheap.last_free_chunk = new_first_chunk;
-    //             // }
-    //         }
-    //     }
-    //     else if(bucket->first_chunk == bucket->last_chunk)
-    //     {
-    //         bucket->last_chunk = NULL;
-    //     }
-        
-    //     struct k_mem_schunk_t *chunk = bucket->first_chunk;
-    //     bucket->first_chunk = bucket->first_chunk->next;
-
-    //     chunk->next = NULL;
-    //     chunk->prev = NULL;
-    // }
-
-    return memory;
-}
-
-void *k_mem_SmallRealloc(struct k_mem_sheap_t *heap, void *memory, uint32_t size)
-{
-    (void)heap;
-    (void)memory;
-    (void)size;
-    return NULL;
-}
-
-void k_mem_SmallFree(struct k_mem_sheap_t *heap, void *memory)
-{
-    (void)heap;
-    (void)memory;
-}
-
-void *k_mem_Malloc(struct k_mem_sheap_t *heap, uint32_t size, uint32_t align)
-{
-    (void)heap;
-    (void)align;
     void *memory = NULL;
 
     if(size)
@@ -168,12 +50,212 @@ void *k_mem_Malloc(struct k_mem_sheap_t *heap, uint32_t size, uint32_t align)
     return memory;
 }
 
-void k_mem_Free(struct k_mem_sheap_t *heap, void *memory)
+void k_mem_BigReallocFree(struct k_mem_bheap_t *heap, void *memory, uint32_t size)
 {
     (void)heap;
+    (void)memory;
+    (void)size;
+}
+
+void k_mem_BigFree(struct k_mem_bheap_t *heap, void *memory)
+{
+    (void)heap;
+
     if(memory)
     {
         uint32_t page_address = (uint32_t)memory;
         k_mem_FreePages(page_address);
+    }
+}
+
+uint32_t k_mem_SmallBucketIndexFromSize(uint32_t size)
+{
+    for(uint32_t bucket_index = 0; bucket_index < K_MEM_SMALL_BUCKET_COUNT; bucket_index++)
+    {
+        if(size <= k_mem_small_bucket_sizes[bucket_index])
+        {
+            return bucket_index;
+        }
+    }
+
+    return 0xffffffff;
+}
+
+// void k_mem_InitChunkPageToBucket(uint32_t bucket_index)
+// {
+//     (void)bucket_index;
+// }
+
+void k_mem_InitChunkPage(struct k_mem_sheap_t *heap, uint32_t bucket_index)
+{
+    uint32_t chunk_size = k_mem_small_bucket_sizes[bucket_index];
+    uint32_t slots_per_chunk = chunk_size / k_mem_small_bucket_sizes[0];
+    uint32_t cur_offset = K_MEM_SCPAGE_CHUNK_COUNT;
+    uint32_t chunk_count = K_MEM_SCPAGE_CHUNK_BYTES / chunk_size;
+
+    struct k_mem_sbucket_t *bucket = heap->buckets + bucket_index;
+    struct k_mem_scpage_t *chunk_page = k_mem_BigAlloc(heap->big_heap, 4096);
+
+    chunk_page->header.main_bucket = bucket_index;
+    struct k_mem_schunk_t *last_chunk = NULL;
+    struct k_mem_schunk_t *next_chunk = NULL;
+
+    for(uint32_t chunk_index = 0; chunk_index < chunk_count; chunk_index++)
+    {
+        cur_offset -= slots_per_chunk;
+        struct k_mem_schunk_t *chunk = chunk_page->chunks + cur_offset;   
+        chunk->next = next_chunk;
+
+        if(next_chunk)
+        {
+            next_chunk->prev = chunk;
+        }
+        else
+        {
+            last_chunk = chunk;
+        }
+
+        next_chunk = chunk;
+    }
+
+    if(bucket->last_chunk)
+    {
+        bucket->last_chunk->next = next_chunk;
+        next_chunk->prev = bucket->last_chunk;
+    }
+    else
+    {
+        bucket->first_chunk = next_chunk;
+    }
+
+    bucket->last_chunk = last_chunk;
+
+    while(cur_offset)
+    {
+        slots_per_chunk >>= 1;
+        cur_offset -= slots_per_chunk;
+        bucket_index--;
+        bucket = heap->buckets + bucket_index;
+
+        struct k_mem_schunk_t *chunk = chunk_page->chunks + cur_offset;
+        chunk->next = NULL;
+
+        if(bucket->last_chunk)
+        {
+            bucket->last_chunk->next = chunk;
+            chunk->prev = bucket->last_chunk;
+        }
+        else
+        {
+            bucket->first_chunk = chunk;
+        }
+
+        bucket->last_chunk = chunk;
+    }
+}
+
+void *k_mem_SmallAlloc(struct k_mem_sheap_t *heap, uint32_t size)
+{
+    void *memory = NULL;
+    uint32_t bucket_index = k_mem_SmallBucketIndexFromSize(size);
+    
+    if(bucket_index != 0xffffffff)
+    {
+        struct k_mem_sbucket_t *bucket = heap->buckets + bucket_index;
+
+        if(!bucket->first_chunk)
+        {
+            k_mem_InitChunkPage(heap, bucket_index);
+        }
+
+        struct k_mem_schunk_t *chunk = bucket->first_chunk;
+        bucket->first_chunk = bucket->first_chunk->next;
+
+        if(bucket->first_chunk)
+        {
+            bucket->first_chunk->prev = NULL;
+        }
+        else
+        {
+            bucket->last_chunk = NULL;
+        }
+
+        memory = (void *)chunk;
+    }
+
+    return memory;
+}
+
+void *k_mem_SmallRealloc(struct k_mem_sheap_t *heap, void *memory, uint32_t size)
+{
+    (void)heap;
+    (void)memory;
+    (void)size;
+    return NULL;
+}
+
+void k_mem_SmallFree(struct k_mem_sheap_t *heap, void *memory)
+{
+    uintptr_t chunk_address = (uintptr_t)memory;
+    uintptr_t chunk_page_address = chunk_address & 0xfffff000;
+    struct k_mem_schunk_t *chunk = (struct k_mem_schunk_t *)memory;
+    struct k_mem_scpage_t *chunk_page = (struct k_mem_scpage_t *)(chunk_page_address);
+    uint32_t bucket_index = k_mem_SmallBucketIndexFromSize(chunk_address - chunk_page_address);
+
+    if(bucket_index > chunk_page->header.main_bucket)
+    {
+        bucket_index = chunk_page->header.main_bucket;
+    }
+
+    struct k_mem_sbucket_t *bucket = heap->buckets + bucket_index;
+
+    chunk->next = NULL;
+    chunk->prev = NULL;
+
+    chunk->next = bucket->first_chunk;
+    bucket->first_chunk = chunk;
+
+    if(chunk->next)
+    {
+        chunk->next->prev = chunk;
+    }
+    else
+    {
+        bucket->last_chunk = chunk;
+    }
+}
+
+void *k_mem_Malloc(struct k_mem_sheap_t *heap, uint32_t size, uint32_t align)
+{
+    (void)align;
+
+    void *memory = NULL;
+
+    if(size)
+    {
+        if(size > 2048)
+        {
+            memory = k_mem_BigAlloc(heap->big_heap, size);
+        }
+        else
+        {
+            memory = k_mem_SmallAlloc(heap, size);
+        }
+    }
+
+    return memory;
+}
+
+void k_mem_Free(struct k_mem_sheap_t *heap, void *memory)
+{
+    uintptr_t memory_address = (uintptr_t)memory;
+
+    if(memory_address & 0xfff)
+    {
+        k_mem_SmallFree(heap, memory);
+    }
+    else
+    {
+        k_mem_BigFree(heap->big_heap, memory);
     }
 }

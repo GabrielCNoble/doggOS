@@ -48,12 +48,19 @@ void k_proc_Init()
     k_proc_tss->ss0 = K_CPU_SEG_SEL(1, 0, 0);
     k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
 
+    k_proc_current_process = &k_proc_kernel_process;
+    k_proc_current_thread = &k_proc_scheduler_thread;
+    k_proc_scheduler_thread.process = &k_proc_kernel_process;
+
+    for(uint32_t bucket_index = 0; bucket_index < K_MEM_SMALL_BUCKET_COUNT; bucket_index++)
+    {
+        k_proc_scheduler_thread.heap.buckets[bucket_index].first_chunk = NULL;
+        k_proc_scheduler_thread.heap.buckets[bucket_index].last_chunk = NULL;
+    }
+
     k_proc_kernel_process.pid = K_PROC_KERNEL_PID;
     k_proc_processes = dg_StackListCreate(sizeof(struct k_proc_process_t), 512);
     k_proc_threads = dg_StackListCreate(sizeof(struct k_proc_thread_t), 512);
-
-    k_proc_current_process = &k_proc_kernel_process;
-    k_proc_scheduler_thread.process = &k_proc_kernel_process;
 }
 
 uint32_t k_proc_CreateProcess(uint32_t start_address, void *image, uint32_t size)
@@ -92,6 +99,15 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
     thread->tid = thread_id;
     thread->process = current_process;
 
+    for(uint32_t bucket_index = 0; bucket_index < K_MEM_SMALL_BUCKET_COUNT; bucket_index++)
+    {
+        thread->heap.buckets[bucket_index].first_chunk = NULL;
+        thread->heap.buckets[bucket_index].last_chunk = NULL;
+    }
+
+    thread->heap.free_pages = NULL;
+    thread->heap.big_heap = &current_process->heap;
+
     if(!current_process->threads)
     {
         current_process->threads = thread;
@@ -123,8 +139,10 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
         /* threads not in ring 0 will have a dedicated "stack" to store its context,
         while threads in ring 0 will store its context at the very end of their work stack */
 
-        uint8_t *state_block = dg_Malloc(0x1000, 4);
-        state_block += 0x1000;
+        uint8_t *state_block = dg_Malloc(1024, 4);
+        // k_printf("pl 3 state block at %x\n", state_block);
+        // k_cpu_Halt();
+        state_block += 1024;
         thread->current_esp = (uint32_t *)state_block;
 
         cs = K_CPU_SEG_SEL(4, 3, 0);

@@ -6,7 +6,7 @@
 #include "mem/k_mem.h"
 #include "k_string.h"
 #include "cpu/k_cpu.h"
-#include "k_pci.h"
+#include "dev/k_pci.h"
 #include "k_int.h"
 
 void k_main();

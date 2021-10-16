@@ -8,7 +8,7 @@
 #include "../gfx/k_gfx.h"
 #include "../k_term.h"
 #include "../k_int.h"
-#include "../k_dev.h"
+#include "../dev/k_dev.h"
 #include "../dsk/k_dsk.h"
 #include "../cpu/k_cpu.h"
 #include "../k_rng.h"

@@ -252,12 +252,19 @@ struct k_mem_schunk_t
     struct k_mem_schunk_t *prev;
 };
 
+struct k_mem_scpheader_t
+{
+    struct k_mem_scpage_t *next_free;
+    uint32_t main_bucket : 4;
+    uint32_t free_count : 12;
+};
+
+#define K_MEM_SCPAGE_CHUNK_BYTES (4096 - sizeof(struct k_mem_scpheader_t))
+#define K_MEM_SCPAGE_CHUNK_COUNT (K_MEM_SCPAGE_CHUNK_BYTES / sizeof(struct k_mem_schunk_t))
 struct k_mem_scpage_t
 {
-    struct k_mem_scpage_t *next;
-    uint32_t main_bucket: 4;
-    uint32_t free_count: 12;
-    struct k_mem_schunk_t chunks[511];
+    struct k_mem_scpheader_t header;
+    struct k_mem_schunk_t chunks[K_MEM_SCPAGE_CHUNK_COUNT];
 };
 
 struct k_mem_sbucket_t

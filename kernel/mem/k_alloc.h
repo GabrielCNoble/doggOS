@@ -13,6 +13,8 @@ void k_mem_BigFree(struct k_mem_bheap_t *heap, void *memory);
 
 uint32_t k_mem_SmallBucketIndexFromSize(uint32_t size);
 
+void k_mem_InitChunkPage(struct k_mem_sheap_t *heap, uint32_t bucket_index);
+
 void *k_mem_SmallAlloc(struct k_mem_sheap_t *heap, uint32_t size);
 
 void *k_mem_SmallRealloc(struct k_mem_sheap_t *heap, void *memory, uint32_t size);
