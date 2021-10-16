@@ -88,8 +88,7 @@ k_int13_a:
 
 .global k_int14_a
 k_int14_a:    
-    /* mov eax, cr2 */
-    mov eax, 0xb00b1e5
+    mov eax, cr2
     push eax
     call k_int_Int14
     pop eax
@@ -112,6 +111,7 @@ k_int32_a:
 k_int33_a:
     pusha
     call k_int_Int33
+    call k_apic_EndOfInterrupt
     popa
     iret
 
@@ -119,6 +119,7 @@ k_int33_a:
 k_int34_a:
     pusha
     call k_int_Int34
+    call k_apic_EndOfInterrupt
     popa
     iret
 
@@ -126,6 +127,7 @@ k_int34_a:
 k_int35_a:
     pusha
     call k_int_Int35
+    call k_apic_EndOfInterrupt
     popa
     iret
 
@@ -133,19 +135,15 @@ k_int35_a:
 k_int36_a:
     pusha
     call k_int_Int36
+    call k_apic_EndOfInterrupt
     popa
-    iret
-
-.global k_int38_a
-k_int38_a:
-    call k_int_Int38
-    hlt
     iret
 
 .global k_int69_a
 k_int69_a:
     pusha
     call k_int_Int69
+    call k_apic_EndOfInterrupt
     popa
     iret
 

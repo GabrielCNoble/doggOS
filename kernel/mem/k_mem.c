@@ -1,8 +1,9 @@
 #include <stddef.h>
 #include "k_mem.h"
-#include "k_pstate.h"
+// #include "k_pmap.h"
 #include "../k_term.h"
 #include "../cpu/k_cpu.h"
+#include "../proc/k_defs.h"
 
 
 // extern struct k_mem_range_t k_mem_low_range;
@@ -37,7 +38,10 @@ uint32_t k_mem_reserved = 0;
 // /* maximum number of pages in the list, ever */
 // uint32_t k_mem_free_pages_max_count;
 
-struct k_mem_state_t k_mem_state;
+// struct k_mem_state_t k_mem_state;
+struct k_mem_plist_t k_mem_physical_pages;
+// struct k_mem_page_map_h k_mem_page_map_handle;
+extern struct k_proc_process_t k_proc_kernel_process;
 uint32_t k_mem_range_count;
 struct k_mem_range_t *k_mem_ranges;
 
@@ -118,9 +122,9 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
         for some essential data structures */
     }
 
-    k_mem_state.pheap.free_pages = (uint32_t *)((uint32_t)lowest_range->base);
+    k_mem_physical_pages.free_pages = (uint32_t *)((uint32_t)lowest_range->base);
     lowest_range->base += free_page_header_bytes;
-    k_mem_state.pheap.used_pages = (struct k_mem_uppentry_t *)((uint32_t)lowest_range->base);
+    k_mem_physical_pages.used_pages = (struct k_mem_uppentry_t *)((uint32_t)lowest_range->base);
     lowest_range->base += used_page_bytes;
 
     uint32_t align = (uint32_t)lowest_range->base % 4096;
@@ -157,13 +161,13 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     {
         /* we'll initialize all entries to an invalid entry index. Some physical addresses don't refer
         to any actual ram, so we need to mark them as such */
-        k_mem_state.pheap.used_pages[entry_index].pid_index = K_MEM_USED_SMALL_PAGE_INVALID_ENTRY_INDEX;
-        k_mem_state.pheap.used_pages[entry_index].flags = 0;
+        k_mem_physical_pages.used_pages[entry_index].pid_index = K_MEM_USED_SMALL_PAGE_INVALID_ENTRY_INDEX;
+        k_mem_physical_pages.used_pages[entry_index].flags = 0;
     }
 
-    k_mem_state.pheap.free_pages_count = 0;
-    k_mem_state.pheap.first_used_page = 0xffffffff;
-    k_mem_state.pheap.last_used_page = 0;
+    k_mem_physical_pages.free_pages_count = 0;
+    k_mem_physical_pages.first_used_page = 0xffffffff;
+    k_mem_physical_pages.last_used_page = 0;
     
     for(uint32_t range_index = 0; range_index < range_count; range_index++)
     {
@@ -173,28 +177,28 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
         for(uint32_t page_index = 0; page_index < page_count; page_index++)
         {
-            k_mem_state.pheap.free_pages[k_mem_state.pheap.free_pages_count] = page_address;
+            k_mem_physical_pages.free_pages[k_mem_physical_pages.free_pages_count] = page_address;
             uint32_t entry_index = K_MEM_USED_SMALL_PAGE_ENTRY_INDEX(page_address);
-            struct k_mem_uppentry_t *used_entry = k_mem_state.pheap.used_pages + entry_index;
-            used_entry->pid_index = k_mem_state.pheap.free_pages_count;
+            struct k_mem_uppentry_t *used_entry = k_mem_physical_pages.used_pages + entry_index;
+            used_entry->pid_index = k_mem_physical_pages.free_pages_count;
             used_entry->flags = 0;
             page_address += K_MEM_4KB_ADDRESS_OFFSET;
 
-            if(entry_index < k_mem_state.pheap.first_used_page)
+            if(entry_index < k_mem_physical_pages.first_used_page)
             {
-                k_mem_state.pheap.first_used_page = entry_index;
+                k_mem_physical_pages.first_used_page = entry_index;
             }
 
-            if(entry_index > k_mem_state.pheap.last_used_page)
+            if(entry_index > k_mem_physical_pages.last_used_page)
             {
-                k_mem_state.pheap.last_used_page = entry_index;
+                k_mem_physical_pages.last_used_page = entry_index;
             }
 
-            k_mem_state.pheap.free_pages_count++;
+            k_mem_physical_pages.free_pages_count++;
         }
     }
 
-    k_mem_state.pheap.free_pages_max_count = k_mem_state.pheap.free_pages_count;
+    k_mem_physical_pages.free_pages_max_count = k_mem_physical_pages.free_pages_count;
 
     // k_printf("first page: %x - last page: %x\n", k_mem_free_pages[0], k_mem_free_pages[k_mem_free_pages_count - 1]);
 
@@ -207,17 +211,17 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     struct k_mem_pentry_t *page_table = (struct k_mem_pentry_t *)k_mem_AllocPage(0);
     struct k_mem_pentry_t *entry;
     /* map the page that contains the page directory */
-    entry = page_table + K_MEM_PSTATE_PDIR_PTABLE_INDEX;
+    entry = page_table + K_MEM_PAGE_MAP_PDIR_PTABLE_INDEX;
     entry->entry = ((uint32_t)page_dir) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
     /* map the page that contains the page table */
-    entry = page_table + K_MEM_PSTATE_PTABLE_PTABLE_INDEX;
+    entry = page_table + K_MEM_PAGE_MAP_PTABLE_PTABLE_INDEX;
     entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS; 
     /* point the last page directory entry to the page table we just set up */
-    entry = page_dir + K_MEM_PSTATE_SELF_PDIR_INDEX;
+    entry = page_dir + K_MEM_PAGE_MAP_SELF_PDIR_INDEX;
     entry->entry = ((uint32_t)page_table) | K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
     uint32_t address = 0;
 
-    for(uint32_t entry_index = 0; entry_index < K_MEM_PSTATE_LAST_USABLE_PDIR_INDEX; entry_index++)
+    for(uint32_t entry_index = 0; entry_index < K_MEM_PAGE_MAP_LAST_USABLE_PDIR_INDEX; entry_index++)
     {
         /* identity map the rest of the address space */
         struct k_mem_pentry_t *entry = page_dir + entry_index;
@@ -237,22 +241,22 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     /* we need to make sure the physical pages are pinned, otherwise they may get swaped out, 
     and that will cause all sorts of funny problems */
-    k_mem_state.pstate.self_page = k_mem_AllocPage(K_MEM_PAGE_FLAG_PINNED);
-    k_mem_state.pstate.pdir_page = k_mem_AllocPage(K_MEM_PAGE_FLAG_PINNED);
-    k_mem_state.pstate.ptable_page = k_mem_AllocPage(K_MEM_PAGE_FLAG_PINNED);
+    k_proc_kernel_process.page_map.self_page = k_mem_AllocPage(K_MEM_PAGE_FLAG_PINNED);
+    k_proc_kernel_process.page_map.pdir_page = k_mem_AllocPage(K_MEM_PAGE_FLAG_PINNED);
+    k_proc_kernel_process.page_map.ptable_page = k_mem_AllocPage(K_MEM_PAGE_FLAG_PINNED);
 
     /* this will both map and initialize the page directory and page table for us */
-    struct k_mem_pstate_t mapped_pstate;
-    k_mem_MapPStateToAddress(&k_mem_state.pstate, K_MEM_ACTIVE_PSTATE_INIT_PSTATE_BLOCK_ADDRESS, &mapped_pstate);
+    struct k_mem_page_map_t page_map;
+    k_mem_MapPageMapToAddress(&k_proc_kernel_process.page_map, K_MEM_ACTIVE_PAGE_MAP_INIT_PAGE_MAP_BLOCK_ADDRESS, &page_map);
 
-    address = 0;
+    address = 0x1000;
 
     while(address <= data_end)
     {
-        k_mem_MapAddress(&mapped_pstate, address, address, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+        k_mem_MapAddressOnPageMap(&page_map, address, address, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
         address += K_MEM_4KB_ADDRESS_OFFSET;
     }
-    k_mem_LoadPState(&k_mem_state.pstate); 
+    k_mem_LoadPageMap(&k_proc_kernel_process.page_map); 
 
     // data_end = (data_end + 4093) & (~4093);
     // struct k_mem_bchunk_t *chunk = (struct k_mem_bchunk_t *)data_end;

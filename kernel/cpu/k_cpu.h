@@ -42,4 +42,6 @@ extern void k_cpu_WriteMSR(uint32_t reg, uint64_t value);
 
 extern uint64_t k_cpu_ReadMSR(uint32_t reg);
 
+extern void k_cpu_SwitchModes();
+
 #endif

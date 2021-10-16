@@ -13,6 +13,7 @@ SECTIONS
     {
         k_kernel_start = .;
         kernel/*
+        libdg/*
         k_kernel_end = .;
     }
 }

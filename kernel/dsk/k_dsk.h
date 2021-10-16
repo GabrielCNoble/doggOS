@@ -1,9 +1,12 @@
 #ifndef K_DSK_H
 #define K_DSK_H
 
-#include "k_dsk_com.h"
+#include "k_defs.h"
+#include "../init/k_defs.h"
 
-struct k_dsk_disk_t *k_dsk_CreateDisk(struct k_dsk_conn_t *connection);
+void k_dsk_Init(uint32_t boot_drive);
+
+// struct k_dsk_disk_t *k_dsk_CreateDisk(uint32_t type);
 
 uint32_t k_dsk_Read(struct k_dsk_disk_t *disk, uint32_t start, uint32_t count, void *data);
 

@@ -6,7 +6,7 @@ uint32_t k_apic_regs_base = 0xfee00000;
 
 void k_apic_Init()
 {
-    k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, k_apic_regs_base, k_apic_regs_base, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE);
+    k_mem_MapAddress(k_apic_regs_base, k_apic_regs_base, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE);
     k_apic_WriteReg(K_APIC_REG_LVT_CMCI, k_apic_ReadReg(K_APIC_REG_LVT_CMCI) | K_INT_HANDLER_CMCI);
     k_apic_WriteReg(K_APIC_REG_LVT_THERM_SENSOR, k_apic_ReadReg(K_APIC_REG_LVT_THERM_SENSOR) | K_INT_HANDLER_THERM);
     k_apic_WriteReg(K_APIC_REG_LVT_LINT0, k_apic_ReadReg(K_APIC_REG_LVT_LINT0) | K_INT_HANDLER_LINT0);
@@ -35,49 +35,65 @@ void k_apic_OrReg(uint32_t reg, uint32_t value)
     *reg_addr |= value;
 }
 
-void k_apic_SignalFixedInterruptHandled()
-{
-    k_apic_WriteReg(K_APIC_REG_EOI, 0);
-}
-
 uint32_t k_apic_ReadReg(uint32_t reg)
 {
     uint32_t *reg_addr = (uint32_t *)(k_apic_regs_base + reg);
     return *reg_addr;
 }
 
-void k_apic_StartTimer(uint32_t count)
+/*
+===========================================================================================
+===========================================================================================
+===========================================================================================
+*/
+
+void k_apic_EndOfInterrupt()
 {
-    k_apic_WriteReg(K_APIC_REG_INIT_COUNT, count);
+    k_apic_WriteReg(K_APIC_REG_EOI, 0);
 }
 
-void k_apic_FireInterrupt(uint16_t destination, uint8_t interrupt)
+void k_apic_FireIPInterrupt(uint16_t destination, uint8_t interrupt)
 {
     uint32_t high_value = k_apic_ReadReg(K_APIC_REG_INT_CMD1);
     uint32_t low_value = k_apic_ReadReg(K_APIC_REG_INT_CMD0);
 
-    if(destination != K_APIC_INTERRUPT_DEST_SELF)
+    if(destination != K_APIC_INT_DEST_SELF)
     {
         high_value |= ((uint32_t)(destination & 0xff)) << 24;
     }
     else
     {
         /* self destination shorthand */
-        low_value |= (1 << 18);
+        low_value = (low_value & (~K_APIC_INT_DEST_SHORTHAND_LAST)) | K_APIC_INT_DEST_SHORTHAND_SELF;
+        high_value &= 0x00ffffff;
     }
 
-    /* physical delivery mode */
-    low_value &= ~(1 << 11);
+    /* physical destination mode */
+    low_value &= ~K_APIC_INT_DEST_MODE_LAST;
     /* fixed delivery mode */
-    low_value &= ~(7 << 8);
-    // low_value |= (1 << 10);
+    low_value = (low_value & (~K_APIC_INT_DELIVERY_MODE_LAST)) | K_APIC_INT_DELIVERY_MODE_FIXED;
 
     low_value |= (1 << 14);
     /* edge trigger mode */
-    low_value &= ~(1 << 15);
-
-    low_value |= interrupt;
+    low_value &= ~K_APIC_INT_TRIGGER_MODE_LAST;
+    low_value = (low_value & 0xffffff00) | interrupt;
 
     k_apic_WriteReg(K_APIC_REG_INT_CMD1, high_value);
     k_apic_WriteReg(K_APIC_REG_INT_CMD0, low_value);
+}
+
+/*
+===========================================================================================
+===========================================================================================
+===========================================================================================
+*/
+
+void k_apic_StartTimer(uint32_t count)
+{
+    k_apic_WriteReg(K_APIC_REG_INIT_COUNT, count);
+}
+
+void k_apic_StopTimer()
+{
+    k_apic_WriteReg(K_APIC_REG_INIT_COUNT, 0);
 }

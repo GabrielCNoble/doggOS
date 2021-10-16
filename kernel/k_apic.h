@@ -55,8 +55,44 @@ enum K_APIC_REGS
 };
 
 
-#define K_APIC_INTERRUPT_DEST_SELF 0xffff
-#define K_APIC_INTERRUPT_DEST_BROADCAST 0xff
+#define K_APIC_INT_DEST_SELF 0xffff
+#define K_APIC_INT_DEST_BROADCAST 0xff
+
+enum K_APIC_INT_DELIVERY_MODES
+{
+    K_APIC_INT_DELIVERY_MODE_FIXED = 0x0,
+    K_APIC_INT_DELIVERY_MODE_SMI = 0x2 << 8,
+    K_APIC_INT_DELIVERY_MODE_NMI = 0x4 << 8,
+    K_APIC_INT_DELIVERY_MODE_INIT = 0x5 << 8,
+    K_APIC_INT_DELIVERY_MODE_STARTUP = 0x6 << 8,
+    K_APIC_INT_DELIVERY_MODE_LAST = 0x7 << 8,
+};
+
+enum K_APIC_INT_TRIGGER_MODES
+{
+    K_APIC_INT_TRIGGER_MODE_EDGE = 0,
+    K_APIC_INT_TRIGGER_MODE_LEVEL = 1 << 15,
+    K_APIC_INT_TRIGGER_MODE_LAST = K_APIC_INT_TRIGGER_MODE_LEVEL
+};
+
+enum K_APIC_INT_DEST_MODES
+{
+    K_APIC_INT_DEST_MODE_PHYSICAL = 0,
+    K_APIC_INT_DEST_MODE_LOGICAL = 1 << 11,
+    K_APIC_INT_DEST_MODE_LAST = K_APIC_INT_DEST_MODE_LOGICAL
+};
+
+enum K_APIC_INT_DEST_SHORTHANDS
+{
+    K_APIC_INT_DEST_SHORTHAND_NONE = 0,
+    K_APIC_INT_DEST_SHORTHAND_SELF = 1 << 18,
+    /* all including self */
+    K_APIC_INT_DEST_SHORTHAND_AINS = 2 << 18,
+    /* all excluding self */
+    K_APIC_INT_DEST_SHORTHAND_AEXS = 3 << 18,
+    K_APIC_INT_DEST_SHORTHAND_LAST = K_APIC_INT_DEST_SHORTHAND_AEXS
+
+};
 
 void k_apic_Init();
 
@@ -66,12 +102,27 @@ void k_apic_AndReg(uint32_t reg, uint32_t value);
 
 void k_apic_OrReg(uint32_t reg, uint32_t value);
 
-void k_apic_SignalFixedInterruptHandled();
-
 uint32_t k_apic_ReadReg(uint32_t reg);
+
+/*
+===========================================================================================
+===========================================================================================
+===========================================================================================
+*/
+
+void k_apic_EndOfInterrupt();
+
+void k_apic_FireIPInterrupt(uint16_t destination, uint8_t interrupt);
+
+/*
+===========================================================================================
+===========================================================================================
+===========================================================================================
+*/
 
 void k_apic_StartTimer(uint32_t count);
 
-void k_apic_FireInterrupt(uint16_t destination, uint8_t interrupt);
+void k_apic_StopTimer();
+
 
 #endif

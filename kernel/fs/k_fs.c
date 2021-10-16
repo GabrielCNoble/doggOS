@@ -1,41 +1,43 @@
 #include "k_fs.h"
 #include "../mem/k_mem.h"
 
-struct k_fs_rfsys_t *k_fs_rfsys;
+// struct k_fs_rfsys_t *k_fs_rfsys;
 
 void k_fs_Init()
 {
-    k_fs_rfsys = NULL;
+    // k_fs_rfsys = NULL;
 }
 
-struct k_fs_rfsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *fsys, char *name)
+struct k_fs_fsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *fsys)
 {
-    struct k_fs_rfsys_t *rfsys = k_fs_GetFileSystem(name);
+    // struct k_fs_rfsys_t *rfsys = k_fs_GetFileSystem(name);
     
-    if(!rfsys)
-    {
-        rfsys = k_mem_Malloc(sizeof(struct k_fs_rfsys_t), 0);
-        rfsys->fsys = *fsys;
-        uint32_t index;
+    // if(!rfsys)
+    // {
+    //     rfsys = k_mem_Malloc(sizeof(struct k_fs_rfsys_t), 0);
+    //     rfsys->fsys = *fsys;
+    //     uint32_t index;
 
-        for(index = 0; index < sizeof(rfsys->name) - 1 || (!name[index]); index++)
-        {
-            /* file system names are all lowercase. This is to make sure two different file systems
-            will have two obviously different names */
-            rfsys->name[index] = name[index] | 0x20;
-        }
-        rfsys->name[index] = '\0';
-        rfsys->next = k_fs_rfsys;
+    //     for(index = 0; index < sizeof(rfsys->name) - 1 || (!name[index]); index++)
+    //     {
+    //         /* file system names are all lowercase. This is to make sure two different file systems
+    //         will have two obviously different names */
+    //         rfsys->name[index] = name[index] | 0x20;
+    //     }
+    //     rfsys->name[index] = '\0';
+    //     rfsys->next = k_fs_rfsys;
 
-        if(k_fs_rfsys)
-        {
-            k_fs_rfsys->prev = rfsys;
-        }
+    //     if(k_fs_rfsys)
+    //     {
+    //         k_fs_rfsys->prev = rfsys;
+    //     }
 
-        k_fs_rfsys = rfsys;
-    }
+    //     k_fs_rfsys = rfsys;
+    // }
 
-    return rfsys;
+    // return rfsys;
+    (void)fsys;
+    return NULL;
 }
 
 void k_fs_UnregisterFileSystem(char *name)
@@ -44,7 +46,7 @@ void k_fs_UnregisterFileSystem(char *name)
     (void)name;
 }
 
-struct k_fs_rfsys_t *k_fs_GetFileSystem(char *name)
+struct k_fs_fsys_t *k_fs_GetFileSystem(char *name)
 {
     (void)name;
     return NULL;
@@ -67,10 +69,10 @@ void k_fs_UnmountVolume(struct k_fs_vol_t *volume)
     (void)volume;
 }
 
-void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_rfsys_t *rfsys)
+void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys)
 {
     (void)volume;
-    (void)rfsys;
+    (void)fsys;
 }
 
 /*

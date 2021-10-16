@@ -137,3 +137,7 @@ k_cpu_ReadMSR:
     rdmsr
     ret
 
+.global k_cpu_SwitchModes
+k_cpu_SwitchModes:
+    ret
+    

@@ -168,6 +168,8 @@ _exact_div:
     /* initialize the init data */
     mov eax, offset mem_ranges
     mov dword ptr [ranges], eax
+    mov eax, dword ptr [origin_drive]
+    mov dword ptr [boot_drive], eax
 
     /* stdcall */
     sub esp, 4
@@ -181,6 +183,7 @@ _exact_div:
 init_data:
 ranges:             .int 0
 range_count:        .int 0
+boot_drive:         .int 0
 
 .balign 8
 mem_ranges:
