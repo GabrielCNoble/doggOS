@@ -38,9 +38,6 @@ k_proc_PreemptCurrentThread:
     push edi
     push esi
     push ebp
-    /* save page dir */
-    mov eax, cr3
-    push eax
     /* save sregs */
     xor eax, eax
     mov ax, ds
@@ -49,35 +46,49 @@ k_proc_PreemptCurrentThread:
     push eax
     mov ax, fs
     push eax
-
-    /* save esp from prev thread */
+    mov edx, cr3
     mov eax, dword ptr [k_proc_current_thread]
+    mov ebx, dword ptr [k_proc_next_thread]
+    cmp ebx, 0
+    jnz _valid_next_thread
+    /* next thread is NULL, which means we're going back to the scheduler. For that to
+    work, we'll need to load the kernel page dir before trying to access anything other
+    than the scheduler thread state */
+    mov ebx, offset k_proc_scheduler_thread
+    mov ecx, dword ptr [ebx + 36]
+    /* we're rolling with the kernel page dir now, so accessing the next thread and the tss 
+    pointers is safe */
+    mov cr3, ecx
+    _valid_next_thread:
+    /* save page dir of current thread */
+    mov dword ptr [eax + 36], edx
+    /* save stack top of current thread */
     mov dword ptr [eax + 32], esp
 
-    /* load esp for next thread */
-    mov eax, dword ptr [k_proc_next_thread]
-    cmp eax, 0
-    jnz _valid_next_thread
-        /* next thread pointer is null, which means we'll be switching to the
-        scheduler thread */
-        mov eax, offset k_proc_scheduler_thread
-    _valid_next_thread:
-    mov dword ptr [k_proc_current_thread], eax
-    mov esp, dword ptr [eax + 32]
-    mov ebx, dword ptr [eax + 4]
-    mov dword ptr [k_proc_current_process], ebx
-
-    /* store the start of the switch stack segment into the loaded 
-    tss. This is just useful for threads running out of ring 0 */
-    mov ebx, dword ptr [eax + 28]
+    /* current thread stuff done, now we setup next thread stuff. */
+    mov dword ptr [k_proc_current_thread], ebx
+    /* store the start of the switch stack segment into the loaded tss. This is just useful 
+    for threads running out of ring 0 */
+    mov ecx, dword ptr [ebx + 28]
     mov eax, dword ptr [k_proc_tss]
-    mov dword ptr [eax + 4], ebx
+    mov dword ptr [eax + 4], ecx
 
-    /* clear the next thread pointer once we're done with it, to make
-    sure that in the worst case scenario a call to this interrupt handler
-    takes the cpu back to the scheduler */
+    /* clear the next thread pointer once we're done with it, to make sure that in the worst 
+    case scenario a call to this interrupt handler takes the cpu back to the scheduler */
     xor eax, eax
     mov dword ptr [k_proc_next_thread], eax
+
+    /* before we can start poping stuff from the next thread stack we need to set up its 
+    page directory, since the stack is mapped only in it. */
+    mov esp, dword ptr [ebx + 32]
+    mov eax, cr3
+    cmp eax, dword ptr [ebx + 36]
+    jz _cr3_already_set
+    /* make sure we don't set cr3 twice when switching to the scheduler thread. Wiping the 
+    tlb clean once is already enough pain */
+    mov eax, dword ptr [ebx + 36]
+    mov cr3, eax
+    _cr3_already_set:
 
     /* restore sregs */
     pop eax
@@ -86,8 +97,6 @@ k_proc_PreemptCurrentThread:
     mov es, ax
     pop eax
     mov ds, ax
-    /* restore page dir */
-    pop eax
     /* restore gprs */
     pop ebp
     pop esi

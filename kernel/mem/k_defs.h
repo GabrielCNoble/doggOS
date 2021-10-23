@@ -58,11 +58,11 @@ struct k_mem_plist_t
     pages list. */
     struct k_mem_uppentry_t *used_pages;
 
-    uint32_t *free_pages;
+    uintptr_t *free_pages;
     /* number of free pages in the list */
-    uint32_t free_pages_count;
+    size_t free_pages_count;
     /* maximum number of pages in the list, ever */
-    uint32_t free_pages_max_count;
+    size_t free_pages_max_count;
 };
 
 // #define K_MEM_USED_PAGE_BITS 4
@@ -172,7 +172,7 @@ enum K_MEM_PAGING_STATUS
 /* represents a page directory/page table entry */
 struct k_mem_pentry_t
 {
-    uint32_t entry;
+    uintptr_t entry;
 };
 
 /* represents a page directory/page table. Used to facilitate modifications to page
@@ -184,9 +184,9 @@ struct k_mem_pentry_page_t
 
 struct k_mem_page_map_h
 {
-    uint32_t self_page;
-    uint32_t pdir_page;
-    uint32_t ptable_page;
+    uintptr_t self_page;
+    uintptr_t pdir_page;
+    uintptr_t ptable_page;
 };
 struct k_mem_page_map_t
 {

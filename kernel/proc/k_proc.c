@@ -40,14 +40,6 @@ struct k_cpu_seg_desc_t k_proc_gdt[] =
  
 void k_proc_Init()
 {
-    uint32_t tss_page = k_mem_AllocPage(0);
-    k_proc_gdt[5] = K_CPU_SEG_DESC(tss_page, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
-    k_mem_MapAddress(tss_page, tss_page, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
-    k_cpu_Lgdt(k_proc_gdt, 7, K_CPU_SEG_SEL(2, 0, 0));
-    k_proc_tss = (struct k_cpu_tss_t *)tss_page;
-    k_proc_tss->ss0 = K_CPU_SEG_SEL(1, 0, 0);
-    k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
-
     k_proc_current_process = &k_proc_kernel_process;
     k_proc_current_thread = &k_proc_scheduler_thread;
     k_proc_scheduler_thread.process = &k_proc_kernel_process;
@@ -57,10 +49,17 @@ void k_proc_Init()
         k_proc_scheduler_thread.heap.buckets[bucket_index].first_chunk = NULL;
         k_proc_scheduler_thread.heap.buckets[bucket_index].last_chunk = NULL;
     }
+    k_proc_scheduler_thread.page_dir = k_proc_kernel_process.page_map.pdir_page;
 
     k_proc_kernel_process.pid = K_PROC_KERNEL_PID;
     k_proc_processes = dg_StackListCreate(sizeof(struct k_proc_process_t), 512);
     k_proc_threads = dg_StackListCreate(sizeof(struct k_proc_thread_t), 512);
+
+    k_proc_tss = dg_Malloc(sizeof(struct k_cpu_tss_t), 8);
+    k_proc_tss->ss0 = K_CPU_SEG_SEL(1, 0, 0);
+    k_proc_gdt[5] = K_CPU_SEG_DESC((uint32_t)k_proc_tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
+    k_cpu_Lgdt(k_proc_gdt, 7, K_CPU_SEG_SEL(2, 0, 0));
+    k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
 }
 
 uint32_t k_proc_CreateProcess(uint32_t start_address, void *image, uint32_t size)
@@ -119,17 +118,18 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
 
     current_process->last_thread = thread;
 
-    uint8_t *stack = dg_Malloc(K_PROC_THREAD_STACK_PAGE_COUNT * 0x1000, 4);
+    uintptr_t stack = (uintptr_t)dg_Malloc(K_PROC_THREAD_STACK_PAGE_COUNT * 0x1000, 4);
     thread->stack_base = stack;
-    thread->entry_point = thread_fn;
+    thread->entry_point = (uintptr_t)thread_fn;
 
     stack += 0x1000 * K_PROC_THREAD_STACK_PAGE_COUNT;
 
-    thread->start_esp = (uint32_t *)stack;
+    thread->start_esp = (uintptr_t *)stack;
     thread->current_esp = thread->start_esp;
     thread->state = K_PROC_THREAD_STATE_READY;
+    thread->page_dir = current_process->page_map.pdir_page;
 
-    uint32_t start_ebp = (uint32_t)thread->start_esp;
+    uintptr_t start_ebp = (uintptr_t)thread->start_esp;
     uint32_t cs = K_CPU_SEG_SEL(2, 0, 0);
     uint32_t ss = K_CPU_SEG_SEL(1, 0, 0);
     uint32_t ds = K_CPU_SEG_SEL(1, 0, 0);
@@ -139,11 +139,9 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
         /* threads not in ring 0 will have a dedicated "stack" to store its context,
         while threads in ring 0 will store its context at the very end of their work stack */
 
-        uint8_t *state_block = dg_Malloc(1024, 4);
-        // k_printf("pl 3 state block at %x\n", state_block);
-        // k_cpu_Halt();
+        uintptr_t state_block = (uintptr_t)dg_Malloc(1024, 4);
         state_block += 1024;
-        thread->current_esp = (uint32_t *)state_block;
+        thread->current_esp = (uintptr_t *)state_block;
 
         cs = K_CPU_SEG_SEL(4, 3, 0);
         ss = K_CPU_SEG_SEL(3, 3, 0);
@@ -154,9 +152,9 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
         *thread->current_esp = ss;
         /* esp */
         thread->current_esp--;
-        *thread->current_esp = (uint32_t)thread->start_esp;
+        *thread->current_esp = (uintptr_t )thread->start_esp;
 
-        thread->start_esp = (uint32_t *)state_block;
+        thread->start_esp = (uintptr_t *)state_block;
     }
 
     thread->code_seg = cs;
@@ -168,7 +166,7 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
     *thread->current_esp = cs;
     /* eip */
     thread->current_esp--;
-    *thread->current_esp = (uint32_t)thread->entry_point;
+    *thread->current_esp = thread->entry_point;
     /* eax */
     thread->current_esp--;
     *thread->current_esp = 0;
@@ -190,9 +188,6 @@ uint32_t k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level)
     /* ebp */
     thread->current_esp--;
     *thread->current_esp = start_ebp;
-    /* cr3 */
-    thread->current_esp--;
-    *thread->current_esp = k_cpu_Rcr3();
     /* ds */
     thread->current_esp--;
     *thread->current_esp = ds;
@@ -251,11 +246,12 @@ void k_proc_RunScheduler()
         if(k_proc_threads.cursor)
         {
             uint32_t thread_id = (thread_index + k_rng_Rand()) % k_proc_threads.cursor;
+            // uint32_t thread_id = (thread_index + 1) % k_proc_threads.cursor; 
             thread_index = thread_id;
             struct k_proc_thread_t *thread = k_proc_GetThread(thread_id);
             if(thread->state == K_PROC_THREAD_STATE_READY)
             {
-                k_apic_StartTimer(0xff);
+                k_apic_StartTimer(0x7fff);
                 thread->state = K_PROC_THREAD_STATE_RUNNING;
                 k_proc_SwitchToThread(thread);
                 thread->state = K_PROC_THREAD_STATE_READY;

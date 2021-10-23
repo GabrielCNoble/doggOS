@@ -5,45 +5,11 @@
 #include "../cpu/k_cpu.h"
 #include "../proc/k_defs.h"
 
-
-// extern struct k_mem_range_t k_mem_low_range;
-// extern uint32_t k_mem_range_count;
 uint32_t k_mem_total = 0;
 uint32_t k_mem_reserved = 0;
-// extern struct k_mem_range_t k_mem_ranges[];
 
-// extern uint32_t k_mem_gdt_desc_count;
-// extern struct k_mem_seg_desc_t k_mem_gdt[]; 
-
-// extern struct k_mem_pentry_t k_mem_pdirs[];
-// struct k_mem_pstate_h k_mem_pstate;
-
-// extern uint32_t k_kernel_start;
-// extern uint32_t k_kernel_end;
-
-// uint32_t k_mem_first_used_page_entry_index;
-// uint32_t k_mem_last_used_page_entry_index;
-// /* used pages list. The page address is used as an index into this list, which means each entry 
-// refers to the same page. For entries of pages that are not in use, it refers to the entry in the 
-// available pages list that specific page is located. For example, if the entry for the first page 
-// contains an index of 4, that means the first page is located in the fifth entry of the available
-// pages list. */
-// struct k_mem_uppentry_t *k_mem_used_pages;
-
-// /* available pages list. Each entry contains the physical address of the page. This list is likely
-// not sorted most of the time. */
-// uint32_t *k_mem_free_pages;
-// /* number of free pages in the list */
-// uint32_t k_mem_free_pages_count;
-// /* maximum number of pages in the list, ever */
-// uint32_t k_mem_free_pages_max_count;
-
-// struct k_mem_state_t k_mem_state;
 struct k_mem_plist_t k_mem_physical_pages;
-// struct k_mem_page_map_h k_mem_page_map_handle;
 extern struct k_proc_process_t k_proc_kernel_process;
-uint32_t k_mem_range_count;
-struct k_mem_range_t *k_mem_ranges;
 
 void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 {
@@ -82,19 +48,6 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     }
 
     uint32_t free_page_header_bytes = free_page_headers * 4096;
-
-
-
-    // uint32_t bits_per_page = 4096 * 8;
-    // covered_bytes_block_size = 4096 * (bits_per_page / K_MEM_USED_PAGE_BITS) + 4096;
-    // /* to simplify mapping page addresses to its proper byte/bit, we'll allocate
-    // enough bytes to cover the whole 4GB address space */
-    // uint32_t used_page_pages = 0xffffffff / covered_bytes_block_size;
-    // if(0xffffffff % covered_bytes_block_size)
-    // {
-    //     used_page_pages++;
-    // }
-    // uint32_t used_page_bytes = used_page_pages * 4096;
     uint32_t used_page_entry_count = 0xffffffff / K_MEM_4KB_ADDRESS_OFFSET;
     uint32_t used_page_bytes = sizeof(struct k_mem_uppentry_t) * used_page_entry_count;
     
@@ -200,8 +153,6 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     k_mem_physical_pages.free_pages_max_count = k_mem_physical_pages.free_pages_count;
 
-    // k_printf("first page: %x - last page: %x\n", k_mem_free_pages[0], k_mem_free_pages[k_mem_free_pages_count - 1]);
-
     /* to simplify things further down the road we set up a really simple page state here. 
     All but the last page dir entry will map 4MB pages. The last entry will contain a page
     table, which will map the pages containing this page dir and this page table. This 'kinda'
@@ -249,7 +200,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     struct k_mem_page_map_t page_map;
     k_mem_MapPageMapToAddress(&k_proc_kernel_process.page_map, K_MEM_ACTIVE_PAGE_MAP_INIT_PAGE_MAP_BLOCK_ADDRESS, &page_map);
 
-    address = 0x1000;
+    address = 0;
 
     while(address <= data_end)
     {
@@ -258,20 +209,6 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     }
     k_mem_LoadPageMap(&k_proc_kernel_process.page_map); 
 
-    // data_end = (data_end + 4093) & (~4093);
-    // struct k_mem_bchunk_t *chunk = (struct k_mem_bchunk_t *)data_end;
-    // uint32_t chunk_page = k_mem_AllocPage(0);
-    // k_mem_MapAddress(&K_MEM_ACTIVE_MAPPED_PSTATE, chunk_page, (uint32_t)chunk, K_MEM_PENTRY_FLAG_READ_WRITE);
-
-    // chunk->next = NULL;
-    // chunk->prev = NULL;
-    /* last usable virtual address before the stuff reserved for the kernel */
-    // chunk->size = ((K_MEM_4MB_ADDRESS_OFFSET * K_MEM_PSTATE_LAST_USABLE_PDIR_INDEX) | 0x003ff000) - data_end;
-    // k_mem_state.vheap.first_free_chunk = chunk;
-    // k_mem_state.vheap.last_free_chunk = chunk;
-
-    k_mem_ranges = ranges;
-    k_mem_range_count = range_count;
     /* from now on, all the pstate creation and manipulation is available. Also, we purposefully won't unmap
     the kernel pstate here, because we used a fixed address */
 

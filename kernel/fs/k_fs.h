@@ -20,11 +20,15 @@ struct k_fs_fsys_t *k_fs_GetFileSystem(char *name);
 =========================================================================================
 */
 
-struct k_fs_vol_t *k_fs_MountVolume(struct k_dsk_disk_t *disk);
+void k_fs_EnumerateDiskPartitions(struct k_dsk_disk_t *disk);
+
+struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition);
 
 void k_fs_UnmountVolume(struct k_fs_vol_t *volume);
 
 void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys);
+
+void k_fs_FormatDisk(struct k_dsk_disk_t *disk, uint32_t part_table_type);
 
 /*
 =========================================================================================

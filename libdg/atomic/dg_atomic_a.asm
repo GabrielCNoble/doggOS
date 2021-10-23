@@ -6,12 +6,9 @@
 dg_Xcgh32:
     mov ebx, dword ptr [esp + 4]        /* location */
     mov ecx, dword ptr [esp + 8]        /* new value */
-    mov eax, dword ptr [ebx]
-    lock cmpxchg dword ptr [ebx], ecx
-    mov ebx, dword ptr [esp + 12]   /* old value */
-    mov dword ptr [ebx], eax
-    setz al
-    movzx eax, al
+    xchg dword ptr [ebx], ecx
+    mov ebx, dword ptr [esp + 12]       /* old value */
+    mov dword ptr [ebx], ecx
     ret
 
 .global dg_CmpXcgh32

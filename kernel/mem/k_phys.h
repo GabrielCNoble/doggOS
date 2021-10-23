@@ -5,12 +5,12 @@
 
 void k_mem_SortFreePages();
 
-uint32_t k_mem_AllocPage(uint32_t flags);
+uintptr_t k_mem_AllocPage(uint32_t flags);
 
-uint32_t k_mem_AllocPages(uint32_t page_count, uint32_t flags);
+uintptr_t k_mem_AllocPages(size_t page_count, uint32_t flags);
 
-uint32_t k_mem_IsValidPage(uint32_t page_address);
+uintptr_t k_mem_IsValidPage(uintptr_t page_address);
 
-void k_mem_FreePages(uint32_t page_address);
+void k_mem_FreePages(uintptr_t page_address);
 
 #endif

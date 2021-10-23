@@ -1,43 +1,39 @@
 #include "k_fs.h"
 #include "../mem/k_mem.h"
+#include "../../libdg/container/dg_slist.h"
+#include "../../libdg/string/dg_string.h"
 
 // struct k_fs_rfsys_t *k_fs_rfsys;
 
+struct dg_slist_t k_fs_file_systems;
+struct dg_slist_t k_fs_volumes;
+struct dg_slist_t k_fs_partitions;
+
 void k_fs_Init()
 {
-    // k_fs_rfsys = NULL;
+    k_fs_file_systems = dg_StackListCreate(sizeof(struct k_fs_fsys_t), 8);
+    k_fs_volumes = dg_StackListCreate(sizeof(struct k_fs_vol_t), 16);
+    k_fs_partitions = dg_StackListCreate(sizeof(struct k_fs_part_t), 16);
 }
 
-struct k_fs_fsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *fsys)
+struct k_fs_fsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *file_system)
 {
-    // struct k_fs_rfsys_t *rfsys = k_fs_GetFileSystem(name);
-    
-    // if(!rfsys)
-    // {
-    //     rfsys = k_mem_Malloc(sizeof(struct k_fs_rfsys_t), 0);
-    //     rfsys->fsys = *fsys;
-    //     uint32_t index;
+    struct k_fs_fsys_t *new_file_system = NULL;
 
-    //     for(index = 0; index < sizeof(rfsys->name) - 1 || (!name[index]); index++)
-    //     {
-    //         /* file system names are all lowercase. This is to make sure two different file systems
-    //         will have two obviously different names */
-    //         rfsys->name[index] = name[index] | 0x20;
-    //     }
-    //     rfsys->name[index] = '\0';
-    //     rfsys->next = k_fs_rfsys;
+    if(file_system)
+    {
+        new_file_system = k_fs_GetFileSystem(file_system->name);
 
-    //     if(k_fs_rfsys)
-    //     {
-    //         k_fs_rfsys->prev = rfsys;
-    //     }
+        if(!new_file_system)
+        {
+            uint32_t index = dg_StackListAllocElement(&k_fs_file_systems);
+            new_file_system = dg_StackListGetElement(&k_fs_file_systems, index);
+            ds_CopyBytes(new_file_system, file_system, sizeof(struct k_fs_fsys_t));
+            new_file_system->index = index;
+        }
+    }
 
-    //     k_fs_rfsys = rfsys;
-    // }
-
-    // return rfsys;
-    (void)fsys;
-    return NULL;
+    return new_file_system;
 }
 
 void k_fs_UnregisterFileSystem(char *name)
@@ -48,8 +44,22 @@ void k_fs_UnregisterFileSystem(char *name)
 
 struct k_fs_fsys_t *k_fs_GetFileSystem(char *name)
 {
-    (void)name;
-    return NULL;
+    struct k_fs_fsys_t *file_system = NULL;
+
+    for(uint32_t index = 0; index < k_fs_file_systems.cursor; index++)
+    {
+        file_system = dg_StackListGetElement(&k_fs_file_systems, index);
+
+        if(file_system && file_system->index == DG_INVALID_INDEX)
+        {
+            file_system = NULL;
+            continue;
+        }
+
+        break;
+    }
+
+    return file_system;
 }
 
 /*
@@ -58,9 +68,9 @@ struct k_fs_fsys_t *k_fs_GetFileSystem(char *name)
 =========================================================================================
 */
 
-struct k_fs_vol_t *k_fs_MountVolume(struct k_dsk_disk_t *disk)
+struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
 {
-    (void)disk;
+    (void)partition;
     return NULL;
 }
 

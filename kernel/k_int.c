@@ -142,10 +142,10 @@ char *k_int_pf_messages[] =
 
 void k_int_Init()
 {
-    for(uint32_t exception = K_INT_HANDLER_DE; exception < K_INT_HANDLER_LAST; exception++)
-    {
-        k_int_idt[exception] = K_INT_DESCRIPTOR(&k_intn_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT); 
-    }
+    // for(uint32_t exception = K_INT_HANDLER_DE; exception < K_INT_HANDLER_LAST; exception++)
+    // {
+    //     k_int_idt[exception] = K_INT_DESCRIPTOR(&k_intn_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT); 
+    // }
 
     k_int_idt[K_INT_HANDLER_DE] = K_INT_DESCRIPTOR(&k_int0_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     k_int_idt[K_INT_HANDLER_NMI] = K_INT_DESCRIPTOR(&k_int2_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);

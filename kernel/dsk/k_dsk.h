@@ -6,8 +6,6 @@
 
 void k_dsk_Init(uint32_t boot_drive);
 
-// struct k_dsk_disk_t *k_dsk_CreateDisk(uint32_t type);
-
 uint32_t k_dsk_Read(struct k_dsk_disk_t *disk, uint32_t start, uint32_t count, void *data);
 
 uint32_t k_dsk_Write(struct k_dsk_disk_t *disk, uint32_t start, uint32_t count, void *data);

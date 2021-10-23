@@ -1,61 +1,10 @@
 .intel_syntax noprefix
 .code16
 
-.section .text 
-.global _start 
-
-_start:
-    jmp stage0_start
-
-stage0_start:
-    
-    cli
-    cld
-
-    /* store the drive we're coming from */
-    mov dword ptr[origin_drive], edx
-    mov ah, 0x42
-    mov si, offset read_packet
-    int 0x13
-    jmp stage1_start
-
-.balign 4
-
-.balign 8
-gdt_start:
-null_segment: .short 0, 0, 0, 0
-data_segment0: .short 0xffff, 0x0000, 0x8000|0x1000|0x0200, 0x00c0|0x000f
-code_segment0: .short 0xffff, 0x0000, 0x8000|0x1000|0x0a00, 0x00c0|0x000f
-
-data_segment3: .short 0xffff, 0x0000, 0x8000|0x7000|0x0200, 0x00c0|0x000f
-code_segment3: .short 0xffff, 0x0000, 0x8000|0x7000|0x0a00, 0x00c0|0x000f
-gdt_end:
-
-.balign 4
-gdt_ptr:
-gdt_size: .short 0
-gdt_offset: .int 0
-
-.global origin_drive
-origin_drive: .int 0
-
-.global read_packet
-read_packet:
-size:       .byte 0x10
-res:        .byte 0x0
-count:      .short 0x0002
-offset:     .short stage1_start
-segment:    .short 0x0000
-lba:        .quad 0x00000001
-
-/* pad until the last two bytes in this 512 bytes block. Those bytes are the boot sector signature bytes */
-.fill 0x1fe - (. - _start)
-.short 0xaa55
-
-stage1_start:
-    jmp stage2_start
+.section .text
 
 stage2_start:
+    mov dword ptr [origin_drive], edx
     /* query the memory map of the machine */
     mov ax, ds
     mov es, ax
@@ -89,16 +38,6 @@ stage2_start:
         /* low memory, so ignore */
         jz _mem_map_loop_start
         /* is low memory, so to simplify things in the kernel code we'll put it in a separate variable */
-    /*    mov esi, 0 */
-    /* _copy_low_range: */
-        /* we'll be moving 3 qwords here... */
-        /* mov ecx, dword ptr es:[edi + esi * 4] */
-        /* mov dword ptr [k_mem_low_range + esi * 4], ecx */
-        /* cmp esi, 5 */
-        /* jz _mem_map_loop_start */
-        /* inc esi */
-        /* jmp _copy_low_range */   
-        
 
     _append_range:
         add di, 24
@@ -124,12 +63,11 @@ _exact_div:
     /* number of sectors */
     mov word ptr [si + 2], ax
     /* offset */
-    mov ax, offset k_kernel_start
+    mov ax, 0x7c00
     mov word ptr [si + 4], ax
     /* segment */
     mov ax, 0
     mov word ptr [si + 6], ax
-    /* we'll start reading from the fifth sector */
     mov eax, offset k_kernel_sector
     mov dword ptr [si + 8], eax
     /* restore the drive info */
@@ -176,7 +114,7 @@ _exact_div:
     mov eax, offset init_data
     mov dword ptr [esp], eax
     /* finally, start initializing kernel stuff */
-    call k_Init
+    jmp 0x7c00
     hlt
 
 .balign 4
@@ -186,9 +124,36 @@ range_count:        .int 0
 boot_drive:         .int 0
 
 .balign 8
+gdt_start:
+null_segment: .short 0, 0, 0, 0
+data_segment0: .short 0xffff, 0x0000, 0x8000|0x1000|0x0200, 0x00c0|0x000f
+code_segment0: .short 0xffff, 0x0000, 0x8000|0x1000|0x0a00, 0x00c0|0x000f
+
+data_segment3: .short 0xffff, 0x0000, 0x8000|0x7000|0x0200, 0x00c0|0x000f
+code_segment3: .short 0xffff, 0x0000, 0x8000|0x7000|0x0a00, 0x00c0|0x000f
+gdt_end:
+
+.balign 4
+gdt_ptr:
+gdt_size: .short 0
+gdt_offset: .int 0
+
+.global origin_drive
+origin_drive: .int 0
+
+read_packet:
+size:       .byte 0x10
+res:        .byte 0x0
+count:      .short 0x0002
+offset:     .short 0x0500
+segment:    .short 0x0000
+lba:        .quad 0x00000001
+
+.balign 8
 mem_ranges:
 .rept 32
 .quad 0 /* range base address */
 .quad 0 /* range length */
 .quad 0 /* range type */
 .endr
+

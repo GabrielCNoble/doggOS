@@ -5,6 +5,7 @@
 #include "../mem/k_mem.h"
 #include "../cpu/k_cpu.h"
 #include "../../libdg/container/dg_defs.h"
+#include "../dsk/k_defs.h"
 
 enum K_PROC_ELF_TYPES
 {
@@ -136,12 +137,13 @@ struct k_proc_thread_t
     uint32_t tid;
     uint32_t state;
 
-    void *stack_base;
-    void *entry_point;
+    uintptr_t stack_base;
+    uintptr_t entry_point;
     uint32_t code_seg;
 
-    uint32_t *start_esp;
-    uint32_t *current_esp;
+    uintptr_t *start_esp;
+    uintptr_t *current_esp;
+    uintptr_t page_dir;
 
     struct k_proc_thread_t *queue_link;
     struct k_mem_sheap_t heap;
@@ -160,6 +162,7 @@ struct k_proc_process_t
     struct k_proc_thread_t *last_thread;
     struct k_mem_page_map_h page_map;    
     struct k_mem_bheap_t heap;
+
     uint32_t pid;
 };
 

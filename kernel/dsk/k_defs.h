@@ -4,6 +4,26 @@
 #include <stdint.h> 
 #include <stddef.h>
 
+#include "../proc/k_defs.h"
+
+// struct k_dsk_cmd_page_header_t
+// {
+//     struct k_dsk_cmd_page_t *next;
+// };
+
+// #define K_DSK_CMD_PAGE_CMD_COUNT ((4096 - sizeof(struct k_dsk_cmd_page_header_t)) / sizeof(struct k_dsk_cmd_t))
+// struct k_dsk_cmd_page_t
+// {
+//     struct k_dsk_cmd_page_header_t header;
+//     struct k_dsk_cmd_t cmds[K_DSK_CMD_PAGE_CMD_COUNT];
+// };
+
+// struct k_dsk_cmd_queue_t
+// {
+//     struct k_dsk_cmd_page_t *first;
+//     struct k_dsk_cmd_page_t *last;
+// };
+
 enum K_DSK_CMD_TYPES
 {
     K_DSK_CMD_TYPE_READ_START = 0,
@@ -16,23 +36,26 @@ enum K_DSK_CMD_TYPES
 
 struct k_dsk_cmd_t
 {
-    uint32_t type : 6;
-    uint32_t cmd_id : 26;
+    uint64_t address : 58;
+    uint64_t type : 6;
     uint32_t size;
-    uint64_t address;
     void *buffer;
 };
 
-struct k_dsk_queue_t
+struct k_dsk_cmd_page_t
 {
 
 };
-
-struct k_dsk_part_t
+struct k_dsk_cmd_buffer_t
 {
-    char name[24];
-    uint32_t start;
-    uint32_t size;
+    uint32_t cmd_count;
+    struct k_dsk_cmd_t *cmds;
+};
+
+struct k_dsk_transaction_t
+{
+    uint32_t transaction_id;
+
 };
 
 enum K_DSK_TYPES
@@ -46,18 +69,11 @@ enum K_DSK_TYPES
 
 struct k_dsk_disk_t
 {
-    struct k_dsk_disk_t *next;
-    struct k_dsk_disk_t *prev;
-
     uint32_t type;
     uint32_t start_address;
     uint32_t block_size;
     uint32_t block_count;
-    uint32_t queue_id;
-
-    struct k_dsk_part_t *partitions;
-    struct k_dsk_part_t *primary_partition;
-    uint32_t partition_count;
+    // struct k_dsk_cmd_queue_t queue;
 };
 
 

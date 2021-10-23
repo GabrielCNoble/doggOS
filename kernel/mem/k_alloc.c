@@ -6,7 +6,7 @@
 
 uint16_t k_mem_small_bucket_sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
 
-uint32_t k_mem_BigChunkIndexFromSize(uint32_t size)
+uint32_t k_mem_BigBucketIndexFromSize(size_t size)
 {
     if(size == 1)
     {
@@ -23,24 +23,25 @@ uint32_t k_mem_BigChunkIndexFromSize(uint32_t size)
     return size;
 }
 
-void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, uint32_t size)
+void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, size_t size)
 {
+    (void)heap;
     void *memory = NULL;
 
     if(size)
     {
-        uint32_t page_count = size >> K_MEM_4KB_ADDRESS_SHIFT;
+        size_t page_count = size >> K_MEM_4KB_ADDRESS_SHIFT;
 
         if(!page_count)
         {
             page_count++;
         }
 
-        uint32_t memory_pages = k_mem_AllocPages(page_count, 0);
+        uintptr_t memory_pages = k_mem_AllocPages(page_count, 0);
 
-        for(uint32_t page_index = 0; page_index < page_count; page_index++)
+        for(size_t page_index = 0; page_index < page_count; page_index++)
         {
-            uint32_t page_address = memory_pages + page_index * K_MEM_4KB_ADDRESS_OFFSET;
+            uintptr_t page_address = memory_pages + page_index * K_MEM_4KB_ADDRESS_OFFSET;
             k_mem_MapAddress(page_address, page_address, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
         }
 
@@ -50,7 +51,7 @@ void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, uint32_t size)
     return memory;
 }
 
-void k_mem_BigReallocFree(struct k_mem_bheap_t *heap, void *memory, uint32_t size)
+void k_mem_BigReallocFree(struct k_mem_bheap_t *heap, void *memory, size_t size)
 {
     (void)heap;
     (void)memory;
@@ -63,14 +64,14 @@ void k_mem_BigFree(struct k_mem_bheap_t *heap, void *memory)
 
     if(memory)
     {
-        uint32_t page_address = (uint32_t)memory;
+        uintptr_t page_address = (uintptr_t)memory;
         k_mem_FreePages(page_address);
     }
 }
 
-uint32_t k_mem_SmallBucketIndexFromSize(uint32_t size)
+uint32_t k_mem_SmallBucketIndexFromSize(size_t size)
 {
-    for(uint32_t bucket_index = 0; bucket_index < K_MEM_SMALL_BUCKET_COUNT; bucket_index++)
+    for(size_t bucket_index = 0; bucket_index < K_MEM_SMALL_BUCKET_COUNT; bucket_index++)
     {
         if(size <= k_mem_small_bucket_sizes[bucket_index])
         {
@@ -81,17 +82,12 @@ uint32_t k_mem_SmallBucketIndexFromSize(uint32_t size)
     return 0xffffffff;
 }
 
-// void k_mem_InitChunkPageToBucket(uint32_t bucket_index)
-// {
-//     (void)bucket_index;
-// }
-
 void k_mem_InitChunkPage(struct k_mem_sheap_t *heap, uint32_t bucket_index)
 {
-    uint32_t chunk_size = k_mem_small_bucket_sizes[bucket_index];
-    uint32_t slots_per_chunk = chunk_size / k_mem_small_bucket_sizes[0];
-    uint32_t cur_offset = K_MEM_SCPAGE_CHUNK_COUNT;
-    uint32_t chunk_count = K_MEM_SCPAGE_CHUNK_BYTES / chunk_size;
+    size_t chunk_size = k_mem_small_bucket_sizes[bucket_index];
+    size_t slots_per_chunk = chunk_size / k_mem_small_bucket_sizes[0];
+    size_t cur_offset = K_MEM_SCPAGE_CHUNK_COUNT;
+    size_t chunk_count = K_MEM_SCPAGE_CHUNK_BYTES / chunk_size;
 
     struct k_mem_sbucket_t *bucket = heap->buckets + bucket_index;
     struct k_mem_scpage_t *chunk_page = k_mem_BigAlloc(heap->big_heap, 4096);
@@ -100,7 +96,7 @@ void k_mem_InitChunkPage(struct k_mem_sheap_t *heap, uint32_t bucket_index)
     struct k_mem_schunk_t *last_chunk = NULL;
     struct k_mem_schunk_t *next_chunk = NULL;
 
-    for(uint32_t chunk_index = 0; chunk_index < chunk_count; chunk_index++)
+    for(size_t chunk_index = 0; chunk_index < chunk_count; chunk_index++)
     {
         cur_offset -= slots_per_chunk;
         struct k_mem_schunk_t *chunk = chunk_page->chunks + cur_offset;   
@@ -154,7 +150,7 @@ void k_mem_InitChunkPage(struct k_mem_sheap_t *heap, uint32_t bucket_index)
     }
 }
 
-void *k_mem_SmallAlloc(struct k_mem_sheap_t *heap, uint32_t size)
+void *k_mem_SmallAlloc(struct k_mem_sheap_t *heap, size_t size)
 {
     void *memory = NULL;
     uint32_t bucket_index = k_mem_SmallBucketIndexFromSize(size);
@@ -186,7 +182,7 @@ void *k_mem_SmallAlloc(struct k_mem_sheap_t *heap, uint32_t size)
     return memory;
 }
 
-void *k_mem_SmallRealloc(struct k_mem_sheap_t *heap, void *memory, uint32_t size)
+void *k_mem_SmallRealloc(struct k_mem_sheap_t *heap, void *memory, size_t size)
 {
     (void)heap;
     (void)memory;
@@ -225,7 +221,7 @@ void k_mem_SmallFree(struct k_mem_sheap_t *heap, void *memory)
     }
 }
 
-void *k_mem_Malloc(struct k_mem_sheap_t *heap, uint32_t size, uint32_t align)
+void *k_mem_Malloc(struct k_mem_sheap_t *heap, size_t size, size_t align)
 {
     (void)align;
 
