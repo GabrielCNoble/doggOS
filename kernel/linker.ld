@@ -2,9 +2,9 @@ ENTRY(_start)
 
 SECTIONS
 {
-    .bootinfo 0x7c00 : AT (0x000)
+    .bootinfo 0x7c00 : AT (0x800)
     {
-        kernel/k_bootinfo.o
+        ./k_bootinfo.o
     }
 
     . = ALIGN(0x200);
@@ -12,9 +12,8 @@ SECTIONS
     .kernel 0x7c00 : AT (k_kernel_sector * 0x200) 
     {
         k_kernel_start = .;
-        kernel/init/k_init_a.o
-        kernel/*
-        libdg/*
+        ./init/k_init_a.o
+        ./*
         k_kernel_end = .;
     }
 

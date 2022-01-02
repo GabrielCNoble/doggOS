@@ -2,3 +2,4 @@ ata0-master: type=disk, path="doggOS.img", mode=flat
 boot: disk
 display_library: x, options="gui_debug"
 memory: guest=512, host=512
+cpu: reset_on_triple_fault=0

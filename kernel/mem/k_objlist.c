@@ -1,6 +1,6 @@
 #include "k_objlist.h"
 #include "k_alloc.h"
-#include "../../libdg/string/dg_string.h"
+#include "../util/k_utl.h"
 
 struct k_mem_objlist_t k_mem_CreateObjList(uint32_t elem_size, uint32_t buffer_size, struct k_mem_sheap_t *heap, uint32_t preserve_free)
 {
@@ -118,7 +118,6 @@ void k_mem_FreeObjListElement(struct k_mem_objlist_t *list, uint32_t index)
 void *k_mem_GetObjListElement(struct k_mem_objlist_t *list, uint32_t index)
 {
     void *element = NULL;
-    k_printf("element %d\n", index);
     if(list && list->buffers && index < list->cursor)
     {
         void *buffer = list->buffers[index / list->buffer_size];
@@ -137,7 +136,7 @@ void k_mem_AddObjListBuffer(struct k_mem_objlist_t *list, uint32_t buffer_count)
 
         if(list->buffers)
         {
-            ds_CopyBytes(buffer_list, list->buffers, sizeof(void *) * list->buffer_count);
+            k_util_CopyBytes(buffer_list, list->buffers, sizeof(void *) * list->buffer_count);
             k_mem_Free(list->heap, list->buffers);
         }
 

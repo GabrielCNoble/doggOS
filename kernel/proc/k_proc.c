@@ -6,7 +6,7 @@
 #include "../k_rng.h"
 #include "../mem/k_mem.h"
 #include "../mem/k_objlist.h"
-#include "../../libdg/atomic/dg_atomic.h"
+#include "../atm/k_atm.h"
 #include "../../libdg/container/dg_slist.h"
 #include "../../libdg/malloc/dg_malloc.h"
 
@@ -36,7 +36,7 @@ struct k_proc_thread_t *k_proc_ready_queue_last = NULL;
 
 struct k_proc_thread_t *k_proc_suspended_queue = NULL;
 
-dg_spnl_t k_proc_spinlock = 0;
+k_atm_spnl_t k_proc_spinlock = 0;
 
 #define K_PROC_THREAD_STACK_PAGE_COUNT 4
 
@@ -180,6 +180,7 @@ struct k_proc_thread_t *k_proc_CreateThread(void (*thread_fn)(), uint32_t privil
 
     uint32_t thread_id = k_mem_AllocObjListElement(&k_proc_threads);
     struct k_proc_thread_t *thread = k_mem_GetObjListElement(&k_proc_threads, thread_id);
+    struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
     struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
 
     // k_printf("%x\n", thread);
@@ -215,7 +216,7 @@ struct k_proc_thread_t *k_proc_CreateThread(void (*thread_fn)(), uint32_t privil
     current_process->last_thread = thread;
 
     // uintptr_t stack = (uintptr_t)dg_Malloc(K_PROC_THREAD_STACK_PAGE_COUNT * 0x1000, 4);
-    uintptr_t stack = (uintptr_t)k_mem_BigAlloc(&k_proc_kernel_process.heap, K_PROC_THREAD_STACK_PAGE_COUNT * 0x1000, 4);
+    uintptr_t stack = (uintptr_t)k_mem_Malloc(&current_thread->heap, K_PROC_THREAD_STACK_PAGE_COUNT * 0x1000, 4);
     thread->stack_base = stack;
     thread->entry_point = (uintptr_t)thread_fn;
 
@@ -235,8 +236,7 @@ struct k_proc_thread_t *k_proc_CreateThread(void (*thread_fn)(), uint32_t privil
     {
         /* threads not in ring 0 will have a dedicated "stack" to store its context,
         while threads in ring 0 will store its context at the very end of their work stack */
-
-        uintptr_t state_block = (uintptr_t)dg_Malloc(1024, 4);
+        uintptr_t state_block = (uintptr_t)k_mem_Malloc(&k_proc_scheduler_thread.heap, 1024, 4);
         state_block += 1024;
         thread->current_esp = (uintptr_t *)state_block;
 
@@ -406,10 +406,10 @@ void func1()
 
     while(1)
     {
-        if(dg_TrySpinLock(&k_proc_spinlock))
+        if(k_atm_TrySpinLock(&k_proc_spinlock))
         {
             k_printf("\rhello from thread %d -- new: %x, old: %x      \n", current_thread->tid, value, old);
-            old = dg_Inc32Wrap(&value);
+            old = k_atm_Inc32Wrap(&value);
 
             // if(old >= 0x3fff && old <= 0xffff0000)
             // {
@@ -429,7 +429,7 @@ void func1()
             // }
             // k_atm_Dec32Clamp(&value, 0xffff, &old);
             // value ^= 0x03030303;
-            dg_SpinUnlock(&k_proc_spinlock);
+            k_atm_SpinUnlock(&k_proc_spinlock);
         }
         else
         {
@@ -446,11 +446,11 @@ void func2()
 
     while(1) 
     {
-        if(dg_TrySpinLock(&k_proc_spinlock))
+        if(k_atm_TrySpinLock(&k_proc_spinlock))
         {
             k_printf("\rhello from thread %d: %x         \n", current_thread->tid, value);
             value++;
-            dg_SpinUnlock(&k_proc_spinlock);
+            k_atm_SpinUnlock(&k_proc_spinlock);
         }
         else
         {
@@ -465,10 +465,10 @@ void func3()
 
     while(1) 
     {
-        if(dg_TrySpinLock(&k_proc_spinlock))
+        if(k_atm_TrySpinLock(&k_proc_spinlock))
         {
             k_printf("\rhello from thread %d: blah        \n", current_thread->tid);
-            dg_SpinUnlock(&k_proc_spinlock);
+            k_atm_SpinUnlock(&k_proc_spinlock);
         }
         else
         {
@@ -486,11 +486,11 @@ void func4()
 
     while(1)
     {
-        if(dg_TrySpinLock(&k_proc_spinlock))
+        if(k_atm_TrySpinLock(&k_proc_spinlock))
         {
             k_printf("\rhello from thread %d: %x        \n", current_thread->tid, value);
             value = k_rng_Rand();
-            dg_SpinUnlock(&k_proc_spinlock);
+            k_atm_SpinUnlock(&k_proc_spinlock);
         }
         else
         {

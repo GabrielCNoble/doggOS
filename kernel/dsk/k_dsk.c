@@ -5,11 +5,12 @@
 
 // struct k_dsk_disk_t *k_dsk_disks = NULL;
 
-struct dg_slist_t k_dsk_disks;
+// struct dg_slist_t k_dsk_disks;
 
 void k_dsk_Init(uint32_t boot_drive)
 {
-    k_dsk_disks = dg_StackListCreate(sizeof(struct k_dsk_disk_t), 32);
+    // k_dsk_disks = dg_StackListCreate(sizeof(struct k_dsk_disk_t), 32);
+    (void)boot_drive;
 }
 
 // struct k_dsk_disk_t *k_dsk_CreateDisk(struct k_dsk_conn_t *connection)

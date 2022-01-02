@@ -3,4 +3,10 @@
 *.o
 *.ini
 *.txt
+*.elf
+*.md
 .vscode
+bochsrc
+libc
+test
+crt

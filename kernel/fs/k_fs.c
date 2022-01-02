@@ -5,33 +5,34 @@
 
 // struct k_fs_rfsys_t *k_fs_rfsys;
 
-struct dg_slist_t k_fs_file_systems;
-struct dg_slist_t k_fs_volumes;
-struct dg_slist_t k_fs_partitions;
+// struct dg_slist_t k_fs_file_systems;
+// struct dg_slist_t k_fs_volumes;
+// struct dg_slist_t k_fs_partitions;
 
 void k_fs_Init()
 {
-    k_fs_file_systems = dg_StackListCreate(sizeof(struct k_fs_fsys_t), 8);
-    k_fs_volumes = dg_StackListCreate(sizeof(struct k_fs_vol_t), 16);
-    k_fs_partitions = dg_StackListCreate(sizeof(struct k_fs_part_t), 16);
+    // k_fs_file_systems = dg_StackListCreate(sizeof(struct k_fs_fsys_t), 8);
+    // k_fs_volumes = dg_StackListCreate(sizeof(struct k_fs_vol_t), 16);
+    // k_fs_partitions = dg_StackListCreate(sizeof(struct k_fs_part_t), 16);
 }
 
 struct k_fs_fsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *file_system)
 {
+    (void)file_system;
     struct k_fs_fsys_t *new_file_system = NULL;
 
-    if(file_system)
-    {
-        new_file_system = k_fs_GetFileSystem(file_system->name);
+    // if(file_system)
+    // {
+    //     new_file_system = k_fs_GetFileSystem(file_system->name);
 
-        if(!new_file_system)
-        {
-            uint32_t index = dg_StackListAllocElement(&k_fs_file_systems);
-            new_file_system = dg_StackListGetElement(&k_fs_file_systems, index);
-            ds_CopyBytes(new_file_system, file_system, sizeof(struct k_fs_fsys_t));
-            new_file_system->index = index;
-        }
-    }
+    //     if(!new_file_system)
+    //     {
+    //         uint32_t index = dg_StackListAllocElement(&k_fs_file_systems);
+    //         new_file_system = dg_StackListGetElement(&k_fs_file_systems, index);
+    //         ds_CopyBytes(new_file_system, file_system, sizeof(struct k_fs_fsys_t));
+    //         new_file_system->index = index;
+    //     }
+    // }
 
     return new_file_system;
 }
@@ -44,20 +45,21 @@ void k_fs_UnregisterFileSystem(char *name)
 
 struct k_fs_fsys_t *k_fs_GetFileSystem(char *name)
 {
+    (void)name;
     struct k_fs_fsys_t *file_system = NULL;
 
-    for(uint32_t index = 0; index < k_fs_file_systems.cursor; index++)
-    {
-        file_system = dg_StackListGetElement(&k_fs_file_systems, index);
+    // for(uint32_t index = 0; index < k_fs_file_systems.cursor; index++)
+    // {
+    //     file_system = dg_StackListGetElement(&k_fs_file_systems, index);
 
-        if(file_system && file_system->index == DG_INVALID_INDEX)
-        {
-            file_system = NULL;
-            continue;
-        }
+    //     if(file_system && file_system->index == DG_INVALID_INDEX)
+    //     {
+    //         file_system = NULL;
+    //         continue;
+    //     }
 
-        break;
-    }
+    //     break;
+    // }
 
     return file_system;
 }
