@@ -46,10 +46,32 @@ stage2_start:
 
         _mem_map_loop_end:
 
+    /* read the boot info */
+    mov si, offset read_packet
+    mov edx, dword ptr [origin_drive]
+    /* 1 sector */
+    mov ax, 1
+    mov word ptr [si + 2], ax
+    /* we'll use the same load address of the kernel to store the boot info */
+    mov ax, 0x7c00
+    mov word ptr [si + 4], ax
+    mov ax, 0
+    mov word ptr [si + 6], ax
+    /* boot info is in sector 8 */
+    mov eax, 4
+    mov dword ptr [si + 8], eax
+    mov ax, 0x4200
+    int 0x13
+
+
     xor dx, dx
     mov si, offset read_packet
-    mov ax, offset k_kernel_end
-    sub ax, offset k_kernel_start
+
+
+    /* mov ax, offset k_kernel_end
+    sub ax, offset k_kernel_start */
+    mov ecx, 0x7c00
+    mov eax, dword ptr [ecx + 4]
     mov bx, 0x200
     /* how many sectors the kernel currently takes */
     div bx
@@ -68,7 +90,8 @@ _exact_div:
     /* segment */
     mov ax, 0
     mov word ptr [si + 6], ax
-    mov eax, offset k_kernel_sector
+    /* mov eax, offset k_kernel_sector */
+    mov eax, dword ptr [ecx]
     mov dword ptr [si + 8], eax
     /* restore the drive info */
     mov edx, dword ptr[origin_drive]

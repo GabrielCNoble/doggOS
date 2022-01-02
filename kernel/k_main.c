@@ -35,9 +35,9 @@ void k_main()
 
     // k_cpu_Halt();
 
-    k_proc_CreateThread(func1, 3);
-    k_proc_CreateThread(func2, 0);
-    k_proc_CreateThread(func3, 3);
+    k_proc_CreateThread(func1, 0);
+    // k_proc_CreateThread(func2, 0);
+    // k_proc_CreateThread(func3, 3);
     k_proc_CreateThread(func4, 0);
     k_proc_RunScheduler();
     return;

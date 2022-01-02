@@ -50,6 +50,11 @@ uint32_t dg_StackListAllocElement(struct dg_slist_t *slist)
         }
         else
         {
+            if(slist->cursor >= slist->size)
+            {
+                dg_StackListExpand(slist, slist->buffer_size);        
+            }
+
             elem_index = slist->cursor;
             slist->cursor++;
         }

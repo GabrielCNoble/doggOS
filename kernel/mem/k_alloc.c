@@ -23,9 +23,10 @@ uint32_t k_mem_BigBucketIndexFromSize(size_t size)
     return size;
 }
 
-void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, size_t size)
+void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, size_t size, size_t align)
 {
     (void)heap;
+    (void)align;
     void *memory = NULL;
 
     if(size)
@@ -90,7 +91,7 @@ void k_mem_InitChunkPage(struct k_mem_sheap_t *heap, uint32_t bucket_index)
     size_t chunk_count = K_MEM_SCPAGE_CHUNK_BYTES / chunk_size;
 
     struct k_mem_sbucket_t *bucket = heap->buckets + bucket_index;
-    struct k_mem_scpage_t *chunk_page = k_mem_BigAlloc(heap->big_heap, 4096);
+    struct k_mem_scpage_t *chunk_page = k_mem_BigAlloc(heap->big_heap, 4096, 4096);
 
     chunk_page->header.main_bucket = bucket_index;
     struct k_mem_schunk_t *last_chunk = NULL;
@@ -231,7 +232,7 @@ void *k_mem_Malloc(struct k_mem_sheap_t *heap, size_t size, size_t align)
     {
         if(size > 2048)
         {
-            memory = k_mem_BigAlloc(heap->big_heap, size);
+            memory = k_mem_BigAlloc(heap->big_heap, size, align);
         }
         else
         {

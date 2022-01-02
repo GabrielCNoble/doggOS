@@ -6,7 +6,7 @@
 
 uint32_t k_mem_BigBucketIndexFromSize(size_t size);
 
-void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, size_t size);
+void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, size_t size, size_t align);
 
 void k_mem_BigReallocFree(struct k_mem_bheap_t *heap, void *memory, size_t size);
 

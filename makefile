@@ -12,6 +12,7 @@ KERNEL_BIN := kernel.bin
 OBJ := $(BOOT_OBJ) $(KERNEL_OBJ) $(LIBDG_OBJ)
 
 LINKER_SCRIPT := linker.ld
+EXE_NAME := doggOS.elf
 IMG_NAME := doggOS.bin
 DISK_NAME := doggOS.img
 
@@ -21,6 +22,7 @@ DISK_NAME := doggOS.img
 doggOS: disk
 
 disk: boot kernel libdg $(LINKER_SCRIPT)
+	i686-elf-ld -T $(LINKER_SCRIPT) -o $(EXE_NAME) -nostdlib $(OBJ)
 	i686-elf-ld -T $(LINKER_SCRIPT) --oformat binary -o $(IMG_NAME) -nostdlib $(OBJ)
 	dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
 	dd conv=notrunc if=$(IMG_NAME) of=$(DISK_NAME)

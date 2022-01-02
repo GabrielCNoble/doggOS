@@ -53,14 +53,14 @@ enum K_INT_HANDLERS
     /* page fault */
     K_INT_HANDLER_PF = 14,
 
-    K_INT_HANDLER_CMCI = 32,
-    K_INT_HANDLER_THERM = 33,
-    K_INT_HANDLER_LINT0 = 34,
-    K_INT_HANDLER_LINT1 = 35,
-    K_INT_HANDLER_ERROR = 36,
-    K_INT_HANDLER_TIMOUT = 37,
-    K_INT_HANDLER_TIME_SLICE = 38,
-    K_INT_HANDLER_LAST
+    // K_INT_HANDLER_CMCI = 32,
+    // K_INT_HANDLER_THERM = 33,
+    // K_INT_HANDLER_LINT0 = 34,
+    // K_INT_HANDLER_LINT1 = 35,
+    // K_INT_HANDLER_ERROR = 36,
+    // K_INT_HANDLER_TIMOUT = 37,
+    // K_INT_HANDLER_TIME_SLICE = 38,
+    K_INT_HANDLER_LAST = 256
 };
 
 enum K_INT_PF_FLAGS
@@ -87,7 +87,7 @@ extern void k_int_enable_interrupts();
 
 extern void k_int_Lidt(struct k_int_desc_t *table, uint32_t entry_count);
 
-void k_int_SetHandler(uint32_t vector, uint32_t handler);
+void k_int_SetInterruptHandler(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl);
 
 // extern void k_int_IntN(uint8_t interrupt);
 

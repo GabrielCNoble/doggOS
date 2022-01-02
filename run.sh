@@ -1,1 +1,1 @@
-qemu-system-i386 -machine q35 -hda doggOS.img
+qemu-system-i386 -machine q35 -drive file=doggOS.img,format=raw

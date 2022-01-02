@@ -2,15 +2,13 @@ ENTRY(_start)
 
 SECTIONS
 {
-    .hop0 0x7c00 : AT(0x0000)
+    .boot0 0x7c00 : AT(0x0000)
     {
-        boot/hop0.o
+        boot/boot0.o
     }
 
-    .hop1 0x7e00 : AT(0x0200)
+    .boot1 0x0500 : AT(0x0200)
     {
-        boot/hop1.o
+        boot/boot1.o
     }
-
-    k_kernel_sector = 4;
 }
