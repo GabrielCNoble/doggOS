@@ -2,7 +2,8 @@
 #include "../libdg/atomic/dg_atomic.h"
 #include "../libdg/malloc/dg_malloc.h"
 #include "../libdg/string/dg_string.h"
-#include "k_apic.h"
+#include "timer/k_apic.h"
+#include "proc/k_thread.h"
 #include "proc/k_proc.h"
 #include "k_int.h"
 
@@ -12,7 +13,7 @@ void k_main()
 {
     _Static_assert(sizeof(uintptr_t) == sizeof(uint32_t), "Size of uintptr_t doesn't match size of uint32_t");
 
-    k_term_clear();
+    // k_term_clear();
 
     // uint8_t src[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
     // uint8_t dst[sizeof(src) / sizeof(src[0])];
@@ -35,10 +36,10 @@ void k_main()
 
     // k_cpu_Halt();
 
-    k_proc_CreateThread(func1, 0);
+    k_proc_CreateThread(func1, NULL);
     // k_proc_CreateThread(func2, 0);
     // k_proc_CreateThread(func3, 3);
-    k_proc_CreateThread(func4, 0);
+    k_proc_CreateThread(func4, NULL);
     k_proc_RunScheduler();
     return;
 }

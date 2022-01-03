@@ -216,4 +216,9 @@ struct k_cpu_tss_t
     uint32_t ssp;       // 104
 };
 
+struct k_cpu_core_state_t
+{
+    
+};
+
 #endif

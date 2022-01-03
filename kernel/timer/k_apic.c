@@ -1,6 +1,6 @@
 #include "k_apic.h"
-#include "mem/k_mem.h"
-#include "k_int.h"
+#include "../mem/k_mem.h"
+#include "../k_int.h"
 
 uint32_t k_apic_regs_base = 0xfee00000;
 

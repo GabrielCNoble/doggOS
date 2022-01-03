@@ -360,28 +360,13 @@ struct k_proc_pheader_t
 
 enum K_PROC_THREAD_STATES
 {
-    K_PROC_THREAD_STATE_RUNNING = 1,
-    K_PROC_THREAD_STATE_READY = 1 << 1,
-    K_PROC_THREAD_STATE_IO_BLOCKED = 1 << 2,
-    K_PROC_THREAD_STATE_SUSPENDED = 1 << 3,
+    K_PROC_THREAD_STATE_RUNNING = 0,
+    K_PROC_THREAD_STATE_READY = 1,
+    K_PROC_THREAD_STATE_IO_BLOCKED = 2,
+    K_PROC_THREAD_STATE_SUSPENDED = 3,
+    K_PROC_THREAD_STATE_FINISHED = 4
 };
 
-/* if there's a stack change, the cpu will push 20 bytes worth of state onto the stack, 
-and 12 otherwise, so we allocate for the worst case */
-#define K_PROC_THREAD_STATE_PUSHED_BYTES (sizeof(uint32_t) * 5)
-
-/* eax, ebx, ecx, edx, eip, eflags, esp, ebp, edi, esi, cr3, ss, cs, ds, es, fs, gs */
-#define K_PROC_THREAD_STATE_REG_BYTES (sizeof(uint32_t) * 17)
-
-/* some extra space so the thread swich function has space to store its stuff */
-#define K_PROC_THREAD_STATE_EXTRA_BYTES (sizeof(uint32_t) * 10)
-
-
-#define K_PROC_THREAD_STATE_BYTES (K_PROC_THREAD_STATE_PUSHED_BYTES +  \
-                                   K_PROC_THREAD_STATE_REG_BYTES + \
-                                   K_PROC_THREAD_STATE_EXTRA_BYTES)
-
-#define K_PROC_THREAD_STATE_LAST_INDEX ((K_PROC_THREAD_STATE_BYTES / sizeof(uint32_t)) - 1)
 
 #define K_PROC_THREAD_PREEMPT_VECTOR 38
 #define K_PROC_THREAD_PREEMPT_ISR_REG (K_APIC_REG_IN_SERVICE0 + (K_PROC_THREAD_PREEMPT_VECTOR / 32) * 0x10)
@@ -408,45 +393,27 @@ and 12 otherwise, so we allocate for the worst case */
 //     uint32_t state[K_PROC_THREAD_STATE_BYTES];
 // };
 
+#define K_PROC_THREAD_WORK_STACK_SIZE (0x1000 * 4)
+#define K_PROC_THREAD_KERNEL_STACK_SIZE (0x1000) 
+#define K_PROC_INVALID_THREAD_ID 0x03ffffff
 struct k_proc_thread_t
 {
+    uintptr_t *start_esp;                           // 0
+    uintptr_t *current_esp;                         // 4
+    uintptr_t page_dir;                             // 8
+    uintptr_t stack_base;                           // 12
+    uintptr_t (*entry_point)(void *data);           // 16
+    uintptr_t return_data;                          // 20
+    uint32_t refs;
+
+    uint32_t tid : 26;
+    uint32_t state : 6;
+
+    struct k_proc_process_t *process;
     struct k_proc_thread_t *next;
     struct k_proc_thread_t *prev;
-    struct k_proc_process_t *process;
-
-    uint32_t tid;
-    uint32_t state;
-
-    uintptr_t stack_base;
-    uintptr_t entry_point;
-    uint32_t code_seg;
-
-    uintptr_t *start_esp;
-    uintptr_t *current_esp;
-    uintptr_t page_dir;
-
     struct k_proc_thread_t *queue_link;
-    struct k_proc_thread_t *process_next;
     struct k_mem_sheap_t heap;
-};
-
-#define K_PROC_THREAD_LIST_BUFFER_OFFSET                                    \
-    offsetof(struct {                                                       \
-        union k_proc_thread_list_t *next_list;                              \
-        struct k_proc_thread_t *next_thread;                                \
-        struct k_proc_thread_t threads[0];                                  \
-    }, threads)                                                             \
-
-union k_proc_thread_list_t 
-{
-    struct
-    { 
-        union k_proc_thread_list_t *next_list;
-        struct k_proc_thread_t *next_thread;
-        struct k_proc_thread_t threads[(4096 - K_PROC_THREAD_LIST_BUFFER_OFFSET) / sizeof(struct k_proc_thread_t)]; 
-    };
-
-    uint8_t bytes[4096];
 };
 
 /*
@@ -467,15 +434,8 @@ struct k_proc_process_t
     struct k_proc_thread_t *last_thread;
     struct k_mem_page_map_h page_map;    
     struct k_mem_bheap_t heap;
-    uint32_t pid;
-};
-
-union k_proc_process_list_t
-{
-    struct
-    {
-
-    };
+    uint32_t pid : 30;
+    uint32_t ring : 2;
 };
 
 // struct k_proc_crit_sec_t

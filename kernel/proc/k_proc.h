@@ -11,44 +11,48 @@ struct k_proc_process_t *k_proc_GetProcess(uint32_t process_id);
 
 struct k_proc_process_t *k_proc_GetCurrentProcess();
 
-struct k_proc_thread_t *k_proc_AllocThread();
+// struct k_proc_thread_t *k_proc_AllocThread();
 
-void k_proc_FreeThread(struct k_proc_thread_t *thread);
+// void k_proc_FreeThread(struct k_proc_thread_t *thread);
 
-struct k_proc_thread_t *k_proc_CreateThread(void (*thread_fn)(), uint32_t privilege_level);
+// struct k_proc_thread_t *k_proc_CreateThread(uintptr_t (*thread_fn)(void *data), void *data, uint32_t privilege_level);
 
-struct k_proc_thread_t *k_proc_GetThread(uint32_t thread_id);
+// struct k_proc_thread_t *k_proc_GetThread(uint32_t thread_id);
 
-struct k_proc_thread_t *k_proc_GetCurrentThread();
+// struct k_proc_thread_t *k_proc_GetCurrentThread();
 
-void k_proc_RunThread(struct k_proc_thread_t *thread);
+// void k_proc_RunThreadCallback(struct k_proc_thread_t *thread);
 
-void k_proc_KillThread(uint32_t thread_id);
+// void k_proc_RunThread(struct k_proc_thread_t *thread);
 
-void k_proc_SuspendThread(uint32_t thread_id);
+// void k_proc_KillThread(uint32_t thread_id);
+
+// void k_proc_SuspendThread(uint32_t thread_id);
+
+// uint32_t k_proc_WaitThread(uint32_t thread_id);
 
 void k_proc_RunScheduler();
 
-void k_proc_Yield();
+// void k_proc_Yield();
 
 void k_proc_EnablePreemption();
 
 void k_proc_DisablePreemption();
 
-extern void k_proc_SwitchToThread(struct k_proc_thread_t *thread);
+// extern void k_proc_SwitchToThread(struct k_proc_thread_t *thread);
 
-void func1();
+uintptr_t func1(void *data);
 
-void func2();
+uintptr_t func2(void *data);
 
-void func3();
+uintptr_t func3(void *data);
 
-void func4();
+uintptr_t func4(void *data);
 
-void func5();
+uintptr_t func5(void *data);
 
-void func6();
+uintptr_t func6(void *data);
 
-void func7();
+uintptr_t func7(void *data);
 
 #endif

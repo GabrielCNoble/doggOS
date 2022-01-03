@@ -12,7 +12,7 @@
 #include "../dsk/k_dsk.h"
 #include "../cpu/k_cpu.h"
 #include "../k_rng.h"
-#include "../k_apic.h"
+#include "../timer/k_timer.h"
 #include "../proc/k_proc.h"
 
 

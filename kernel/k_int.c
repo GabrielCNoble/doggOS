@@ -2,7 +2,7 @@
 #include "k_term.h"
 #include "cpu/k_cpu.h"
 #include "k_rng.h"
-#include "k_apic.h"
+#include "timer/k_apic.h"
 
 
 extern void *k_int0_a;

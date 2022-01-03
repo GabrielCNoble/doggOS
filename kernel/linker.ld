@@ -4,7 +4,7 @@ SECTIONS
 {
     .bootinfo 0x7c00 : AT (0x800)
     {
-        ./k_bootinfo.o
+        ./boot/k_bootinfo.o
     }
 
     . = ALIGN(0x200);
