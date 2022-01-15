@@ -2,9 +2,10 @@
 #define K_PROC_DEFS_H
 
 #include <stdint.h>
-#include "../mem/k_mem.h"
+#include "../mem/mem.h"
 #include "../cpu/k_cpu.h"
-#include "../../libdg/container/dg_defs.h"
+#include "../atm/k_defs.h"
+#include "../cont/k_defs.h"
 #include "../dsk/k_defs.h"
 
 /*
@@ -360,11 +361,23 @@ struct k_proc_pheader_t
 
 enum K_PROC_THREAD_STATES
 {
-    K_PROC_THREAD_STATE_RUNNING = 0,
-    K_PROC_THREAD_STATE_READY = 1,
-    K_PROC_THREAD_STATE_IO_BLOCKED = 2,
-    K_PROC_THREAD_STATE_SUSPENDED = 3,
-    K_PROC_THREAD_STATE_FINISHED = 4
+    K_PROC_THREAD_STATE_WAITING,
+    K_PROC_THREAD_STATE_IO_BLOCKED,
+    K_PROC_THREAD_STATE_SUSPENDED,
+    K_PROC_THREAD_STATE_RETURNED,
+    K_PROC_THREAD_STATE_FINISHED,
+
+    K_PROC_THREAD_STATE_RUNNING,
+    K_PROC_THREAD_STATE_CREATED,
+    K_PROC_THREAD_STATE_READY,
+
+    K_PROC_THREAD_STATE_DETACHED,
+    K_PROC_THREAD_STATE_INVALID
+};
+
+enum K_PROC_THREAD_FLAGS
+{
+    K_PROC_THREAD_FLAG_DETACHED = 1,
 };
 
 
@@ -372,30 +385,27 @@ enum K_PROC_THREAD_STATES
 #define K_PROC_THREAD_PREEMPT_ISR_REG (K_APIC_REG_IN_SERVICE0 + (K_PROC_THREAD_PREEMPT_VECTOR / 32) * 0x10)
 #define K_PROC_THREAD_PREEMPT_ISR_BIT (K_PROC_THREAD_PREEMPT_VECTOR % 32)
 
-// enum K_PROC_THREAD_STATE_REGS
-// {
-//     K_PROC_THREAD_STATE_REG_EAX = 0,
-//     K_PROC_THREAD_STATE_REG_EBX,
-//     K_PROC_THREAD_STATE_REG_ECX,
-//     K_PROC_THREAD_STATE_REG_EDX,
-//     K_PROC_THREAD_STATE_REG_ESI,
-//     K_PROC_THREAD_STATE_REG_EDI,
-//     K_PROC_THREAD_STATE_REG_EBP,
-//     K_PROC_THREAD_STATE_REG_CR3,
-
-//     K_PROC_THREAD_STATE_REG_DS,
-//     K_PROC_THREAD_STATE_REG_ES,
-//     K_PROC_THREAD_STATE_REG_FS,
-// };
-
-// struct k_proc_tstate_t
-// {
-//     uint32_t state[K_PROC_THREAD_STATE_BYTES];
-// };
-
 #define K_PROC_THREAD_WORK_STACK_SIZE (0x1000 * 4)
 #define K_PROC_THREAD_KERNEL_STACK_SIZE (0x1000) 
-#define K_PROC_INVALID_THREAD_ID 0x03ffffff
+
+#define K_PROC_THREAD_ID_BITS 20
+#define K_PROC_THREAD_ID_MASK 0x000fffff
+#define K_PROC_THREAD_CORE_BITS 12
+#define K_PROC_THREAD_CORE_MASK 0x00000fff
+#define K_PROC_INVALID_THREAD_ID K_PROC_THREAD_ID_MASK
+
+#define K_PROC_THREAD_HANDLE(core, id) ((((core) & K_PROC_THREAD_CORE_MASK) << K_PROC_THREAD_CORE_BITS) | ((id) & K_PROC_THREAD_ID_MASK))
+#define K_PROC_THREAD_INDEX(handle) ((handle) & K_PROC_THREAD_ID_MASK)
+#define K_PROC_THREAD_CORE(handle) (((handle) >> K_PROC_THREAD_CORE_BITS) & K_PROC_THREAD_CORE_MASK)
+#define K_PROC_THREAD_VALID(thread) (thread && thread->id != K_PROC_INVALID_THREAD_ID)
+
+struct k_proc_thread_init_t
+{
+    uintptr_t (*user_callback)(void *data);
+    void *user_stack;
+    void *user_data;
+};
+
 struct k_proc_thread_t
 {
     uintptr_t *start_esp;                           // 0
@@ -404,17 +414,40 @@ struct k_proc_thread_t
     uintptr_t stack_base;                           // 12
     uintptr_t (*entry_point)(void *data);           // 16
     uintptr_t return_data;                          // 20
-    uint32_t refs;
 
-    uint32_t tid : 26;
-    uint32_t state : 6;
+    uint32_t id : K_PROC_THREAD_ID_BITS;
+    uint32_t core : K_PROC_THREAD_CORE_BITS; 
+    uint32_t state : 16;
+    uint32_t flags : 16;
 
     struct k_proc_process_t *process;
-    struct k_proc_thread_t *next;
-    struct k_proc_thread_t *prev;
-    struct k_proc_thread_t *queue_link;
+    struct k_proc_thread_t *process_next;
+    struct k_proc_thread_t *process_prev;
+    /* thread this thread is waiting on */
+    struct k_proc_thread_t *wait_thread;
+    struct k_proc_thread_t *queue_next;
+    // struct k_proc_thread_t *queue_prev;
     struct k_mem_sheap_t heap;
 };
+
+struct k_proc_thread_pool_t
+{
+    k_atm_spnl_t spinlock;
+    struct k_cont_objlist_t threads;
+};
+
+// struct k_proc_detached_thread_list_t
+// {
+//     struct k_proc_detached_thread_list_t *next;
+//     struct k_proc_thread_t *threads;
+// };
+
+// struct k_proc_thread_queue_t
+// {
+//     k_atm_spnl_t spinlock;
+//     struct k_proc_thread_t *head;
+//     struct k_proc_thread_t *tail;
+// };
 
 /*
 ===================================================================================
@@ -432,7 +465,8 @@ struct k_proc_process_t
     struct k_proc_process_t *prev;
     struct k_proc_thread_t *threads;
     struct k_proc_thread_t *last_thread;
-    struct k_mem_page_map_h page_map;    
+    // struct k_mem_page_map_h page_map;    
+    uint32_t page_map;
     struct k_mem_bheap_t heap;
     uint32_t pid : 30;
     uint32_t ring : 2;
@@ -444,5 +478,16 @@ struct k_proc_process_t
 // };
 
 #define K_PROC_KERNEL_PID DG_INVALID_INDEX
+
+struct k_proc_core_state_t
+{
+    struct k_cpu_tss_t *tss;                    // 0
+    struct k_proc_thread_t *delete_list;        // 4
+    struct k_proc_thread_t *current_thread;     // 8
+    struct k_proc_thread_t *next_thread;        // 12
+    struct k_proc_thread_t scheduler_thread;    // 16
+    struct k_proc_thread_pool_t thread_pool;
+    struct k_cont_objlist_t process_pool;
+};
 
 #endif

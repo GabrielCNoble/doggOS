@@ -3,7 +3,7 @@
 
 #include "k_term.h"
 #include "gfx/k_gfx.h"
-#include "mem/k_mem.h"
+#include "mem/mem.h"
 #include "k_string.h"
 #include "cpu/k_cpu.h"
 #include "dev/k_pci.h"

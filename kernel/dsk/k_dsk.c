@@ -1,5 +1,5 @@
 #include "k_dsk.h"
-#include "../mem/k_mem.h"
+#include "../mem/mem.h"
 #include "../../libdg/container/dg_slist.h"
 #include "../k_term.h"
 

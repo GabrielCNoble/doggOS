@@ -41,18 +41,18 @@ void k_proc_DisablePreemption();
 
 // extern void k_proc_SwitchToThread(struct k_proc_thread_t *thread);
 
-uintptr_t func1(void *data);
+// uintptr_t func1(void *data);
 
-uintptr_t func2(void *data);
+// uintptr_t func2(void *data);
 
-uintptr_t func3(void *data);
+// uintptr_t func3(void *data);
 
-uintptr_t func4(void *data);
+// uintptr_t func4(void *data);
 
-uintptr_t func5(void *data);
+// uintptr_t func5(void *data);
 
-uintptr_t func6(void *data);
+// uintptr_t func6(void *data);
 
-uintptr_t func7(void *data);
+// uintptr_t func7(void *data);
 
 #endif

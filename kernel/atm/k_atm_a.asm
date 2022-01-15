@@ -11,11 +11,13 @@ k_atm_Xcgh32:
     mov dword ptr [ebx], ecx
     ret
 
+.global k_atm_CmpXcgh
+k_atm_CmpXcgh:
 .global k_atm_CmpXcgh32
 k_atm_CmpXcgh32:
     mov ebx, dword ptr [esp + 4]        /* location */
     mov ecx, dword ptr [esp + 12]       /* new value */
-    mov eax, dword ptr [ebx + 8]        /* cmp value */
+    mov eax, dword ptr [esp + 8]        /* cmp value */
     lock cmpxchg dword ptr [ebx], ecx
     mov ebx, dword ptr [esp + 16]       /* old value */
     mov dword ptr [ebx], eax

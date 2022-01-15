@@ -1,5 +1,5 @@
 #include "dg_malloc.h"
-#include "../../kernel/mem/k_alloc.h"
+#include "../../kernel/mem/alloc.h"
 #include "../../kernel/proc/k_thread.h"
 
 void *dg_Malloc(uint32_t size, uint32_t align)

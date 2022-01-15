@@ -1,6 +1,6 @@
 #include "k_vga.h"
 #include "../k_term.h"
-#include "../mem/k_mem.h"
+#include "../mem/mem.h"
 #include <stddef.h>
 
 static uint16_t k_gfx_vga_ext_reg_ports[][2] = 
@@ -36,7 +36,8 @@ uint32_t k_gfx_vga_cursor_row = 0;
 void k_gfx_InitVga()
 {
     k_gfx_SetVgaMemMap(K_GFX_VGA_MEM_MAP0);
-    k_mem_MapAddress((uint32_t)k_gfx_vga_cur_mem_map, (uint32_t)k_gfx_vga_cur_mem_map, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+    k_mem_MapLinearAddress((uint32_t)k_gfx_vga_cur_mem_map, (uint32_t)k_gfx_vga_cur_mem_map, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+    
     // k_gfx_SetVgaGfxMode(K_GFX_VGA_GFX_MODE_GRAPHIC);
 
     // k_gfx_WriteVgaSeqReg(K_GFX_VGA_SEQ_REG_MAP_MASK, 0x0f);

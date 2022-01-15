@@ -1,7 +1,7 @@
 #ifndef K_ALLOC_H
 #define K_ALLOC_H
 
-#include "k_defs.h"
+#include "defs.h"
 #include <stdalign.h>
 
 uint32_t k_mem_BigBucketIndexFromSize(size_t size);

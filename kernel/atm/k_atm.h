@@ -10,6 +10,7 @@ extern void k_atm_Xcgh16(uint16_t *location, uint16_t new, uint16_t *old);
 
 extern void k_atm_Xcgh8(uint8_t *location, uint8_t new, uint8_t *old);
 
+extern uint32_t k_atm_CmpXcgh(uintptr_t *location, uintptr_t cmp, uintptr_t new, uintptr_t *old);
 
 extern uint32_t k_atm_CmpXcgh32(uint32_t *location, uint32_t cmp, uint32_t new, uint32_t *old);
 

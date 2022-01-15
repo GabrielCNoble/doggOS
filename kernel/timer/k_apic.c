@@ -1,12 +1,12 @@
 #include "k_apic.h"
-#include "../mem/k_mem.h"
+#include "../mem/mem.h"
 #include "../k_int.h"
 
 uint32_t k_apic_regs_base = 0xfee00000;
 
 void k_apic_Init()
 {
-    k_mem_MapAddress(k_apic_regs_base, k_apic_regs_base, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE);
+    k_mem_MapLinearAddress(k_apic_regs_base, k_apic_regs_base, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE);
     // k_apic_WriteReg(K_APIC_REG_LVT_CMCI, k_apic_ReadReg(K_APIC_REG_LVT_CMCI) | K_INT_HANDLER_CMCI);
     // k_apic_WriteReg(K_APIC_REG_LVT_THERM_SENSOR, k_apic_ReadReg(K_APIC_REG_LVT_THERM_SENSOR) | K_INT_HANDLER_THERM);
     // k_apic_WriteReg(K_APIC_REG_LVT_LINT0, k_apic_ReadReg(K_APIC_REG_LVT_LINT0) | K_INT_HANDLER_LINT0);

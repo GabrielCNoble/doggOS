@@ -1,18 +1,18 @@
 #include "k_objlist.h"
-#include "k_alloc.h"
-#include "../util/k_utl.h"
+#include "../mem/alloc.h"
+#include "../util/k_util.h"
 
-struct k_mem_objlist_t k_mem_CreateObjList(uint32_t elem_size, uint32_t buffer_size, struct k_mem_sheap_t *heap, uint32_t preserve_free)
+struct k_cont_objlist_t k_cont_CreateObjList(uint32_t elem_size, uint32_t buffer_size, struct k_mem_sheap_t *heap, uint32_t preserve_free)
 {
-    struct k_mem_objlist_t obj_list = {};
+    struct k_cont_objlist_t obj_list = {};
 
     if(elem_size && buffer_size && heap)
     {
         if(!preserve_free)
         {
-            if(elem_size < sizeof(struct k_mem_free_obj_t))
+            if(elem_size < sizeof(struct k_cont_objlist_t))
             {
-                elem_size = sizeof(struct k_mem_free_obj_t);
+                elem_size = sizeof(struct k_cont_objlist_t);
             }
         }
         else
@@ -25,13 +25,13 @@ struct k_mem_objlist_t k_mem_CreateObjList(uint32_t elem_size, uint32_t buffer_s
         obj_list.buffer_size = buffer_size;
         obj_list.preserve_free = preserve_free;
 
-        k_mem_AddObjListBuffer(&obj_list, 1);
+        k_cont_AddObjListBuffer(&obj_list, 1);
     }
 
     return obj_list;
 }
 
-void k_mem_DestroyObjList(struct k_mem_objlist_t *list)
+void k_cont_DestroyObjList(struct k_cont_objlist_t *list)
 {
     if(list && list->buffers)
     {
@@ -58,7 +58,7 @@ void k_mem_DestroyObjList(struct k_mem_objlist_t *list)
     }
 }
 
-uint32_t k_mem_AllocObjListElement(struct k_mem_objlist_t *list)
+uint32_t k_cont_AllocObjListElement(struct k_cont_objlist_t *list)
 {
     uint32_t index = 0xffffffff;
 
@@ -71,7 +71,7 @@ uint32_t k_mem_AllocObjListElement(struct k_mem_objlist_t *list)
         }
         else if(!list->preserve_free && list->next_free)
         {   
-            struct k_mem_free_obj_t *next_free = list->next_free;
+            struct k_cont_free_obj_t *next_free = list->next_free;
             list->next_free = next_free->next;
             index = next_free->index;
         }
@@ -82,7 +82,7 @@ uint32_t k_mem_AllocObjListElement(struct k_mem_objlist_t *list)
 
             if(list->cursor == list->buffer_size * list->buffer_count)
             {
-                k_mem_AddObjListBuffer(list, 1);
+                k_cont_AddObjListBuffer(list, 1);
             }
         }
 
@@ -92,9 +92,9 @@ uint32_t k_mem_AllocObjListElement(struct k_mem_objlist_t *list)
     return index;
 }
 
-void k_mem_FreeObjListElement(struct k_mem_objlist_t *list, uint32_t index)
+void k_cont_FreeObjListElement(struct k_cont_objlist_t *list, uint32_t index)
 {
-    void *element = k_mem_GetObjListElement(list, index);
+    void *element = k_cont_GetObjListElement(list, index);
 
     if(element)
     {
@@ -105,7 +105,7 @@ void k_mem_FreeObjListElement(struct k_mem_objlist_t *list, uint32_t index)
         }
         else
         {
-            struct k_mem_free_obj_t *free_obj = (struct k_mem_free_obj_t *)element;
+            struct k_cont_free_obj_t *free_obj = (struct k_cont_free_obj_t *)element;
             free_obj->index = index;
             free_obj->next = list->next_free;
             list->next_free = free_obj;
@@ -115,7 +115,7 @@ void k_mem_FreeObjListElement(struct k_mem_objlist_t *list, uint32_t index)
     }
 }
 
-void *k_mem_GetObjListElement(struct k_mem_objlist_t *list, uint32_t index)
+void *k_cont_GetObjListElement(struct k_cont_objlist_t *list, uint32_t index)
 {
     void *element = NULL;
     if(list && list->buffers && index < list->cursor)
@@ -127,7 +127,7 @@ void *k_mem_GetObjListElement(struct k_mem_objlist_t *list, uint32_t index)
     return element;
 }
 
-void k_mem_AddObjListBuffer(struct k_mem_objlist_t *list, uint32_t buffer_count)
+void k_cont_AddObjListBuffer(struct k_cont_objlist_t *list, uint32_t buffer_count)
 {
     if(list && buffer_count)
     {

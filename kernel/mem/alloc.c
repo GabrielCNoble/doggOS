@@ -1,6 +1,7 @@
-#include "k_alloc.h"
-#include "k_phys.h"
-#include "k_pmap.h"
+#include "alloc.h"
+#include "mngr.h"
+#include "pmap.h"
+#include "../k_defs.h"
 #include "../k_int.h"
 #include "../k_term.h"
 
@@ -38,15 +39,22 @@ void *k_mem_BigAlloc(struct k_mem_bheap_t *heap, size_t size, size_t align)
             page_count++;
         }
 
-        uintptr_t memory_pages = k_mem_AllocPages(page_count, 0);
-
+        uintptr_t virtual_alloc = k_mem_AllocVirtualRange(size);
+        uintptr_t virtual_page = virtual_alloc;
+        uint32_t flags = K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS;
         for(size_t page_index = 0; page_index < page_count; page_index++)
         {
-            uintptr_t page_address = memory_pages + page_index * K_MEM_4KB_ADDRESS_OFFSET;
-            k_mem_MapAddress(page_address, page_address, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
+            // uintptr_t page_address = memory_pages + page_index * K_MEM_4KB_ADDRESS_OFFSET;
+            uintptr_t page_address = k_mem_AllocPhysicalPage(0);
+            if(k_mem_MapLinearAddress(virtual_page, page_address, flags) == K_STATUS_OUT_OF_PHYSICAL_MEM)
+            {
+                return NULL;
+            }
+
+            virtual_page += 0x1000;
         }
 
-        memory = (void *)memory_pages;
+        memory = (void *)virtual_alloc;
     }
 
     return memory;
@@ -66,7 +74,7 @@ void k_mem_BigFree(struct k_mem_bheap_t *heap, void *memory)
     if(memory)
     {
         uintptr_t page_address = (uintptr_t)memory;
-        k_mem_FreePages(page_address);
+        k_mem_FreePhysicalPages(page_address);
     }
 }
 

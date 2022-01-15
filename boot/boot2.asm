@@ -37,7 +37,6 @@ stage2_start:
         cmp dword ptr es:[edi], 0
         /* low memory, so ignore */
         jz _mem_map_loop_start
-        /* is low memory, so to simplify things in the kernel code we'll put it in a separate variable */
 
     _append_range:
         add di, 24

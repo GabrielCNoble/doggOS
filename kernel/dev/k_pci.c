@@ -1,7 +1,7 @@
 #include "k_pci.h"
 #include "../cpu/k_cpu.h"
 #include "../k_term.h"
-#include "../mem/k_mem.h"
+#include "../mem/mem.h"
 #include <stddef.h>
 
 struct k_pci_config_reg_t k_pci_config_regs[] =

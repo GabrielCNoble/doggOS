@@ -84,7 +84,7 @@ enum K_CPU_CSEG_FLAGS
 {
     /* execute/read segment when set, execute-only otherwise */
     K_CPU_CSEG_FLAG_ER = 1 << 9,
-    /* conforming segment (not to be confused with K_MEM_SEG_FLAG_C, 
+    /* conforming segment (not to be confused with K_CPU_SEG_FLAG_C, 
         which tells whether the segment is a code or data segment) */
     K_CPU_CSEG_FLAG_C = 1 << 10
 };
@@ -92,14 +92,22 @@ enum K_CPU_CSEG_FLAGS
 /* 3rd word */
 enum K_CPU_CSEG_TYPES
 {
+    /* execute only, non-conforming */
     K_CPU_CSEG_TYPE_EO = K_CPU_SEG_FLAG_C | K_CPU_SEG_DESC_TYPE_CODE_DATA,
+    /* execute only + accessed, non-conforming */
     K_CPU_CSEG_TYPE_EOA = K_CPU_CSEG_TYPE_EO | K_CPU_SEG_FLAG_A | K_CPU_SEG_DESC_TYPE_CODE_DATA,
+    /* execute + read, non-conforming */
     K_CPU_CSEG_TYPE_ER = K_CPU_SEG_FLAG_C | K_CPU_CSEG_FLAG_ER | K_CPU_SEG_DESC_TYPE_CODE_DATA,
+    /* execute + read + accessed, non-conforming */
     K_CPU_CSEG_TYPE_ERA = K_CPU_CSEG_TYPE_ER | K_CPU_SEG_FLAG_A | K_CPU_SEG_DESC_TYPE_CODE_DATA,
 
+    /* execute only, conforming */
     K_CPU_CSEG_TYPE_EOC = K_CPU_CSEG_TYPE_EO | K_CPU_CSEG_FLAG_C | K_CPU_SEG_DESC_TYPE_CODE_DATA,
+    /* execute only + accessed, conforming */
     K_CPU_CSEG_TYPE_EOCA = K_CPU_CSEG_TYPE_EOC | K_CPU_SEG_FLAG_A | K_CPU_SEG_DESC_TYPE_CODE_DATA,
+    /* execute + read, conforming */
     K_CPU_CSEG_TYPE_ERC = K_CPU_CSEG_TYPE_ER | K_CPU_CSEG_FLAG_C | K_CPU_SEG_DESC_TYPE_CODE_DATA,
+    /* execute + read + accessed, conforming */
     K_CPU_CSEG_TYPE_ERCA = K_CPU_CSEG_TYPE_ERC | K_CPU_SEG_FLAG_A | K_CPU_SEG_DESC_TYPE_CODE_DATA
 };
 

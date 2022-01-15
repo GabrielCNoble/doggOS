@@ -1,5 +1,5 @@
 #include "k_dev.h"
-#include "../mem/k_mem.h"
+#include "../mem/mem.h"
 #include "k_pci.h"
 #include "../k_term.h"
 #include <stddef.h>
