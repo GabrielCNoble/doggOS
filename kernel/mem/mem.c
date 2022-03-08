@@ -1,10 +1,11 @@
 #include <stddef.h>
 #include "mem.h"
 // #include "k_pmap.h"
-#include "../k_term.h"
+// #include "../k_term.h"
 #include "../cpu/k_cpu.h"
 #include "../k_int.h"
-#include "../proc/k_defs.h"
+#include "../proc/defs.h"
+#include "../rt/alloc.h"
 
 uint32_t k_mem_total = 0;
 uint32_t k_mem_available = 0;
@@ -13,7 +14,7 @@ uint32_t k_mem_reserved = 0;
 extern struct k_mem_vrlist_t k_mem_virtual_ranges;
 extern struct k_mem_prlist_t k_mem_physical_ranges;
 extern struct k_proc_process_t k_proc_kernel_process;
-uint32_t k_mem_page_map;
+extern uint32_t k_proc_page_map;
 
 extern struct k_proc_core_state_t k_proc_core_state;
 
@@ -181,9 +182,7 @@ void k_mem_MapKernelData(struct k_mem_pentry_t *pdir, uintptr_t address, uint32_
         }
     }
 
-    // k_printf("map %x -- %x\n", start_address, end_address);
-
-    start_address = address;
+    start_address = address & K_MEM_4KB_ADDRESS_MASK;
     end_address = address + size;
 
     while(start_address < end_address)
@@ -243,6 +242,20 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
         virtual memory ranges
     */
 
+    // uint32_t *p0 = 0x112345;
+    // uint32_t *p1 = 0x012345;
+    // k_cpu_Halt();
+    // *p0 = 5;
+    // if(*p1 == 5)
+    // {
+    //     k_printf("well, fuck...\n");
+    // }
+    // else
+    // {
+    //     k_printf("shit\n");
+    // }
+    // k_cpu_Halt();
+
     /* how many vranges fit in a page */
     uint32_t virtual_ranges_per_page = 4096 / sizeof(struct k_mem_vrange_t);
     /* how many bytes of virtual address a page full of vranges cover, assuming each
@@ -287,24 +300,32 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     uint32_t header_pair_size = sizeof(uint32_t) + sizeof(struct k_mem_upage_t);
     uint32_t header_pair_count = k_mem_available / (header_pair_size + 4096);
+    // k_printf("available: %d\n", k_mem_available);
     uintptr_t page_headers = (uintptr_t)k_mem_BestFitRange(ranges, &range_count, header_pair_count * header_pair_size);
+    // k_printf("%x -- %x\n", page_headers, page_headers + header_pair_count * header_pair_size);
+
+    // uintptr_t *p = page_headers + ((header_pair_count - 1) * header_pair_size);
+    // *p = 5;
 
     if(page_headers)
     {
         for(uint32_t range_index = 0; range_index < range_count; range_index++)
         {
             struct k_mem_range_t *range = ranges + range_index;
+            uint32_t range_start = (uint32_t)range->base;
+            uint32_t range_size = (uint32_t)range->size;
             struct k_mem_prange_t *prange = k_mem_physical_ranges.ranges + range_index;
-            uint32_t align = range->base % 4096;
+            uint32_t align = range_start % 4096;
             if(align)
             {
                 align = 4096 - align;
-                range->base += align;
-                range->size -= align;
+                range_start += align;
+                range_size -= align;
             }
 
-            uint32_t page_count = range->size / 4096;
-            uintptr_t base_address = (uintptr_t)range->base;
+            uint32_t page_count = range_size / 4096;
+            // k_printf("%d\n", range_size);
+            uintptr_t base_address = (uintptr_t)range_start;
             prange->base_address = base_address;
             prange->free_pages = (uint32_t *)page_headers;
             page_headers += sizeof(uint32_t) * page_count;
@@ -376,11 +397,39 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
         k_mem_MapKernelData(pdir, (uintptr_t)range->free_pages, sizeof(uint32_t) * range->page_count);
         k_mem_MapKernelData(pdir, (uintptr_t)range->used_pages, sizeof(struct k_mem_upage_t) * range->page_count);
     }
+    // struct k_mem_prange_t *range = k_mem_physical_ranges.ranges + k_mem_physical_ranges.range_count - 1;
+
+    // uintptr_t p = page_headers + ((header_pair_count - 1) * header_pair_size);
+    // uintptr_t p = (uintptr_t)(range->used_pages + range->page_count - 1);
+    // uint32_t dir_index = K_MEM_PDIR_INDEX(p);
+    // uint32_t tab_index = K_MEM_PTABLE_INDEX(p);
+    // ptable = (struct k_mem_pentry_t *)(ptable[dir_index].entry & K_MEM_4KB_ADDRESS_MASK);
+    // *p = 5;
+
+    // k_printf("%x %x %d %d\n", pdir[dir_index].entry, ptable[tab_index].entry, dir_index, tab_index);
 
     k_cpu_Lcr3((uint32_t)pdir);
     k_cpu_EnablePaging();
+
+    
+
     // k_mem_MapLinearAddress(0xa0000, 0xa0000, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
     k_mem_virtual_ranges.range_count = k_mem_virtual_ranges.free_count;
+    // asm volatile
+    // (
+    //     "nop\n"
+    //     "nop\n"
+    //     "nop\n"
+    //     "nop\n"
+    //     "nop\n"
+    // );
+    // struct k_mem_prange_t *range = k_mem_physical_ranges.ranges + k_mem_physical_ranges.range_count - 1;
+    // uintptr_t page = range->free_pages[range->free_count - 1];
+    // k_printf("%d\n", range->page_count); 
+    // struct k_mem_upage_t *used = range->used_pages + range->page_count - 1;
+    // used->index = 15;
+    // k_printf("%x %d\n", used, used->index);
+    // k_cpu_Halt();    
 
-    k_mem_page_map = (uint32_t)pdir;
+    k_proc_page_map = (uint32_t)pdir;
 }

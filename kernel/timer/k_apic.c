@@ -1,12 +1,17 @@
 #include "k_apic.h"
+#include "k_defs.h"
 #include "../mem/mem.h"
 #include "../k_int.h"
 
-uint32_t k_apic_regs_base = 0xfee00000;
+uint32_t k_apic_regs_base = 0;
 
 void k_apic_Init()
 {
-    k_mem_MapLinearAddress(k_apic_regs_base, k_apic_regs_base, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE);
+    k_apic_regs_base = (uint32_t)k_mem_AllocVirtualRange(0x1000);
+    uint32_t result = k_mem_MapLinearAddress(k_apic_regs_base, K_TIMER_APIC_REG_ADDRESS, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE);
+    // k_printf("%x\n", k_apic_regs_base);
+    // k_cpu_Halt();
+    
     // k_apic_WriteReg(K_APIC_REG_LVT_CMCI, k_apic_ReadReg(K_APIC_REG_LVT_CMCI) | K_INT_HANDLER_CMCI);
     // k_apic_WriteReg(K_APIC_REG_LVT_THERM_SENSOR, k_apic_ReadReg(K_APIC_REG_LVT_THERM_SENSOR) | K_INT_HANDLER_THERM);
     // k_apic_WriteReg(K_APIC_REG_LVT_LINT0, k_apic_ReadReg(K_APIC_REG_LVT_LINT0) | K_INT_HANDLER_LINT0);

@@ -141,3 +141,9 @@ k_cpu_ReadMSR:
 k_cpu_SwitchModes:
     ret
     
+.global k_cpu_GetCPR
+k_cpu_GetCPR:
+    mov ax, cs
+    and eax, 0x3
+    ret
+    

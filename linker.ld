@@ -24,7 +24,7 @@ SECTIONS
         k_kernel_start = .;
         kernel/init/k_init_a.o
         kernel/*
-        libdg/*
+        libdgc/*
         k_kernel_end = .;
     }
 

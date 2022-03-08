@@ -4,7 +4,7 @@
 #include <stdint.h> 
 #include <stddef.h>
 
-#include "../proc/k_defs.h"
+#include "../proc/defs.h"
 
 // struct k_dsk_cmd_page_header_t
 // {

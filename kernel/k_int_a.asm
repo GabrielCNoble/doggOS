@@ -111,7 +111,6 @@ k_int32_a:
 k_int33_a:
     pusha
     call k_int_Int33
-    call k_apic_EndOfInterrupt
     popa
     iret
 

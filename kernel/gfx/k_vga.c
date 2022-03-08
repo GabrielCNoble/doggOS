@@ -1,6 +1,7 @@
 #include "k_vga.h"
-#include "../k_term.h"
+// #include "../k_term.h"
 #include "../mem/mem.h"
+#include "../rt/mem.h"
 #include <stddef.h>
 
 static uint16_t k_gfx_vga_ext_reg_ports[][2] = 
@@ -35,6 +36,8 @@ uint32_t k_gfx_vga_cursor_row = 0;
 
 void k_gfx_InitVga()
 {
+    k_gfx_vga_width = 80;
+    k_gfx_vga_height = 25;
     k_gfx_SetVgaMemMap(K_GFX_VGA_MEM_MAP0);
     k_mem_MapLinearAddress((uint32_t)k_gfx_vga_cur_mem_map, (uint32_t)k_gfx_vga_cur_mem_map, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
     
@@ -181,10 +184,13 @@ void k_gfx_SetVgaMemMap(uint32_t mem_map)
     }
 }
 
-void k_gfx_SetVgaCursorPos(uint32_t column, uint32_t row)
+void k_gfx_SetVgaCursorPos(uint32_t x, uint32_t y)
 {
-    (void)column;
-    (void)row;
+    uint16_t cursor_pos = x + y * k_gfx_vga_width;
+    k_gfx_WriteVgaCrtReg(K_GFX_VGA_CRT_REG_CURSOR_LOCH, (cursor_pos >> 8) & 0xff);
+    // k_gfx_WriteVgaCrtReg(K_GFX_VGA_CRT_REG_CURSOR_LOCH, 0);
+    k_gfx_WriteVgaCrtReg(K_GFX_VGA_CRT_REG_CURSOR_LOCL, cursor_pos & 0xff);
+    // k_gfx_WriteVgaCrtReg(K_GFX_VGA_CRT_REG_CURSOR_LOCL, 0);
 }
 
 
@@ -235,3 +241,19 @@ void k_gfx_FillSquare(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
         framebuffer[index] = 0xf;
     }
 }
+
+// extern uint32_t vga_width;
+// extern uint32_t vga_height;
+
+void k_gfx_BlitTextBuffer(uint16_t *text, uint16_t start_x, uint16_t start_y, uint16_t count)
+{
+    if(text && start_x < k_gfx_vga_width && start_y < k_gfx_vga_height)
+    {
+        k_rt_CopyBytes(k_gfx_vga_cur_mem_map + start_x + start_y * k_gfx_vga_width, text, sizeof(uint16_t) * count);
+    }
+}
+
+// uint16_t k_gfx_VgaChar(char ch, uint8_t text_color, uint8_t back_color)
+// {
+//     return ((uint16_t)back_color << 12) | ((uint16_t)text_color << 8) | ((uint16_t)ch);
+// }

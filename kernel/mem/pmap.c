@@ -1,8 +1,19 @@
 #include "pmap.h"
 #include "mngr.h"
 #include "../cpu/k_cpu.h"
-#include "../k_defs.h"
+#include "../defs.h"
 
+struct k_mem_pentry_t *k_mem_MapPageMapTable(uintptr_t page_map_table)
+{
+    void *linear_address = k_mem_AllocVirtualRange(4096);
+    k_mem_MapLinearAddress((uintptr_t)linear_address, page_map_table, K_MEM_PENTRY_FLAG_READ_WRITE);
+    return (struct k_mem_pentry_t *)linear_address;
+}
+
+uint32_t k_mem_UnmapPageMapTable(struct k_mem_pentry_t *page_map_table)
+{
+    return k_mem_UnmapLinearAddress((uintptr_t)page_map_table);
+}
 
 uint32_t k_mem_MapLinearAddress(uintptr_t linear_address, uintptr_t physical_address, uint32_t flags)
 {
@@ -60,7 +71,6 @@ uint32_t k_mem_MapLinearAddress(uintptr_t linear_address, uintptr_t physical_add
 
         if(pentry->entry & K_MEM_PENTRY_FLAG_USED)
         {
-            // k_printf("well, shit... %x\n", linear_address);
             return K_STATUS_LINEAR_ADDRESS_IN_USE;
         }
     }
@@ -102,6 +112,41 @@ uint32_t k_mem_UnmapLinearAddress(uintptr_t linear_address)
     k_cpu_InvalidateTLB(linear_address);
 
     return K_STATUS_OK;
+}
+
+uintptr_t k_mem_LinearAddressPhysicalPage(uintptr_t linear_address)
+{
+    if(!linear_address || linear_address >= (uintptr_t)K_MEM_PMAP_PENTRY_PAGE_POINTER(0))
+    {
+        return K_MEM_NULL_PAGE;
+    }
+
+    uint32_t pdir_index = K_MEM_PDIR_INDEX(linear_address);
+    uint32_t ptable_index = K_MEM_PTABLE_INDEX(linear_address);
+
+    struct k_mem_pentry_t *pdir = K_MEM_PMAP_PDIR_PAGE_POINTER;
+    struct k_mem_pentry_t *pentry = pdir + pdir_index;
+
+    if(pentry->entry & K_MEM_PENTRY_FLAG_USED)
+    {
+        if(!(pentry->entry & K_MEM_PENTRY_FLAG_BIG_PAGE))
+        {
+            pentry = K_MEM_PMAP_PENTRY_PAGE_POINTER(pdir_index) + ptable_index;    
+        }
+        // if(pentry->entry & K_MEM_PENTRY_FLAG_BIG_PAGE)
+        // {
+        //     return (uintptr_t)(pentry->entry & K_MEM_4KB_ADDRESS_MASK);
+        // }
+
+        // pentry = K_MEM_PMAP_PENTRY_PAGE_POINTER(pdir_index) + ptable_index;
+
+        if(pentry->entry & K_MEM_PENTRY_FLAG_USED)
+        {
+            return (uintptr_t)(pentry->entry & K_MEM_4KB_ADDRESS_MASK);
+        }
+    }
+
+    return K_MEM_NULL_PAGE;
 }
 
 uint32_t k_mem_IsLinearAddressMapped(uintptr_t linear_address)

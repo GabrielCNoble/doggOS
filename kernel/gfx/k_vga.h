@@ -169,12 +169,16 @@ uint8_t k_gfx_ReadVgaExtReg(uint8_t reg);
 
 void k_gfx_SetVgaMemMap(uint32_t map);
 
-void k_gfx_SetVgaCursorPos(uint32_t column, uint32_t row);
+void k_gfx_SetVgaCursorPos(uint32_t x, uint32_t y);
 
 void k_gfx_ToggleVgaCursor(uint32_t enable);
 
 void k_gfx_SetVgaGfxMode(uint32_t mode);
 
 void k_gfx_FillSquare(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1);
+
+void k_gfx_BlitTextBuffer(uint16_t *text, uint16_t start_x, uint16_t start_y, uint16_t count);
+
+// uint16_t k_gfx_VgaChar(char ch, char text_color, char back_color);
 
 #endif

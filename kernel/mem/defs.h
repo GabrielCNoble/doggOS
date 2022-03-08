@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdalign.h>
 
+#include "../rt/atm.h"
+
 enum K_MEM_RANGE_TYPES
 {
     K_MEM_RANGE_TYPE_FREE = 1,
@@ -44,6 +46,8 @@ struct k_mem_upage_t
 {
     uint32_t index : 24;
     uint32_t flags : 8;   
+    // uint32_t index;
+    // uint32_t flags;
 }; 
 
 struct k_mem_prange_t
@@ -57,7 +61,7 @@ struct k_mem_prange_t
 
 struct k_mem_prlist_t
 {
-    uint16_t range_count;
+    uint32_t range_count;
     struct k_mem_prange_t *ranges;
 };
 
@@ -175,82 +179,6 @@ struct k_mem_pmap_t
 #define K_MEM_PMAP_PTABLE_PAGE_POINTER K_MEM_PMAP_PENTRY_PAGE_POINTER(K_MEM_PMAP_PTABLE_INDEX)
 
 
-#define K_MEM_BCHUNK_BUCKET_COUNT 1024
-#define K_MEM_BCHUNK_BUCKET_SHIFT 10
-struct k_mem_bchunk_t
-{
-    union
-    {
-        uint8_t bytes[4096];
 
-        struct
-        {
-            struct k_mem_bchunk_t *next;
-            struct k_mem_bchunk_t *prev;
-            uint32_t size;
-            uint32_t stack_top;
-            struct k_mem_bchunk_t *chunk_stack[];
-        };
-    };
-};
-
-struct k_mem_bbucket_t
-{
-    struct k_mem_bchunk_t *out_chunks;
-    struct k_mem_bchunk_t *in_chunks;
-};
-
-struct k_mem_bcheader_t
-{
-    uint32_t type : 2;
-    uint32_t size : 30;
-};
-
-struct k_mem_bcpage_t
-{
-    struct k_mem_bcheader_t headers[1024];
-};
-struct k_mem_bheap_t
-{
-    struct k_mem_bcpage_t *cpages;
-    struct k_mem_bbucket_t *buckets;
-};
-
-
-
-#define K_MEM_SMALL_BUCKET_COUNT 9
-struct k_mem_schunk_t
-{
-    struct k_mem_schunk_t *next;
-    struct k_mem_schunk_t *prev;
-};
-
-struct k_mem_scpheader_t
-{
-    struct k_mem_scpage_t *next_free;
-    uint32_t main_bucket : 4;
-    uint32_t free_count : 12;
-};
-
-#define K_MEM_SCPAGE_CHUNK_BYTES (4096 - sizeof(struct k_mem_scpheader_t))
-#define K_MEM_SCPAGE_CHUNK_COUNT (K_MEM_SCPAGE_CHUNK_BYTES / sizeof(struct k_mem_schunk_t))
-struct k_mem_scpage_t
-{
-    struct k_mem_scpheader_t header;
-    struct k_mem_schunk_t chunks[K_MEM_SCPAGE_CHUNK_COUNT];
-};
-
-struct k_mem_sbucket_t
-{
-    struct k_mem_schunk_t *first_chunk;
-    struct k_mem_schunk_t *last_chunk;
-};
-
-struct k_mem_sheap_t
-{
-    struct k_mem_bheap_t *big_heap;
-    struct k_mem_sbucket_t buckets[K_MEM_SMALL_BUCKET_COUNT];
-    struct k_mem_scpage_t *free_pages;
-};
 
 #endif

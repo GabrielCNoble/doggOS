@@ -1,7 +1,7 @@
 #include "k_dsk.h"
 #include "../mem/mem.h"
-#include "../../libdg/container/dg_slist.h"
-#include "../k_term.h"
+// #include "../../libdg/container/dg_slist.h"
+// #include "../k_term.h"
 
 // struct k_dsk_disk_t *k_dsk_disks = NULL;
 

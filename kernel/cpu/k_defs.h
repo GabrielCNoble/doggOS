@@ -161,6 +161,8 @@ struct k_cpu_seg_desc_t
         .v.w.w2 = (uint16_t)((((uint32_t)(base)) >> 16) & 0xff) | (uint16_t)(seg_type) | (K_CPU_SEG_DESC_DPL(dpl)) | (uint16_t)((present) << 15), \
         .v.w.w3 = (uint16_t)((((uint32_t)(limit)) >> 16) & 0xf) | (uint16_t)(op_size) | (uint16_t)(gran) | (uint16_t)((((uint32_t)(base)) >> 16) & 0xff00)})
 
+#define K_CPU_GATE_DESC()
+
 enum K_CPU_SEG_SEL_FLAGS
 {
     K_CPU_SEG_SEL_FLAG_TI = 1 << 2
@@ -224,9 +226,6 @@ struct k_cpu_tss_t
     uint32_t ssp;       // 104
 };
 
-struct k_cpu_core_state_t
-{
-    
-};
+// #define K_CPU_INTERRUPT(interrupt) asm volatile ("int "#(interrupt)) 
 
 #endif

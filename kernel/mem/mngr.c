@@ -1,9 +1,13 @@
 #include "mngr.h"
 #include "../k_int.h"
-#include "../k_term.h"
+// #include "../k_term.h"
+#include "../rt/atm.h"
 
 struct k_mem_vrlist_t k_mem_virtual_ranges;
 struct k_mem_prlist_t k_mem_physical_ranges;
+k_rt_spnl_t k_mem_virtual_ranges_spinlock = 0;
+k_rt_spnl_t k_mem_physical_ranges_spinlock = 0;
+
 // struct k_mem_pplist_t k_mem_physical_pages;
 
 void *k_mem_AllocVirtualRange(size_t size)
@@ -17,7 +21,7 @@ void *k_mem_AllocVirtualRange(size_t size)
         size++;
     }
 
-    k_printf("virtual alloc of %x pages\n", size);
+    k_rt_SpinLock(&k_mem_virtual_ranges_spinlock);
 
     for(uint32_t index = 0; index < k_mem_virtual_ranges.free_count; index++)
     {
@@ -25,7 +29,7 @@ void *k_mem_AllocVirtualRange(size_t size)
 
         if(free_range->size >= size)
         {
-            k_printf("found range %x - %x\n", free_range->start, free_range->start + free_range->size);
+            // k_printf("found range %x - %x\n", free_range->start, free_range->start + free_range->size);
             memory = (void *)(free_range->start << K_MEM_4KB_ADDRESS_SHIFT);
             uint32_t used_index = k_mem_UsedVirtualRangeIndex((void *)(free_range->start << K_MEM_4KB_ADDRESS_SHIFT));
             struct k_mem_vrange_t *used_range = k_mem_virtual_ranges.ranges + used_index;
@@ -65,6 +69,8 @@ void *k_mem_AllocVirtualRange(size_t size)
         }
     }
 
+    k_rt_SpinUnlock(&k_mem_virtual_ranges_spinlock);
+
     return (void *)memory;
 }
 
@@ -92,6 +98,7 @@ void k_mem_FreeVirtualRange(void *mem)
 {
     if(mem)
     {
+        k_rt_SpinLock(&k_mem_virtual_ranges_spinlock);
         uint32_t used_index = k_mem_UsedVirtualRangeIndex(mem);
         struct k_mem_vrange_t *used_range = k_mem_virtual_ranges.ranges + used_index;
 
@@ -101,6 +108,7 @@ void k_mem_FreeVirtualRange(void *mem)
 
         if(used_index >= k_mem_virtual_ranges.range_count || used_range->start != ((uintptr_t)mem >> K_MEM_4KB_ADDRESS_SHIFT))
         {
+            k_rt_SpinUnlock(&k_mem_virtual_ranges_spinlock);
             return;
         }
 
@@ -203,6 +211,8 @@ void k_mem_FreeVirtualRange(void *mem)
                 break;
             }
         }
+
+        k_rt_SpinUnlock(&k_mem_virtual_ranges_spinlock);
     }
 }
 
@@ -242,7 +252,7 @@ void k_mem_SortFreePhysicalPages()
 uintptr_t k_mem_AllocPhysicalPage(uint32_t flags)
 {
     uintptr_t page_address = K_MEM_NULL_PAGE;
-
+    k_rt_SpinLock(&k_mem_physical_ranges_spinlock);
     for(uint32_t range_index = 0; range_index < k_mem_physical_ranges.range_count; range_index++)
     {
         struct k_mem_prange_t *range = k_mem_physical_ranges.ranges + range_index;
@@ -258,19 +268,7 @@ uintptr_t k_mem_AllocPhysicalPage(uint32_t flags)
             range->used_pages[page_index].flags = flags | K_MEM_PAGE_FLAG_USED | K_MEM_PAGE_FLAG_HEAD;
         }
     }
-
-    // if(k_mem_physical_pages.free_pages_count)
-    // {
-    //     k_mem_physical_pages.free_pages_count--;
-    //     page_address = k_mem_physical_pages.free_pages[k_mem_physical_pages.free_pages_count];
-    //     struct k_mem_uppentry_t *used_entry = k_mem_physical_pages.used_pages + K_MEM_USED_SMALL_PAGE_ENTRY_INDEX(page_address);
-    //     used_entry->pid_index = 0;
-    //     used_entry->flags = flags | K_MEM_PAGE_FLAG_USED | K_MEM_PAGE_FLAG_HEAD;
-    // }
-    // else
-    // {
-    //     k_int_HaltAndCatchFire();
-    // }
+    k_rt_SpinUnlock(&k_mem_physical_ranges_spinlock);
 
     return page_address;
 }
@@ -387,6 +385,7 @@ void k_mem_FreePhysicalPages(uintptr_t page)
 
     if(page != K_MEM_NULL_PAGE)
     {
+        k_rt_SpinLock(&k_mem_physical_ranges_spinlock);
         for(uint32_t range_index = 0; range_index < k_mem_physical_ranges.range_count; range_index++)
         {
             struct k_mem_prange_t *range = k_mem_physical_ranges.ranges + range_index;
@@ -419,9 +418,12 @@ void k_mem_FreePhysicalPages(uintptr_t page)
                     }
                     while((used_page->flags & test_flags) == K_MEM_PAGE_FLAG_USED);
 
+                    k_rt_SpinUnlock(&k_mem_physical_ranges_spinlock);
+
                     return;
                 }
             }
         }
+        k_rt_SpinUnlock(&k_mem_physical_ranges_spinlock);
     }
 }

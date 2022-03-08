@@ -1,7 +1,7 @@
 #ifndef K_CPU_H
 #define K_CPU_H
 
-#include "../k_defs.h"
+#include "../defs.h"
 #include "k_defs.h"
 
 extern void k_cpu_EnableInterrupts();
@@ -43,5 +43,7 @@ extern void k_cpu_WriteMSR(uint32_t reg, uint64_t value);
 extern uint64_t k_cpu_ReadMSR(uint32_t reg);
 
 extern void k_cpu_SwitchModes();
+
+extern uint32_t k_cpu_GetCPR();
 
 #endif

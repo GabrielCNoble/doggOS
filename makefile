@@ -1,13 +1,13 @@
 BOOT_DIR := boot
 BOOT_BIN := $(BOOT_DIR)/boot.bin
 
-LIBDG_DIR := libdg
-LIBDG_OBJ := $(LIBDG_DIR)/*/*.o
+LIBDGC_DIR := libdgc
+LIBDGC_OBJ := $(LIBDGC_DIR)/*/*.o
 
 KERNEL_DIR := kernel
 KERNEL_BIN := $(KERNEL_DIR)/kernel.bin
 
-OBJ := $(LIBDG_OBJ)
+OBJ := $(LIBDGC_OBJ)
 
 LINKER_SCRIPT := linker.ld
 BIN_NAME := doggOS.bin
@@ -16,7 +16,7 @@ DISK_NAME := doggOS.img
 %.o: %.asm
 	i686-elf-as $< -o $@
 
-all: version boot kernel libdg $(LINKER_SCRIPT)
+all: version boot kernel libdgc $(LINKER_SCRIPT)
 	dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
 	dd conv=notrunc if=$(BOOT_BIN) of=$(DISK_NAME)
 	dd conv=notrunc seek=4 if=$(KERNEL_BIN) of=$(DISK_NAME)
@@ -30,10 +30,10 @@ boot:
 kernel:
 	make -C $(KERNEL_DIR)
 
-libdg:
-	make -C $(LIBDG_DIR)
+libdgc:
+	make -C $(LIBDGC_DIR)
 
-.PHONY: version boot kernel libdg
+.PHONY: version boot kernel libdgc
 
 clean:
 	rm -f $(OBJ)

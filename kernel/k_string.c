@@ -236,7 +236,22 @@ void k_vasfmt(char *buffer, int32_t buffer_size, char *fmt, va_list args)
 
                     case 's':
                         str_arg = va_arg(args, char *);
-                        out_index += k_strcat(buffer + out_index, buffer_length - out_index, str_arg);
+                        uint32_t append_length = k_strcat(buffer + out_index, buffer_length - out_index, str_arg);
+
+                        if(append_length)
+                        {
+                            /* k_strcat returns the length of the string, including the null terminator, 
+                            and places a null char after the end of the string. To avoid having this
+                            terminator accidentally terminate the resulting string, we back up one char,
+                            so it gets properly overwritten by anything that comes after this string. */
+                            out_index += append_length - 1;
+                        }
+                    break;
+
+                    case 'c':
+                        dword_arg = va_arg(args, uint32_t) & 0xff;
+                        buffer[out_index] = dword_arg;
+                        out_index++;
                     break;
                 }
                 in_index++;
