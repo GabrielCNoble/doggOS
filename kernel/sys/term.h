@@ -28,6 +28,8 @@ enum K_SYS_TERM_COLORS
 
 void k_sys_TerminalInit();
 
+uint16_t k_sys_TerminalChar(unsigned char ch, uint8_t color);
+
 void k_sys_TerminalPutChar(unsigned char c);
 
 void k_sys_TerminalPuts(char *str);

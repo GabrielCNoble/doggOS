@@ -105,12 +105,6 @@ k_proc_StartUserThread_a:
 the scheduler thread */
 .global k_proc_PreemptThread
 k_proc_PreemptThread:
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
     call k_proc_PushThreadRegs
     /* we need to save cr3 in the thread struct, but chances are we're currently in user 
     space, so that's not accessible. Instead, we hold onto its value until we change to 

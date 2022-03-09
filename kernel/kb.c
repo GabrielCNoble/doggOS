@@ -1,6 +1,6 @@
 #include "kb.h"
 #include "rt/mem.h"
-#include "k_int.h"
+#include "int/int.h"
 #include "cpu/k_cpu.h"
 
 char k_scancode_lut[256] = 

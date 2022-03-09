@@ -2,7 +2,7 @@
 #include "../mem/mngr.h"
 #include "../mem/pmap.h"
 #include "../defs.h"
-#include "../k_int.h"
+#include "../int/int.h"
 // #include "../k_term.h"
 #include "../proc/thread.h"
 

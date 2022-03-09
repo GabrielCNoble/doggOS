@@ -2,7 +2,7 @@
 #include "proc.h"
 #include "../rt/atm.h"
 // #include "../cont/k_objlist.h"
-#include "../timer/k_apic.h"
+#include "../int/apic.h"
 #include "../rt/mem.h"
 #include "../rt/alloc.h"
 #include "../rt/queue.h"

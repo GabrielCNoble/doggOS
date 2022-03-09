@@ -96,12 +96,12 @@ void k_sys_TerminalInit()
 //     }
 // }
 
-void k_sys_CarriageReturn()
+void k_sys_TerminalCarriageReturn()
 {
     k_sys_term_cursor_x = 0;
 }
 
-void k_sys_PrevLine()
+void k_sys_TerminalPrevLine()
 {
     k_sys_term_cursor_x = k_sys_term_width - 1;
     k_sys_term_buffer_cursor_y--;
@@ -112,9 +112,12 @@ void k_sys_PrevLine()
     k_sys_term_display_cursor_y--;
 }
 
-void k_sys_NewLine()
+void k_sys_TerminalNewLine()
 {
-    k_sys_term_output_buffer[k_sys_term_cursor_x + k_sys_term_buffer_cursor_y * k_sys_term_width] = (uint16_t)('\n');
+    // uint8_t color = k_sys_term_color & 0x0f;
+    // color |= color << 4;
+    // uint16_t newline_char = k_sys_TerminalChar(' ', k_sys_term_color);
+    // k_sys_term_output_buffer[k_sys_term_cursor_x + k_sys_term_buffer_cursor_y * k_sys_term_width] = newline_char;
     // shell_buffer[cursor_x + buffer_cursor_y * buffer_width] = k_vga_char(' ', text_color);
     k_sys_term_cursor_x = 0;
     // line_len = 0;
@@ -126,11 +129,11 @@ void k_sys_TerminalPutChar(unsigned char c)
 {    
     if(c == '\n')
     {
-        k_sys_NewLine();
+        k_sys_TerminalNewLine();
     }
     else if(c == '\r')
     {
-        k_sys_CarriageReturn();
+        k_sys_TerminalCarriageReturn();
     }
     else
     {
@@ -201,7 +204,7 @@ void k_sys_TerminalUpdate()
 
 void k_sys_TerminalSetColor(uint8_t text_color, uint8_t back_color)
 {
-    k_sys_term_color = (back_color << 4) | text_color;
+    k_sys_term_color = (back_color << 4) | (text_color & 0x0f);
 }
 
 void k_sys_TerminalSetCursorPos(int32_t x, int32_t y)
@@ -233,11 +236,13 @@ void k_sys_TerminalScroll(int32_t lines)
 
 void k_sys_TerminalClear()
 {
+    uint16_t clear_char = k_sys_TerminalChar(' ', k_sys_term_color);
+
     for(int32_t y = 0; y < k_sys_term_height; y++)
     {
         for(int32_t x = 0; x < k_sys_term_width; x++)
         {
-            k_sys_term_output_buffer[x + y * k_sys_term_height] = (uint16_t)(' ');
+            k_sys_term_output_buffer[x + y * k_sys_term_width] = clear_char;
         }
     }
 

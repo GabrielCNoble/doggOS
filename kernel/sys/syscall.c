@@ -1,7 +1,7 @@
 #include "syscall.h"
 #include "../proc/defs.h"
 #include "../cpu/k_defs.h"
-#include "../k_int.h"
+#include "../int/int.h"
 #include "proc/thread.h"
 #include <stdarg.h>
 

@@ -3,7 +3,7 @@
 // #include "k_pmap.h"
 // #include "../k_term.h"
 #include "../cpu/k_cpu.h"
-#include "../k_int.h"
+#include "../int/int.h"
 #include "../proc/defs.h"
 #include "../rt/alloc.h"
 
@@ -279,7 +279,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     if(!k_mem_virtual_ranges.ranges)
     {
-        k_int_HaltAndCatchFire();
+        // k_int_HaltAndCatchFire();
     }
 
     k_mem_virtual_ranges.ranges[0].start = 0x00001000;
@@ -294,7 +294,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     if(!k_mem_physical_ranges.ranges)
     {
-        k_int_HaltAndCatchFire();
+        // k_int_HaltAndCatchFire();
     }
 
 

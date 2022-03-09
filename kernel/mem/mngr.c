@@ -1,5 +1,5 @@
 #include "mngr.h"
-#include "../k_int.h"
+#include "../int/int.h"
 // #include "../k_term.h"
 #include "../rt/atm.h"
 
@@ -411,7 +411,7 @@ void k_mem_FreePhysicalPages(uintptr_t page)
                         if(range->free_count > range->page_count)
                         {
                             /* make sure we crash pretty hard if physical pages show up out of nowhere */
-                            k_int_HaltAndCatchFire();
+                            // k_int_HaltAndCatchFire();
                         }
 
                         used_page = range->used_pages + page_index;

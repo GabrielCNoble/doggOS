@@ -3,11 +3,9 @@
 // #include "../libdg/malloc/dg_malloc.h"
 // #include "../libdg/string/dg_string.h"
 #include "rt/atm.h"
-#include "timer/k_apic.h"
 #include "proc/thread.h"
 #include "proc/proc.h"
 #include "k_rng.h"
-#include "k_int.h"
 #include "rt/mem.h"
 #include "rt/queue.h"
 #include "../version/version.h"
@@ -199,7 +197,7 @@ uintptr_t simple_test1(void *data)
     // }
     while(1)
     {
-        k_printf("b\n");
+        k_sys_TerminalPrintf("b\n");
     }
 }
 
@@ -219,7 +217,7 @@ uintptr_t simple_test2(void *data)
     // }
     while(1)
     {
-        k_printf("a\n");
+        k_sys_TerminalPrintf("a\n");
     }
 }
 
@@ -278,7 +276,7 @@ uintptr_t main_thread(void *data)
         // {
         //     k_printf("%x == %x           \n", work_thread, return_value);
         // }
-        k_printf("%x\n", k_rng_Rand());
+        k_sys_TerminalPrintf("%x\n", k_rng_Rand());
     }
     return 1;
 }
@@ -289,7 +287,7 @@ void k_main()
 
     // k_term_clear();
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
-    k_sys_TerminalPrintf("doggOS version %d.%d.%d+%d\n", K_VERSION_MAJOR, K_VERSION_MINOR, K_VERSION_PATCH, K_VERSION_BUILD);
+    // k_sys_TerminalPrintf("doggOS version %d.%d.%d+%d\n", K_VERSION_MAJOR, K_VERSION_MINOR, K_VERSION_PATCH, K_VERSION_BUILD);
 
     // struct k_rt_queue_t queue = k_rt_QueueCreate();
     // uint32_t values[16];
