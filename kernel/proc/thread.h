@@ -2,6 +2,7 @@
 #define K_THREAD_H
 
 #include "defs.h"
+#include "../io.h"
 
 struct k_proc_thread_t *k_proc_CreateKernelThread(k_proc_thread_func_t entry_point, void *user_data);
 
@@ -21,6 +22,8 @@ void k_proc_SuspendThread(struct k_proc_thread_t *thread);
 
 uint32_t k_proc_WaitThread(struct k_proc_thread_t *thread, uintptr_t *value);
 
+uint32_t k_proc_WaitStream(struct k_io_stream_t *stream);
+
 void k_proc_YieldThread();
 
 void k_proc_StartUserThread(k_proc_thread_func_t entry_point, void *user_data);
@@ -36,6 +39,8 @@ void k_proc_SwitchToThread(struct k_proc_thread_t *thread);
 void k_proc_QueueReadyThread(struct k_proc_thread_t *thread);
 
 void k_proc_QueueWaitingThread(struct k_proc_thread_t *thread);
+
+void k_proc_QueueIOBlockedThread(struct k_proc_thread_t *thread);
 
 void k_proc_QueueDetachedThread(struct k_proc_thread_t *thread);
 

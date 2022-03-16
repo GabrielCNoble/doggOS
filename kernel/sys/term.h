@@ -2,8 +2,9 @@
 #define K_SYS_TERM_H
 
 #include <stdint.h>
+#include "../io.h"
 
-#define K_SYS_TERM_OUTPUT_BUFFER_LINES 256
+#define K_SYS_TERM_OUTPUT_BUFFER_LINES 8192
 #define K_SYS_TERM_INPUT_BUFFER_SIZE 4096
 
 enum K_SYS_TERM_COLORS
@@ -30,7 +31,7 @@ void k_sys_TerminalInit();
 
 uint16_t k_sys_TerminalChar(unsigned char ch, uint8_t color);
 
-void k_sys_TerminalPutChar(unsigned char c);
+void k_sys_TerminalPutChar(char c);
 
 void k_sys_TerminalPuts(char *str);
 
@@ -46,6 +47,8 @@ void k_sys_TerminalScroll(int32_t lines);
 
 void k_sys_TerminalClear();
 
-uint32_t k_sys_TerminalReadLine(const char *output, uint32_t buffer_size);
+// struct k_io_stream_t *k_sys_TerminalOpenStream();
+
+uint32_t k_sys_TerminalReadLine(char *output, uint32_t buffer_size);
 
 #endif

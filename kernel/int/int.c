@@ -32,59 +32,59 @@ extern void *k_proc_PreemptCurrentThread;
 uint32_t blah;
 struct k_int_desc_t k_int_idt[K_INT_HANDLER_LAST];
 
-extern uint32_t k_gfx_vga_width;
-extern uint32_t k_gfx_vga_height;
-extern uint16_t *k_gfx_vga_cur_mem_map;
+// extern uint32_t k_gfx_vga_width;
+// extern uint32_t k_gfx_vga_height;
+// extern uint16_t *k_gfx_vga_cur_mem_map;
 
-char *k_int_pf_messages[] = 
-{
-    [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "supervisor-mode data read attempt from unpaged address %x\n",
+// char *k_int_pf_messages[] = 
+// {
+//     [
+//         (!K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (!K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "supervisor-mode data read attempt from unpaged address %x\n",
 
-    [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "supervisor-mode instruction fetch attempt from unpaged address %x\n",
+//     [
+//         (!K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (!K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "supervisor-mode instruction fetch attempt from unpaged address %x\n",
 
-    [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "page-level protection violation during supervisor-mode data read attempt from address %x\n",
+//     [
+//         (K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (!K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "page-level protection violation during supervisor-mode data read attempt from address %x\n",
 
-    [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "page-level protection violation during supervisor-mode instruction fetch attempt from address %x\n",
+//     [
+//         (K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (!K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "page-level protection violation during supervisor-mode instruction fetch attempt from address %x\n",
 
-    [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "supervisor-mode data write attempt to unpaged address %x\n",
+//     [
+//         (!K_INT_PF_FLAG_NON_PAGED) | 
+//         (K_INT_PF_FLAG_WRITE) | 
+//         (!K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "supervisor-mode data write attempt to unpaged address %x\n",
 
-    [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "page-level protection violation during supervisor-mode data write attempt to address %x\n",
+//     [
+//         (K_INT_PF_FLAG_NON_PAGED) | 
+//         (K_INT_PF_FLAG_WRITE) | 
+//         (!K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "page-level protection violation during supervisor-mode data write attempt to address %x\n",
 
 
 
@@ -94,54 +94,54 @@ char *k_int_pf_messages[] =
 
 
 
-    [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "user-mode data read attempt from unpaged address %x\n",
+//     [
+//         (!K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "user-mode data read attempt from unpaged address %x\n",
 
-    [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "user-mode instruction fetch attempt from unpaged address %x\n",
+//     [
+//         (!K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "user-mode instruction fetch attempt from unpaged address %x\n",
 
-    [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "page-level protection violation during user-mode data read attempt from address %x\n",
+//     [
+//         (K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "page-level protection violation during user-mode data read attempt from address %x\n",
 
-    [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "page-level protection violation during user-mode instruction fetch attempt from address %x\n",
+//     [
+//         (K_INT_PF_FLAG_NON_PAGED) | 
+//         (!K_INT_PF_FLAG_WRITE) | 
+//         (K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "page-level protection violation during user-mode instruction fetch attempt from address %x\n",
 
-    [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "user-mode data write attempt to unpaged address %x\n",
+//     [
+//         (!K_INT_PF_FLAG_NON_PAGED) | 
+//         (K_INT_PF_FLAG_WRITE) | 
+//         (K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "user-mode data write attempt to unpaged address %x\n",
 
-    [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
-    ] = "page-level protection violation during user-mode data write attempt to address %x\n",
-};
+//     [
+//         (K_INT_PF_FLAG_NON_PAGED) | 
+//         (K_INT_PF_FLAG_WRITE) | 
+//         (K_INT_PF_FLAG_USER) | 
+//         (!K_INT_PF_FLAG_RES) | 
+//         (!K_INT_PF_FLAG_INSTR_FETCH)
+//     ] = "page-level protection violation during user-mode data write attempt to address %x\n",
+// };
 
 void k_int_Init()
 {
@@ -208,12 +208,12 @@ void k_int_Int5(uint32_t eip, uint16_t cs)
 void k_int_Int6(uint32_t eip, uint16_t cs)
 {
     // k_sys_TerminalPrintf("invalid instruction at %x:%x\n", (uint32_t)cs, eip);
-    k_sys_HaltAndCatchFire(K_EXCEPTION_INVALID_INSTRUCTION, eip, (uint32_t)cs);
+    k_sys_HaltAndCatchFire(K_EXCEPTION_INVALID_OPCODE, eip, (uint32_t)cs);
 }
 
 void k_int_Int7(uint32_t eip, uint16_t cs)
 {
-    k_sys_TerminalPrintf("device not available at %x:%x\n", (uint32_t)cs, eip);
+    // k_sys_TerminalPrintf("device not available at %x:%x\n", (uint32_t)cs, eip);
 }
 
 void k_int_Int8()
@@ -229,7 +229,7 @@ void k_int_Int10(uint32_t error, uint32_t eip, uint32_t cs)
 void k_int_Int13(uint32_t error, uint32_t eip, uint32_t cs)
 {
     // k_sys_TerminalPrintf("general protection fault at %x:%x, with error %x\n", (uint32_t)cs, eip, error);
-    k_sys_HaltAndCatchFire(K_EXCEPTION_GENERAL_PROTECTION_FAULT, error, eip, cs);
+    k_sys_HaltAndCatchFire(K_EXCEPTION_GENERAL_PROTECTION_FAULT, eip, cs, error);
 }
 
 void k_int_Int14(uint32_t address, uint32_t error, uint32_t eip, uint32_t cs)
@@ -237,7 +237,7 @@ void k_int_Int14(uint32_t address, uint32_t error, uint32_t eip, uint32_t cs)
     // k_sys_TerminalPrintf("page fault at %x:%x, with error %x\n", cs, eip, error);
     // k_sys_TerminalPrintf(k_int_pf_messages[error], address);
 
-    k_sys_HaltAndCatchFire(K_EXCEPTION_PAGE_FAULT, address, error, eip, cs);
+    k_sys_HaltAndCatchFire(K_EXCEPTION_PAGE_FAULT, eip, cs, address, error);
 }
 
 void k_int_Intn()

@@ -50,7 +50,9 @@ struct k_rt_queue_t k_proc_ready_queue;
 // struct k_proc_thread_t *k_proc_finished_list = NULL;
 
 k_rt_spnl_t k_proc_wait_list_spinlock = 0;
-struct k_proc_thread_t *k_proc_wait_list = NULL;
+struct k_proc_thread_t *k_proc_thread_wait_list = NULL;
+
+struct k_proc_thread_t *k_proc_io_wait_list = NULL;
 
 
 /* each core will have on of those */
@@ -106,6 +108,7 @@ void k_proc_Init()
     k_proc_scheduler_process.pid = 0;
     k_proc_scheduler_process.ring = 0;
     k_proc_scheduler_process.heap.spinlock = 0;
+    k_proc_scheduler_process.terminal = NULL;
 
     k_proc_core_state.thread_pool.pages = NULL;
     k_proc_core_state.thread_pool.threads = NULL;
@@ -205,7 +208,7 @@ void k_proc_RunScheduler()
         struct k_proc_thread_t *waiting_thread = NULL;
         struct k_proc_thread_t *resume_thread = NULL;
         struct k_proc_thread_t *last_resume_thread = NULL;
-        k_rt_Xcgh32((uint32_t *)&k_proc_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
+        k_rt_Xcgh32((uint32_t *)&k_proc_thread_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
         while(waiting_thread)
         {
             struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
@@ -223,41 +226,29 @@ void k_proc_RunScheduler()
             waiting_thread = next_thread;
         }
 
-        // struct k_proc_thread_t *resume_thread = resume_threads;
+        k_rt_Xcgh32((uint32_t *)&k_proc_io_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
+        while(waiting_thread)
+        {
+            struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
+
+            if(waiting_thread->wait_stream->read_offset != waiting_thread->wait_stream->write_offset)
+            {
+                waiting_thread->queue_next = resume_thread;
+                resume_thread = waiting_thread;
+            }
+            else
+            {
+                k_proc_QueueIOBlockedThread(waiting_thread);
+            }
+
+            waiting_thread = next_thread;
+        }
 
         if(resume_thread)
         {
             struct k_proc_thread_t *next_resume_thread = resume_thread->queue_next;
             k_proc_QueueReadyThread(resume_thread);
             resume_thread = next_resume_thread;
-            // while(resume_thread)
-            // {
-            //     resume_thread->state = K_PROC_THREAD_STATE_READY;
-            //     last_resume_thread = resume_thread;
-            //     resume_thread = resume_thread->queue_next;
-            // }
-
-            // last_resume_thread->queue_next = queued_resume_threads;
-
-            // if(k_rt_TrySpinLock(&k_proc_ready_queue_spinlock))
-            // {
-            //     if(!k_proc_ready_queue)
-            //     {
-            //         k_proc_ready_queue = resume_threads;
-            //     }
-            //     else
-            //     {
-            //         k_proc_ready_queue_last->queue_next = resume_threads;
-            //     }
-            //     k_proc_ready_queue_last = last_resume_thread;
-
-            //     k_rt_SpinUnlock(&k_proc_ready_queue_spinlock);
-            //     queued_resume_threads = NULL;
-            // }
-            // else
-            // {
-            //     queued_resume_threads = resume_threads;
-            // }
         }
 
         k_proc_RunThread(k_proc_core_state.cleanup_thread);

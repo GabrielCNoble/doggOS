@@ -2,8 +2,11 @@
 #include "rt/mem.h"
 #include "int/int.h"
 #include "cpu/k_cpu.h"
+#include "dev/drv/8042.h"
+#include "proc/proc.h"
+#include "io.h"
 
-char k_scancode_lut[256] = 
+char k_kb_scancode_lut[256] = 
 {
     [0x02] = '1',
     [0x03] = '2',
@@ -53,7 +56,7 @@ char k_scancode_lut[256] =
     [0x34] = '.'
 };
 
-char k_scancode_shift_lut[256] = 
+char k_kb_scancode_shift_lut[256] = 
 {
     [0x02] = '!',
     [0x03] = '@',
@@ -71,15 +74,15 @@ char k_scancode_shift_lut[256] =
     [0x27] = ':',
     [0x28] = '\"',
 
-    [0x33] = '>',
-    [0x34] = '<'
+    [0x33] = '<',
+    [0x34] = '>'
 };
 
-uint8_t k_lshift_down = 0;
-uint8_t k_rshift_down = 0;
+uint8_t k_kb_lshift_down = 0;
+uint8_t k_kb_rshift_down = 0;
 
-uint32_t k_keyboard_buffer_cursor = 0;
-unsigned char k_keyboard_buffer[K_KEYBOARD_MAX_CHARS];
+// uint32_t k_keyboard_buffer_cursor = 0;
+// unsigned char k_keyboard_buffer[K_KEYBOARD_MAX_CHARS];
 
 extern void *k_kb_KeyboardHandler_a;
 
@@ -90,75 +93,84 @@ void k_kb_Init()
 
 uint32_t k_kb_ReadKeyboard(unsigned char *out_buffer, uint32_t buffer_size)
 {
-    if(k_keyboard_buffer_cursor)
-    {
-        uint32_t copy_size = k_keyboard_buffer_cursor;
+    // if(k_keyboard_buffer_cursor)
+    // {
+    //     uint32_t copy_size = k_keyboard_buffer_cursor;
 
-        if(copy_size > buffer_size)
-        {
-            copy_size = buffer_size - 1;
-        }
+    //     if(copy_size > buffer_size)
+    //     {
+    //         copy_size = buffer_size - 1;
+    //     }
 
-        k_rt_CopyBytes(out_buffer, k_keyboard_buffer, copy_size);
-        k_keyboard_buffer_cursor -= copy_size;
-        out_buffer[copy_size] = '\0';
+    //     k_rt_CopyBytes(out_buffer, k_keyboard_buffer, copy_size);
+    //     k_keyboard_buffer_cursor -= copy_size;
+    //     out_buffer[copy_size] = '\0';
 
-        return copy_size;
-    }
+    //     return copy_size;
+    // }
 
-    return 0;
+    // return 0;
 }
 
 void k_kb_KeyboardHandler()
 {
-    uint8_t scan_code = k_cpu_InB(K_KEYBOARD_DATA_PORT);
-    uint8_t status;
-    unsigned char c;
+    char ch;
 
     do
     {
+        struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+        uint8_t scan_code = k_8042_ReadScancode();
+        ch = '\0';
+
         switch(scan_code)
         {
             case 0x2a:
-                k_lshift_down = 1;
+                k_kb_lshift_down = 1;
             break;
 
             case 0xaa:
-                k_lshift_down = 0;
+                k_kb_lshift_down = 0;
             break;
 
             case 0x36:
-                k_rshift_down = 1;
+                k_kb_rshift_down = 1;
             break;
 
             case 0x59:
-                k_rshift_down = 0;
+                k_kb_rshift_down = 0;
             break;
 
             default:
-                c = k_scancode_lut[scan_code];
+                ch = k_kb_scancode_lut[scan_code];
 
-                if(c)
+                if(ch)
                 {
-                    if(k_rshift_down || k_lshift_down)
+                    if(k_kb_rshift_down || k_kb_lshift_down)
                     {
-                        if(c >= 'a' && c <= 'z')
+                        if(ch >= 'a' && ch <= 'z')
                         {
-                            c &= ~0x20;
+                            ch &= ~0x20;
                         }
-                        else if(c != ' ')
+                        else if(ch != ' ')
                         {
-                            c = k_scancode_shift_lut[scan_code];
+                            ch = k_kb_scancode_shift_lut[scan_code];
                         }
                     }
 
-                    k_keyboard_buffer[k_keyboard_buffer_cursor] = c;
-                    k_keyboard_buffer_cursor++;
+                    // k_sys_TerminalPrintf("shit\n");
+
+                    if(current_process->terminal)
+                    {
+                        k_io_WriteStream(current_process->terminal, &ch, sizeof(char));
+                    }
                 }
             break;
         }
-
-        status = k_cpu_InB(K_KEYBOARD_STATUS_CMD_PORT);
     }
-    while((status & K_KEYBOARD_STATUS_OUT_BUFFER_FULL) && k_keyboard_buffer_cursor < K_KEYBOARD_MAX_CHARS);
+    while((k_8042_ReadStatus() & K_8042_STATUS_OUT_BUFFER_FULL) && ch);
+}
+
+struct k_io_stream_t *k_kb_OpenStream()
+{
+
 }

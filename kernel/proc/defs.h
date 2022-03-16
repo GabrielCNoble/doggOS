@@ -7,6 +7,7 @@
 #include "../rt/atm.h"
 // #include "../cont/k_defs.h"
 #include "../dsk/k_defs.h"
+#include "../io.h"
 
 /*
 ===================================================================================
@@ -452,6 +453,8 @@ struct k_proc_thread_t
     struct k_proc_process_t *process;
     struct k_proc_thread_t *process_next;
     struct k_proc_thread_t *process_prev;
+    /* stream this thread is io blocked by */
+    struct k_io_stream_t *wait_stream;
     /* thread this thread is waiting on */
     struct k_proc_thread_t *wait_thread;
     struct k_proc_thread_t *queue_next;
@@ -529,9 +532,10 @@ struct k_proc_process_t
     struct k_proc_process_t *prev;
     struct k_proc_thread_t *threads;
     struct k_proc_thread_t *last_thread;
-    // struct k_mem_page_map_h page_map;    
-    uint32_t page_map;
+    struct k_io_stream_t *streams;
+    struct k_io_stream_t *terminal;
     struct k_rt_bheap_t heap;
+    uint32_t page_map;
     uint32_t pid : 30;
     uint32_t ring : 2;
 };

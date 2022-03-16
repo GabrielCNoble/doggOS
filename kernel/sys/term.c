@@ -5,6 +5,9 @@
 // #include "kb.h"
 #include <stdarg.h>
 #include "../k_string.h"
+#include "../proc/proc.h"
+#include "../proc/thread.h"
+#include "../defs.h"
 
 extern uint32_t k_gfx_vga_width;
 extern uint32_t k_gfx_vga_height;
@@ -62,40 +65,6 @@ void k_sys_TerminalInit()
     // }
 }
 
-// void k_BackSpace()
-// {
-//     // if(line_len)
-//     {
-//         // line_len--;
-
-//         if(cursor_x)
-//         {
-//             cursor_x--;
-//         }
-//         else
-//         {
-//             k_PrevLine();
-
-//             for(int32_t cursor = cursor_x; cursor >= 0; cursor--)
-//             {
-//                 if((shell_buffer[cursor + buffer_cursor_y * buffer_width] & 0xff) == '\n')
-//                 {
-//                     cursor_x = cursor;
-
-//                     if(cursor_x)
-//                     {
-//                         cursor_x--;
-//                     }
-
-//                     break;
-//                 }
-//             }
-//         }
-
-//         shell_buffer[cursor_x + buffer_cursor_y * buffer_width] = k_vga_char(' ', text_color);
-//     }
-// }
-
 void k_sys_TerminalCarriageReturn()
 {
     k_sys_term_cursor_x = 0;
@@ -125,11 +94,49 @@ void k_sys_TerminalNewLine()
     k_sys_term_display_cursor_y++;
 }
 
-void k_sys_TerminalPutChar(unsigned char c)
+void k_sys_TerminalBackSpace()
+{
+    // if(line_len)
+    {
+        // line_len--;
+
+        if(k_sys_term_cursor_x)
+        {
+            k_sys_term_cursor_x--;
+        }
+        else
+        {
+            k_sys_TerminalPrevLine();
+
+            for(int32_t cursor = k_sys_term_cursor_x; cursor >= 0; cursor--)
+            {
+                if((k_sys_term_output_buffer[cursor + k_sys_term_buffer_cursor_y * k_sys_term_width] & 0xff) == '\n')
+                {
+                    k_sys_term_cursor_x = cursor;
+
+                    if(k_sys_term_cursor_x)
+                    {
+                        k_sys_term_cursor_x--;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        k_sys_term_output_buffer[k_sys_term_cursor_x + k_sys_term_buffer_cursor_y * k_sys_term_width] = k_sys_TerminalChar(' ', k_sys_term_color);
+    }
+}
+
+void k_sys_TerminalPutSingleChar(unsigned char c)
 {    
     if(c == '\n')
     {
         k_sys_TerminalNewLine();
+    }
+    else if(c == 0x10)
+    {
+        k_sys_TerminalBackSpace();
     }
     else if(c == '\r')
     {
@@ -149,12 +156,19 @@ void k_sys_TerminalPutChar(unsigned char c)
     }
 }
 
+void k_sys_TerminalPutChar(char ch)
+{
+    char str[2] = {};
+    str[0] = ch;
+    k_sys_TerminalPuts(str);
+}
+
 void k_sys_TerminalPuts(char *str)
 {
     uint32_t index = 0;
     while(str[index])
     {
-        k_sys_TerminalPutChar(str[index]);
+        k_sys_TerminalPutSingleChar(str[index]);
         index++;
     }
 
@@ -167,6 +181,24 @@ void k_sys_TerminalPuts(char *str)
     else if(k_sys_term_display_cursor_y >= (int32_t)k_gfx_vga_height)
     {
         scroll = 1 + (k_sys_term_display_cursor_y - (int32_t)k_gfx_vga_height);
+    }
+
+    
+    if(scroll > 0)
+    {
+        uint16_t clear_char = k_sys_TerminalChar(' ', k_sys_term_color);
+        int32_t clear_start = (k_sys_term_buffer_cursor_y + 1) % k_sys_term_height;
+        int32_t clear_count = scroll;
+
+        for(int32_t clear_index = 0; clear_index < clear_count; clear_index++)
+        {
+            for(int32_t x = 0; x < k_sys_term_width; x++)
+            {
+                k_sys_term_output_buffer[x + clear_start * k_sys_term_width] = clear_char;
+            }
+
+            clear_start++;
+        }
     }
 
     k_sys_TerminalScroll(scroll);
@@ -253,9 +285,83 @@ void k_sys_TerminalClear()
     k_sys_TerminalUpdate();
 }
 
-uint32_t k_sys_TerminalReadLine(const char *output, uint32_t buffer_size)
-{
+// uint32_t k_sys_TerminalReadStream(struct k_io_stream_t *stream, void *data, uint32_t offset, uint32_t size)
+// {
+//     if(stream)
+//     {
 
+//     }
+// }
+
+// uint32_t 
+// struct k_io_stream_t *k_sys_TerminalOpenStream()
+// {
+//     struct k_io_stream_t *stream = k_io_AllocStream();
+
+//     stream->read = k_sys_TerminalReadStream;
+// }
+
+uint32_t k_sys_TerminalReadLine(char *output, uint32_t buffer_size)
+{
+    struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+    uint32_t status;
+    uint32_t data_cursor = 0;
+    char ch;
+
+    if(!output || !buffer_size)
+    {
+        return 0;
+    }
+
+    do
+    {
+        while(k_io_ReadStream(current_process->terminal, &ch, 1) == K_STATUS_EMPTY_STREAM)
+        {
+            k_proc_WaitStream(current_process->terminal);
+        }
+
+        // switch(ch)
+        // {
+        //     case 0x10:
+        //         if(data_cursor)
+        //         {
+        //             data_cursor--;
+        //             output[data_cursor] = '\0';    
+        //         }
+        //     break;
+
+        //     case '\n':
+        //     {
+        //         output[data_cursor] = '\n';
+        //     }
+        //     break;
+        // }
+
+        if(ch == 0x10)
+        {
+            if(data_cursor)
+            {
+                k_sys_TerminalPutChar(ch);
+                data_cursor--;
+                output[data_cursor] = '\0';
+            }
+        }
+        else
+        {
+            k_sys_TerminalPutChar(ch);
+            if(ch == '\n')
+            {
+                break;
+            }
+            output[data_cursor] = ch;
+            data_cursor++;
+        }
+    }
+    while(data_cursor < buffer_size - 1);
+
+    output[data_cursor] = '\0';
+
+    return 0;
 }
 
 // void k_PrintShell()
