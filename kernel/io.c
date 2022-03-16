@@ -185,8 +185,6 @@ uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t siz
         return K_STATUS_BLOCKED_STREAM;
     }
 
-    // if(stream && data && !(stream->flags & K_IO_STREAM_FLAG_BLOCKED))
-    // {
     while(stream->free_size < size)
     {
         k_io_AllocStreamBuffer(stream);
@@ -200,8 +198,6 @@ uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t siz
     uint32_t data_offset = 0;
 
     stream->free_size -= size;
-
-    // k_sys_TerminalPrintf("a\n");
 
     while(size)
     {
@@ -224,23 +220,16 @@ uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t siz
         // k_sys_TerminalPrintf("c\n");
         // k_sys_TerminalPrintf("read from %x\n", (uint8_t *)data + data_offset);
 
-        for(uint32_t index = 0; index < copy_size; index++)
-        {
-            buffer->data[buffer_offset + index] = ((uint8_t *)data)[index + data_offset];
-        }
-        // k_rt_CopyBytes(buffer->data + buffer_offset, (uint8_t *)data + data_offset, copy_size);
+        // for(uint32_t index = 0; index < copy_size; index++)
+        // {
+        //     buffer->data[buffer_offset + index] = ((uint8_t *)data)[index + data_offset];
+        // }
+        k_rt_CopyBytes(&buffer->data[buffer_offset], ((uint8_t *)data) + data_offset, copy_size);
         // k_sys_TerminalPrintf("d\n");
         data_offset += copy_size;
         stream->write_offset = (stream->write_offset + copy_size) % stream->alloc_size;
         size -= copy_size;
-
-        // k_sys_TerminalPrintf("e\n");
     }
-
-    // k_sys_TerminalPrintf("b\n");
-
-    // k_sys_TerminalPrintf("written data\n");
-    // }
 
     return K_STATUS_OK;
 }

@@ -284,32 +284,33 @@ uintptr_t main_thread(void *data)
 void k_main()
 {
     _Static_assert(sizeof(uintptr_t) == sizeof(uint32_t), "Size of uintptr_t doesn't match size of uint32_t");
-
-    // k_term_clear();
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
-    // k_sys_TerminalPrintf("doggOS version %d.%d.%d+%d\n", K_VERSION_MAJOR, K_VERSION_MINOR, K_VERSION_PATCH, K_VERSION_BUILD);
 
-    // struct k_rt_queue_t queue = k_rt_QueueCreate();
-    // uint32_t values[16];
-    // for(uint32_t index = 0; index < 16; index++)
+
+    // uint8_t data_out[16];
+    // uint8_t data_in[16];
+
+    // for(uint32_t index = 0; index < sizeof(data_out); index++)
     // {
-    //     values[index] = index;
-    //     k_rt_QueuePush(&queue, &values[index]);
+    //     data_out[index] = index;
     // }
 
-    // for(uint32_t index = 0; index < 16; index++)
+    // for(uint32_t offset = 0; offset < 4; offset++)
     // {
-    //     uint32_t *element = k_rt_QueuePop(&queue);
-    //     k_printf("%d\n", *element);
-    //     // k_rt_QueuePush(&queue, &values[index]);
-    // } 
- 
+    //     for(uint32_t size = 1; size <= 6; size++)
+    //     {
+    //         k_rt_CopyBytes(data_in, data_out + offset, size);
+    //         for(uint32_t index = 0; index < sizeof(data_in); index++)
+    //         {
+    //             k_sys_TerminalPrintf("%d ", data_in[index]);
+    //         }
+    //         k_sys_TerminalPrintf("\n");
+    //     }
+    // }
+
     // k_cpu_DisableInterrupts();
     // k_cpu_Halt();
 
-    // struct k_proc_thread_t *thread = k_proc_CreateKernelThread(main_thread, NULL);
-    // k_proc_CreateKernelThread(simple_test1, NULL);
-    // k_proc_CreateKernelThread(simple_test2, NULL);   
     struct k_proc_thread_t *shell_thread = k_proc_CreateKernelThread(k_sys_ShellMain, NULL);
     k_proc_RunScheduler();
  

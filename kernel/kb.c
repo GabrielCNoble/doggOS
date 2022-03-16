@@ -157,8 +157,6 @@ void k_kb_KeyboardHandler()
                         }
                     }
 
-                    // k_sys_TerminalPrintf("shit\n");
-
                     if(current_process->terminal)
                     {
                         k_io_WriteStream(current_process->terminal, &ch, sizeof(char));
