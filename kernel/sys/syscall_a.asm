@@ -7,19 +7,26 @@
 
 .global k_sys_SysCall
 k_sys_SysCall:
+    push ebp
+    mov ebp, esp
+    /* alloc temp var for return address */
+    push eax
     call k_proc_PushThreadRegs
-    mov eax, dword ptr [esp + 4]
-    mov ebx, dword ptr [esp + 8]
-    mov ecx, dword ptr [esp + 12]
-    mov edx, dword ptr [esp + 16]
-    int 69
+    mov eax, dword ptr [ebp + 8]
+    mov ebx, dword ptr [ebp + 12]
+    mov ecx, dword ptr [ebp + 16]
+    mov edx, dword ptr [ebp + 20]
+    int 0x45
+    /* store return address on temp var */
+    mov dword ptr [ebp - 4], eax
     call k_proc_PopThreadRegs
+    /* pop return address into eax, since it got overwritten by k_proc_PopThreadRegs */
+    pop eax
+    pop ebp
     ret
 
 .global k_sys_SysCall_a
 k_sys_SysCall_a:
-    call k_proc_PushThreadRegs
-
     /* syscall arg buffer */
     sub esp, k_sys_syscall_args_size
     mov dword ptr [esp + 0], eax
@@ -38,22 +45,24 @@ k_sys_SysCall_a:
     mov cr3, eax
 
     /* switch to kernel space stack */
-    mov eax, offset k_proc_core_state + k_proc_core_state_current_thread
-    add esp, dword ptr [eax + k_proc_thread_kernel_stack_offset]
+    mov eax, dword ptr[k_proc_core_state + k_proc_core_state_current_thread]
+    mov eax, dword ptr [eax + k_proc_thread_kernel_stack_offset]
+    add esp, eax
+    /* add esp, dword ptr [eax + k_proc_thread_kernel_stack_offset] */
+
     /* address of the syscall arg buffer */
-    lea eax, [esp + 4]
-    push eax
+    lea ecx, [esp + 4]
+    push ecx
     call k_sys_DispatchSysCall
-    pop eax
+    pop ecx
 
     /* process page map */
     pop ebx
-    mov eax, offset k_proc_core_state + k_proc_core_state_current_thread
+    mov ecx, dword ptr [k_proc_core_state + k_proc_core_state_current_thread]
+    mov ecx, dword ptr [ecx + k_proc_thread_kernel_stack_offset]
     /* switch to process space stack */
-    sub esp, dword ptr [eax + k_proc_thread_kernel_stack_offset]
+    sub esp, ecx
     /* switch back to process space */
     mov cr3, ebx
     add esp, k_sys_syscall_args_size
-    /* mov dword ptr [esp - k_proc_syscall_args_size], eax */
-    call k_proc_PopThreadRegs
     iret

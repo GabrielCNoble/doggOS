@@ -134,6 +134,7 @@ void k_sys_Init()
 {
     k_int_SetInterruptHandler(K_SYS_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);
     k_sys_TerminalInit();
+    // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
 }
 
 void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)

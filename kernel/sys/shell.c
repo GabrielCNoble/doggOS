@@ -1,5 +1,6 @@
 #include "shell.h"
 #include "term.h"
+#include "syscall.h"
 #include "../io.h"
 #include "../rt/alloc.h"
 #include "../rt/mem.h"
@@ -12,6 +13,7 @@ void k_sys_Help()
     k_sys_TerminalPrintf("    help: runs this command\n");
     k_sys_TerminalPrintf("    clear: clears the screen\n");
     k_sys_TerminalPrintf("    crash: crashes the system\n");
+    k_sys_TerminalPrintf("    syscall: executes test syscall\n");
 }
 
 void k_sys_Crash()
@@ -23,8 +25,10 @@ void k_sys_Crash()
 
     if(!k_rt_StrCmp(keyboard_buffer, "y") || !k_rt_StrCmp(keyboard_buffer, "Y"))
     {
-        uintptr_t *crash = (uint32_t *)0x1234567;
-        *crash = 0xb00b1e5;
+        // uintptr_t *crash = (uint32_t *)0x1234567;
+        // *crash = 0xb00b1e5;
+        
+        k_sys_SysCall(K_SYS_SYSCALL_CRASH);
     }
     
     k_sys_TerminalPrintf("Phew...\n");
@@ -35,6 +39,7 @@ uintptr_t k_sys_ShellMain(void *data)
     char keyboard_buffer[512];
     k_sys_TerminalClear();
     k_sys_TerminalPrintf("Initializing root shell...\n");
+    // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
 
     struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
     current_process->terminal = k_io_AllocStream();
@@ -57,9 +62,14 @@ uintptr_t k_sys_ShellMain(void *data)
         {
             k_sys_Crash();
         }
+        else if(!k_rt_StrCmp(keyboard_buffer, "syscall"))
+        {
+            uint32_t status = k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0xff, 0xb00b1e5, 0xaaaaaaaa);
+            k_sys_TerminalPrintf("syscall returned with status %x\n", status);
+        }
         else if(keyboard_buffer[0] == '\0')
         {
-            
+
         }
         else
         {

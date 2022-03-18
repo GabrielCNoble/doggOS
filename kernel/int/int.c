@@ -177,6 +177,7 @@ void k_int_Init()
 void k_int_SetInterruptHandler(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl)
 {
     k_int_idt[vector] = K_INT_DESCRIPTOR(handler, seg_sel, gate_pl, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    // k_int_Lidt(k_int_idt, K_INT_HANDLER_LAST);
 }
 
 void k_int_Int0(uint32_t eip, uint16_t cs)

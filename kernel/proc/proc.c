@@ -105,6 +105,7 @@ void k_proc_Init()
     }
     scheduler_thread->heap.big_heap = &k_proc_scheduler_process.heap;
     scheduler_thread->current_pmap = k_proc_scheduler_process.page_map;
+    scheduler_thread->kernel_stack_offset = 0;
     k_proc_scheduler_process.pid = 0;
     k_proc_scheduler_process.ring = 0;
     k_proc_scheduler_process.heap.spinlock = 0;
