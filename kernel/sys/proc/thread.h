@@ -6,4 +6,6 @@
 
 uint32_t k_sys_TerminateThread(struct k_sys_syscall_args_t *args);
 
+uint32_t k_sys_YieldThread();
+
 #endif

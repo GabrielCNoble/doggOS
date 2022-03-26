@@ -18,6 +18,11 @@ stage0_start:
     mov si, offset read_packet
     int 0x13
     pop edx
+    mov ax, 0x7000
+    mov ss, ax
+    mov ax, 0xffff
+    mov sp, ax
+    mov bp, sp
     jmp 0x0500
 
 .balign 4

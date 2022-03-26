@@ -20,6 +20,10 @@ all: version boot kernel libdgc $(LINKER_SCRIPT)
 	dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
 	dd conv=notrunc if=$(BOOT_BIN) of=$(DISK_NAME)
 	dd conv=notrunc seek=4 if=$(KERNEL_BIN) of=$(DISK_NAME)
+	dd conv=notrunc seek=142 if=test/test.out of=$(DISK_NAME)
+
+	#dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
+	#dd conv=notrunc if=$(BIN_NAME) of=$(DISK_NAME)
 
 version:
 	./version/update_version ./version/version.h
@@ -33,7 +37,7 @@ kernel:
 libdgc:
 	make -C $(LIBDGC_DIR)
 
-.PHONY: version boot kernel libdgc
+.PHONY: version boot kernel
 
 clean:
 	rm -f $(OBJ)

@@ -46,7 +46,7 @@ void k_sys_TerminalInit()
     k_sys_term_display_cursor_y = 0;
     k_sys_term_buffer_cursor_y = 0;
     k_sys_term_scroll_y = 0;
-    
+
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
 
     k_gfx_SetVgaCursorPos(k_sys_term_cursor_x, k_sys_term_display_cursor_y);
@@ -129,7 +129,7 @@ void k_sys_TerminalBackSpace()
 }
 
 void k_sys_TerminalPutSingleChar(unsigned char c)
-{    
+{
     if(c == '\n')
     {
         k_sys_TerminalNewLine();
@@ -144,7 +144,7 @@ void k_sys_TerminalPutSingleChar(unsigned char c)
     }
     else
     {
-        k_sys_term_output_buffer[k_sys_term_cursor_x + k_sys_term_buffer_cursor_y * k_sys_term_width] = k_sys_TerminalChar(c, k_sys_term_color); 
+        k_sys_term_output_buffer[k_sys_term_cursor_x + k_sys_term_buffer_cursor_y * k_sys_term_width] = k_sys_TerminalChar(c, k_sys_term_color);
         k_sys_term_cursor_x++;
 
         if(k_sys_term_cursor_x >= k_sys_term_width)
@@ -183,7 +183,7 @@ void k_sys_TerminalPuts(char *str)
         scroll = 1 + (k_sys_term_display_cursor_y - (int32_t)k_gfx_vga_height);
     }
 
-    
+
     if(scroll > 0)
     {
         uint16_t clear_char = k_sys_TerminalChar(' ', k_sys_term_color);
@@ -221,10 +221,10 @@ void k_sys_TerminalUpdate()
     uint32_t buffer_rows_count = k_sys_term_height - k_sys_term_scroll_y;
 
     if(buffer_rows_count < k_gfx_vga_height)
-    {    
+    {
         k_gfx_BlitTextBuffer(k_sys_term_output_buffer + k_sys_term_scroll_y * k_sys_term_width, 0, 0, buffer_rows_count * k_sys_term_width);
         uint32_t wrap_buffer_rows_count = k_gfx_vga_height - buffer_rows_count;
-        k_gfx_BlitTextBuffer(k_sys_term_output_buffer, 0, buffer_rows_count, wrap_buffer_rows_count * k_sys_term_width); 
+        k_gfx_BlitTextBuffer(k_sys_term_output_buffer, 0, buffer_rows_count, wrap_buffer_rows_count * k_sys_term_width);
     }
     else
     {
@@ -293,7 +293,7 @@ void k_sys_TerminalClear()
 //     }
 // }
 
-// uint32_t 
+// uint32_t
 // struct k_io_stream_t *k_sys_TerminalOpenStream()
 // {
 //     struct k_io_stream_t *stream = k_io_AllocStream();
@@ -320,23 +320,6 @@ uint32_t k_sys_TerminalReadLine(char *output, uint32_t buffer_size)
             k_proc_WaitStream(current_process->terminal);
         }
 
-        // switch(ch)
-        // {
-        //     case 0x10:
-        //         if(data_cursor)
-        //         {
-        //             data_cursor--;
-        //             output[data_cursor] = '\0';    
-        //         }
-        //     break;
-
-        //     case '\n':
-        //     {
-        //         output[data_cursor] = '\n';
-        //     }
-        //     break;
-        // }
-
         if(ch == 0x10)
         {
             if(data_cursor)
@@ -361,7 +344,7 @@ uint32_t k_sys_TerminalReadLine(char *output, uint32_t buffer_size)
 
     output[data_cursor] = '\0';
 
-    return 0;
+    return 1;
 }
 
 // void k_PrintShell()
@@ -426,10 +409,10 @@ uint32_t k_sys_TerminalReadLine(char *output, uint32_t buffer_size)
 //         uint32_t buffer_rows_count = buffer_height - display_start_y;
 
 //         if(buffer_rows_count < k_gfx_vga_height)
-//         {    
+//         {
 //             k_gfx_BlitTextBuffer(shell_buffer + display_start_y * buffer_width, 0, 0, buffer_rows_count * buffer_width);
 //             uint32_t wrap_buffer_rows_count = k_gfx_vga_height - buffer_rows_count;
-//             k_gfx_BlitTextBuffer(shell_buffer, 0, buffer_rows_count, wrap_buffer_rows_count * buffer_width); 
+//             k_gfx_BlitTextBuffer(shell_buffer, 0, buffer_rows_count, wrap_buffer_rows_count * buffer_width);
 //         }
 //         else
 //         {

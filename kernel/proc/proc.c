@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdarg.h>
 #include "proc.h"
 #include "thread.h"
 #include "../sys/term.h"
@@ -9,6 +10,7 @@
 #include "../mem/pmap.h"
 #include "../rt/alloc.h"
 #include "../rt/queue.h"
+#include "../rt/mem.h"
 // #include "../cont/k_objlist.h"
 #include "../rt/atm.h"
 // #include "../../libdg/container/dg_slist.h"
@@ -72,31 +74,51 @@ struct k_proc_thread_t *k_proc_io_wait_list = NULL;
 
 struct k_proc_core_state_t k_proc_core_state;
 struct k_proc_thread_t *k_proc_cleanup_thread;
-struct k_cpu_seg_desc_t k_proc_gdt[] = 
-{ 
-    K_CPU_SEG_DESC(0x00000000u, 0x000000u, 0, 0, 0, 0, 0),
-    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
-    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
-    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),         
-    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
-    K_CPU_SEG_DESC(0x00000000u, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1),
-    K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EOC, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
-};
+// struct k_cpu_seg_desc_t k_proc_gdt[] =
+// {
+//     K_CPU_SEG_DESC(0x00000000u, 0x000000u, 0, 0, 0, 0, 0),
+//     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+//     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+//     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+//     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+//     K_CPU_SEG_DESC(0x00000000u, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1),
+//     K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EOC, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+// };
 
 // struct k_cpu_seg_desc_t k_proc_syscall_ldt;
 
 extern void *k_proc_PreemptThread;
+extern void *k_proc_PreemptThread2;
 extern void *k_proc_StartUserThread_a;
 // extern void *k_sys_SysCall;
 uint32_t k_proc_page_map;
- 
+struct k_proc_shared_data_t *k_proc_shared_data;
+uintptr_t k_proc_shared_data_page;
+extern void *k_shared_start;
+extern void *k_shared_end;
+extern void *k_kernel_end2;
+
+extern struct k_int_desc_t k_int_idt[K_INT_HANDLER_LAST];
+
 void k_proc_Init()
 {
+    k_proc_shared_data = (struct k_proc_shared_data_t *)K_PROC_SHARED_DATA_ADDRESS;
+    k_proc_shared_data->kernel_pmap = k_proc_page_map;
+    k_proc_shared_data->gdt[K_PROC_NULL_SEG] = K_CPU_SEG_DESC(0x00000000u, 0x000000u, 0, 0, 0, 0, 0);
+    k_proc_shared_data->gdt[K_PROC_R0_DATA_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
+    k_proc_shared_data->gdt[K_PROC_R0_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
+    k_proc_shared_data->gdt[K_PROC_R3_DATA_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
+    k_proc_shared_data->gdt[K_PROC_R3_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+    k_proc_shared_data->gdt[K_PROC_TSS_SEG] = K_CPU_SEG_DESC(0x00000000u, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
+    k_proc_shared_data->gdt[K_PROC_R0_C_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EOC, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
+
     struct k_proc_thread_t *scheduler_thread = &k_proc_core_state.scheduler_thread;
     // // k_proc_current_process = &k_proc_kernel_process;
     k_proc_core_state.current_thread = scheduler_thread;
     scheduler_thread->process = &k_proc_scheduler_process;
     k_proc_scheduler_process.page_map = k_proc_page_map;
+
+    k_proc_active_process = &k_proc_scheduler_process;
 
     for(uint32_t bucket_index = 0; bucket_index < K_RT_SMALL_BUCKET_COUNT; bucket_index++)
     {
@@ -119,11 +141,11 @@ void k_proc_Init()
 
     k_proc_core_state.tss = k_rt_Malloc(sizeof(struct k_cpu_tss_t), 8);
     k_proc_core_state.tss->ss0 = K_CPU_SEG_SEL(K_PROC_R0_DATA_SEG, 0, 0);
-    k_proc_gdt[5] = K_CPU_SEG_DESC((uint32_t)k_proc_core_state.tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
-    k_cpu_Lgdt(k_proc_gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
+    k_proc_shared_data->gdt[K_PROC_TSS_SEG] = K_CPU_SEG_DESC((uint32_t)k_proc_core_state.tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
+    k_cpu_Lgdt(k_proc_shared_data->gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
     k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
 
-    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_VECTOR, (uintptr_t)&k_proc_PreemptThread, K_CPU_SEG_SEL(2, 0, 0), 3);
+    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_VECTOR, (uintptr_t)&k_proc_PreemptThread2, K_CPU_SEG_SEL(2, 0, 0), 3);
     k_int_SetInterruptHandler(K_PROC_START_USER_THREAD_VECTOR, (uintptr_t)&k_proc_StartUserThread_a, K_CPU_SEG_SEL(2, 0, 0), 0);
     // k_int_SetInterruptHandler(K_PROC_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall, K_CPU_SEG_SEL(2, 0, 0), 3);
     k_apic_WriteReg(K_APIC_REG_LVT_TIMER, (k_apic_ReadReg(K_APIC_REG_LVT_TIMER) | (K_PROC_PREEMPT_THREAD_VECTOR & 0xff) ) & (0xfff8ffff));
@@ -133,8 +155,6 @@ void k_proc_Init()
     k_proc_ready_queue = k_rt_QueueCreate();
 
     struct k_proc_thread_t *cleanup_thread = k_proc_CreateKernelThread(k_proc_CleanupThread, NULL);
-    // struct k_proc_thread_t *thread = k_proc_ready_queue;
-    // struct k_proc_thread_t *prev_thread = NULL;
     k_rt_QueuePop(&k_proc_ready_queue);
 
     // while(thread)
@@ -162,17 +182,265 @@ void k_proc_Init()
     //     k_proc_ready_queue_last = prev_thread;
     // }
 
-    cleanup_thread->queue_next = NULL;
+    // cleanup_thread->queue_next = NULL;
 
     k_proc_core_state.cleanup_thread = cleanup_thread;
+    /* this address has been identity mapped during initialization */
+    // k_proc_shared_data = (struct k_proc_shared_data_t *)K_PROC_SHARED_DATA_ADDRESS;
+    // k_proc_shared_data->kernel_pmap = k_proc_page_map;
 }
 
-uint32_t k_proc_CreateProcess(uint32_t start_address, void *image, uint32_t size)
+struct k_proc_process_mem_init_t
 {
-    (void)start_address;
-    (void)image;
-    (void)size;
-    return 0;
+    struct k_mem_pentry_t *page_dir;
+
+    struct k_mem_pentry_t *page_table;
+    uintptr_t cur_page_table_entry;
+
+    uint8_t *page;
+    uintptr_t cur_page_entry;
+};
+
+void k_proc_MapProcessAddress(struct k_proc_process_mem_init_t *mem_init, uintptr_t linear_address, uintptr_t physical_address)
+{
+    uint32_t pdir_index = K_MEM_PDIR_INDEX(linear_address);
+    uint32_t entry_flags = K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED;
+    // asm volatile ("cli\n hlt\n");
+    // asm volatile ("nop\n nop\n");
+    if(!mem_init->page_dir[pdir_index].entry)
+    {
+        mem_init->page_dir[pdir_index].entry = k_mem_AllocPhysicalPage(0) | entry_flags;
+
+        if(mem_init->cur_page_table_entry)
+        {
+            k_mem_UnmapLinearAddress((uintptr_t)mem_init->page_table);
+        }
+
+        uintptr_t page_table_entry = mem_init->page_dir[pdir_index].entry & K_MEM_PENTRY_ADDR_MASK;
+        k_mem_MapLinearAddress((uintptr_t)mem_init->page_table, page_table_entry, entry_flags);
+        for(uint32_t entry_index = 0; entry_index < 1024; entry_index++)
+        {
+            mem_init->page_table[entry_index].entry = 0;
+        }
+        mem_init->cur_page_table_entry = page_table_entry;
+    }
+
+    uintptr_t page_table_entry = mem_init->page_dir[pdir_index].entry & K_MEM_PENTRY_ADDR_MASK;
+
+    if(page_table_entry != mem_init->cur_page_table_entry)
+    {
+        if(mem_init->cur_page_table_entry)
+        {
+            k_mem_UnmapLinearAddress((uintptr_t)mem_init->page_table);
+        }
+
+        k_mem_MapLinearAddress((uintptr_t)mem_init->page_table, page_table_entry, entry_flags);
+        mem_init->cur_page_table_entry = page_table_entry;
+    }
+
+    uint32_t ptable_index = K_MEM_PTABLE_INDEX(linear_address);
+
+    if(!mem_init->page_table[ptable_index].entry)
+    {
+        if(physical_address)
+        {
+            mem_init->page_table[ptable_index].entry = physical_address;
+        }
+        else
+        {
+            mem_init->page_table[ptable_index].entry = k_mem_AllocPhysicalPage(0);
+        }
+
+        mem_init->page_table[ptable_index].entry |= entry_flags;
+    }
+
+    uintptr_t page_entry = mem_init->page_table[ptable_index].entry & K_MEM_PENTRY_ADDR_MASK;
+
+    if(page_entry != mem_init->cur_page_entry)
+    {
+        if(mem_init->cur_page_entry)
+        {
+            k_mem_UnmapLinearAddress((uintptr_t)mem_init->page);
+        }
+
+        k_mem_MapLinearAddress((uintptr_t)mem_init->page, page_entry, K_MEM_PENTRY_FLAG_READ_WRITE);
+    }
+}
+
+struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, const char **args)
+{
+    struct k_proc_process_t *process = NULL;
+    (void)path;
+    (void)args;
+    if(image)
+    {
+        struct k_proc_elfh_t *elf_header = (struct k_proc_elfh_t *)image;
+
+        if(elf_header->ident[K_PROC_ELF_MAGIC0_INDEX] == K_PROC_ELF_MAGIC0 &&
+           elf_header->ident[K_PROC_ELF_MAGIC1_INDEX] == K_PROC_ELF_MAGIC1 &&
+           elf_header->ident[K_PROC_ELF_MAGIC2_INDEX] == K_PROC_ELF_MAGIC2 &&
+           elf_header->ident[K_PROC_ELF_MAGIC3_INDEX] == K_PROC_ELF_MAGIC3)
+        {
+            if(elf_header->type == K_PROC_ELF_TYPE_EXEC)
+            {
+                struct k_proc_process_mem_init_t mem_init = {};
+                uintptr_t page_map_page = k_mem_AllocPhysicalPage(0);
+
+                mem_init.page_dir = k_mem_AllocVirtualRange(4096);
+                mem_init.page_table = k_mem_AllocVirtualRange(4096);
+                mem_init.page = k_mem_AllocVirtualRange(4096);
+
+                k_mem_MapLinearAddress((uintptr_t)mem_init.page_dir, page_map_page, K_MEM_PENTRY_FLAG_READ_WRITE);
+
+                for(uint32_t entry_index = 0; entry_index < 1024; entry_index++)
+                {
+                    mem_init.page_dir[entry_index].entry = 0;
+                }
+
+                uint8_t *program_headers = (uint8_t *)image + elf_header->pheader_offset;
+                uint32_t entry_flags = K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED;
+                for(uint32_t header_index = 0; header_index < elf_header->pheader_ecount; header_index++)
+                {
+                    struct k_proc_pheader_t *program_header = (struct k_proc_pheader_t *)(program_headers + header_index * elf_header->pheader_esize);
+                    uint8_t *segment = (uint8_t *)image + program_header->offset;
+
+                    if(program_header->type == K_PROC_SEGMENT_TYPE_LOAD)
+                    {
+                        /* round segment start address downwards to closest page */
+                        uintptr_t linear_address = program_header->vaddr & K_MEM_4KB_ADDRESS_MASK;
+                        /* how many segment bytes we have left to copy */
+                        uintptr_t end_linear_address = linear_address + program_header->mem_size;
+                        /* how many segment bytes we copied so far */
+                        uint32_t copied_segment_bytes = 0;
+
+                        // k_sys_TerminalPrintf("Segment %d, with %d bytes, at virtual address %x\n", header_index, program_header->mem_size, linear_address);
+
+
+                        while(linear_address < end_linear_address)
+                        {
+                            k_proc_MapProcessAddress(&mem_init, linear_address, 0);
+
+                            uint32_t pad_size = 0;
+
+                            if(linear_address < program_header->vaddr)
+                            {
+                                /* segment doesn't start exactly at the start of the page, so we need to pad it */
+                                pad_size = program_header->vaddr - linear_address;
+
+                                for(uint32_t index = 0; index < pad_size; index++)
+                                {
+                                    mem_init.page[index] = 0;
+                                }
+                            }
+
+                            uint32_t copy_size = 0x1000 - pad_size;
+
+                            if(copied_segment_bytes < program_header->file_size)
+                            {
+                                /* we still have segment bytes to copy */
+                                uint32_t bytes_left = program_header->file_size - copied_segment_bytes;
+
+                                if(copy_size > bytes_left)
+                                {
+                                    copy_size = bytes_left;
+                                }
+
+                                // segment_file_size -= copy_size;
+                                k_rt_CopyBytes(mem_init.page + pad_size, segment + copied_segment_bytes, copy_size);
+                                copied_segment_bytes += copy_size;
+
+                                // k_sys_TerminalPrintf("copy %d bytes\n", copy_size);
+                            }
+
+                            linear_address += copy_size;
+
+                            if(linear_address & 0xfff)
+                            {
+                                /* segment doesn't end at page end, so we need to pad it */
+                                pad_size = 0x1000 - copy_size;
+
+                                for(uint32_t index = 0; index < pad_size; index++)
+                                {
+                                    mem_init.page[index + copy_size] = 0;
+                                }
+
+                                // k_sys_TerminalPrintf("pad %d bytes\n", pad_size);
+
+                                linear_address += pad_size;
+                            }
+                        }
+                    }
+                }
+
+                k_proc_MapProcessAddress(&mem_init, K_PROC_SHARED_DATA_ADDRESS, K_PROC_SHARED_DATA_ADDRESS);
+                // k_proc_MapProcessAddress(&mem_init, &k_proc_gdt, &k_proc_gdt);
+
+                uintptr_t idt_start = (uintptr_t)&k_int_idt;
+                uintptr_t idt_end = idt_start + sizeof(k_int_idt);
+                // k_sys_TerminalPrintf("%x %x\n", idt_start, idt_end);
+                while(idt_start <= idt_end)
+                {
+                    k_proc_MapProcessAddress(&mem_init, idt_start, idt_start);
+                    idt_start += 0x1000;
+                }
+
+                uintptr_t shared_start = (uintptr_t)&k_shared_start;
+                uintptr_t shared_end = (uintptr_t)&k_shared_end;
+                while(shared_start < shared_end)
+                {
+                    k_proc_MapProcessAddress(&mem_init, shared_start, shared_start);
+                    shared_start += 0x1000;
+                }
+
+                process = k_rt_Malloc(sizeof(struct k_proc_process_t), 4);
+
+                process->page_map = page_map_page;
+                process->streams = NULL;
+                process->threads = NULL;
+                process->terminal = NULL;
+                process->ring = 0;
+
+                process->next = k_proc_processes;
+                k_proc_processes = process;
+
+                struct k_proc_thread_init_t thread_init = {};
+                thread_init.entry_point = elf_header->entry;
+                thread_init.user_stack_base = (uintptr_t)K_PROC_INIT_STACK_ADDRESS;
+                thread_init.ring0_stack_base = thread_init.user_stack_base;
+                thread_init.ring0_stack_page = k_mem_AllocPhysicalPage(0);
+                thread_init.process = process;
+                k_mem_MapLinearAddress(thread_init.ring0_stack_base, thread_init.ring0_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
+                k_proc_MapProcessAddress(&mem_init, K_PROC_INIT_STACK_ADDRESS, thread_init.ring0_stack_page);
+
+                k_proc_CreateThread(&thread_init);
+
+                /* FIXME: ugh, this sucks real bad... */
+                k_mem_UnmapLinearAddress((uintptr_t)mem_init.page_dir);
+                k_mem_UnmapLinearAddress((uintptr_t)mem_init.page_table);
+                k_mem_UnmapLinearAddress((uintptr_t)mem_init.page);
+                k_mem_FreeVirtualRange(mem_init.page_dir);
+                k_mem_FreeVirtualRange(mem_init.page_table);
+                k_mem_FreeVirtualRange(mem_init.page);
+            }
+        }
+    }
+
+    return process;
+}
+
+struct k_proc_process_t *k_proc_LaunchProcess(const char *path, const char **args)
+{
+    return k_proc_CreateProcess(&k_kernel_end2, path, args);
+}
+
+uint32_t k_proc_WaitProcess(struct k_proc_process_t *process, uintptr_t *return_value)
+{
+    struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+
+    if(process && current_process != process)
+    {
+        
+    }
 }
 
 struct k_proc_process_t *k_proc_GetProcess(uint32_t process_id)
@@ -195,11 +463,18 @@ struct k_proc_process_t *k_proc_GetCurrentProcess()
     return k_proc_core_state.current_thread->process;
 }
 
+struct k_proc_process_t *k_proc_GetFocusedProcess()
+{
+    return k_proc_active_process;
+}
+
 void k_proc_RunScheduler()
 {
     // uint32_t thread_index = 0;
     k_proc_core_state.current_thread = &k_proc_core_state.scheduler_thread;
     k_cpu_DisableInterrupts();
+    // asm volatile ("hlt\n");
+    asm volatile ("nop\n");
     k_proc_YieldThread();
 
     // struct k_proc_thread_t *queued_resume_threads = NULL;
@@ -273,13 +548,17 @@ void k_proc_RunScheduler()
         {
             k_proc_RunThread(next_thread);
         }
+        // else
+        // {
+        //     k_sys_TerminalPrintf("blah\n");
+        // }
     }
 }
 
 uintptr_t k_proc_CleanupThread(void *data)
 {
     (void )data;
-    
+
     while(1)
     {
         if(k_rt_TrySpinLock(&k_proc_core_state.thread_pool.spinlock))
@@ -301,22 +580,12 @@ uintptr_t k_proc_CleanupThread(void *data)
     return 0;
 }
 
-uintptr_t k_proc_ReadyThread(void *data)
-{
-    (void)data;
-
-    while(1)
-    {
-
-    }
-}
-
 void k_proc_EnablePreemption()
 {
     // if(k_proc_current_thread != &k_proc_scheduler_thread)
     // {
     //     k_cpu_EnableInterrupts();
-    
+
     //     if(k_apic_ReadReg(K_PROC_THREAD_PREEMPT_ISR_REG) & K_PROC_THREAD_PREEMPT_ISR_BIT)
     //     {
     //         k_proc_Yield();

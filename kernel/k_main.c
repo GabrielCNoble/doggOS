@@ -116,7 +116,7 @@ uintptr_t k_merge_sort(void *data)
 {
     // struct k_test_buffer_t *in_buffer = (struct k_test_buffer_t *)data;
     // uint32_t size = (in_buffer->end - in_buffer->start) + 1;
-    
+
     // if(size > 2)
     // {
     //     uint32_t middle = (in_buffer->end + in_buffer->start) / 2;
@@ -242,7 +242,7 @@ uintptr_t work_thread_test(void *data)
 uintptr_t waiting_thread_test(void *data)
 {
     // uintptr_t return_value;
-    // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread(); 
+    // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
     // struct k_proc_thread_t *work_thread = k_proc_CreateThread(work_thread_test, NULL);
     // // k_printf("thread %x waiting on thread %x\n", current_thread, work_thread);
     // // for(uint32_t index = 0; index < 0x1ffff; index++)
@@ -281,38 +281,18 @@ uintptr_t main_thread(void *data)
     return 1;
 }
 
+extern void *k_kernel_end2;
+
 void k_main()
 {
     _Static_assert(sizeof(uintptr_t) == sizeof(uint32_t), "Size of uintptr_t doesn't match size of uint32_t");
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
-
-
-    // uint8_t data_out[16];
-    // uint8_t data_in[16];
-
-    // for(uint32_t index = 0; index < sizeof(data_out); index++)
-    // {
-    //     data_out[index] = index;
-    // }
-
-    // for(uint32_t offset = 0; offset < 4; offset++)
-    // {
-    //     for(uint32_t size = 1; size <= 6; size++)
-    //     {
-    //         k_rt_CopyBytes(data_in, data_out + offset, size);
-    //         for(uint32_t index = 0; index < sizeof(data_in); index++)
-    //         {
-    //             k_sys_TerminalPrintf("%d ", data_in[index]);
-    //         }
-    //         k_sys_TerminalPrintf("\n");
-    //     }
-    // }
 
     // k_cpu_DisableInterrupts();
     // k_cpu_Halt();
 
     struct k_proc_thread_t *shell_thread = k_proc_CreateKernelThread(k_sys_ShellMain, NULL);
     k_proc_RunScheduler();
- 
+
     return;
 }

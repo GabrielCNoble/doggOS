@@ -4,22 +4,33 @@
 
 .global k_rt_Xcgh32
 k_rt_Xcgh32:
-    mov ebx, dword ptr [esp + 4]        /* location */
-    mov ecx, dword ptr [esp + 8]        /* new value */
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    mov ebx, dword ptr [ebp + 8]        /* location */
+    mov ecx, dword ptr [ebp + 12]        /* new value */
     xchg dword ptr [ebx], ecx
-    mov ebx, dword ptr [esp + 12]       /* old value */
+    mov ebx, dword ptr [ebp + 16]       /* old value */
     mov dword ptr [ebx], ecx
+    pop ecx
+    pop ebx
+    pop ebp
     ret
 
 .global k_rt_CmpXcgh
 k_rt_CmpXcgh:
 .global k_rt_CmpXcgh32
 k_rt_CmpXcgh32:
-    mov ebx, dword ptr [esp + 4]        /* location */
-    mov ecx, dword ptr [esp + 12]       /* new value */
-    mov eax, dword ptr [esp + 8]        /* cmp value */
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    mov ebx, dword ptr [ebp + 8]        /* location */
+    mov ecx, dword ptr [ebp + 16]       /* new value */
+    mov eax, dword ptr [ebp + 12]        /* cmp value */
     lock cmpxchg dword ptr [ebx], ecx
-    mov ebx, dword ptr [esp + 16]       /* old value */
+    mov ebx, dword ptr [ebp + 20]       /* old value */
     mov ecx, eax
     setz al
     movzx eax, al
@@ -27,6 +38,9 @@ k_rt_CmpXcgh32:
     je _skip_old_value
     mov dword ptr [ebx], ecx
     _skip_old_value:
+    pop ecx
+    pop ebx
+    pop ebp
     ret
 
 .global k_rt_Inc32Wrap
@@ -79,7 +93,12 @@ k_rt_Dec32Clamp:
 
 .global k_rt_SpinLock
 k_rt_SpinLock:
-    mov ecx, dword ptr [esp + 4]        /* spinlock */
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    mov ecx, dword ptr [ebp + 8]        /* spinlock */
     mov eax, dword ptr [ecx]
     _spinlock_loop:
         and eax, 0xfffffffe
@@ -87,23 +106,43 @@ k_rt_SpinLock:
         lock cmpxchg dword ptr [ecx], ebx
         jnz _spinlock_loop
     _spinlock_loop_exit:
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 .global k_rt_TrySpinLock
 k_rt_TrySpinLock:
-    mov ecx, dword ptr [esp + 4]        /* spinlock */
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    mov ecx, dword ptr [ebp + 8]        /* spinlock */
     mov eax, dword ptr [ecx]
     and eax, 0xfffffffe
     lea ebx, [eax + 1]
     lock cmpxchg dword ptr [ecx], ebx
     setz al
     movzx eax, al
+    pop ecx
+    pop ebx
+    pop ebp
     ret
 
 .global k_rt_SpinUnlock
 k_rt_SpinUnlock:
-    mov ecx, dword ptr [esp + 4]        /* spinlock */
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    mov ecx, dword ptr [ebp + 8]        /* spinlock */
     mov eax, dword ptr [ecx]
     and eax, 0xfffffffe
     xchg dword ptr [ecx], eax
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
     ret

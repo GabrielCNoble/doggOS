@@ -26,11 +26,13 @@ extern void *k_proc_SetupUserStack_a;
 struct k_proc_thread_t *k_proc_CreateKernelThread(k_proc_thread_func_t entry_point, void *user_data)
 {
     struct k_proc_thread_init_t thread_init = {};
+    struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
+    thread_init.process = current_thread->process;
     thread_init.entry_point = entry_point;
     thread_init.user_data = user_data;
-    thread_init.kernel_stack_base = k_mem_AllocVirtualRange(K_PROC_THREAD_KERNEL_STACK_SIZE);
-    thread_init.kernel_stack_page = k_mem_AllocPhysicalPage(0);
-    k_mem_MapLinearAddress(thread_init.kernel_stack_base, thread_init.kernel_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
+    thread_init.ring0_stack_base = k_mem_AllocVirtualRange(K_PROC_THREAD_KERNEL_STACK_SIZE);
+    thread_init.ring0_stack_page = k_mem_AllocPhysicalPage(0);
+    k_mem_MapLinearAddress(thread_init.ring0_stack_base, thread_init.ring0_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
     return k_proc_CreateThread(&thread_init);
 }
 
@@ -40,7 +42,7 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
     struct k_proc_thread_t *thread = NULL;
     struct k_proc_thread_t *old = NULL;
 
-    if(!init->kernel_stack_page || !init->kernel_stack_base || !init->entry_point)
+    if(!init->ring0_stack_page || !init->ring0_stack_base || !init->entry_point)
     {
         return NULL;
     }
@@ -69,15 +71,16 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
             k_rt_SpinUnlock(&thread_pool->spinlock);
 
             thread = thread_pool->threads;
-            
+
         }
     }
     while(!k_rt_CmpXcgh32(&thread_pool->threads, thread, thread->queue_next, &old));
 
-    struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
-    struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+    // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
+    // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+    struct k_proc_process_t *process = init->process;
 
-    thread->process = current_process;
+    thread->process = process;
 
     for(uint32_t bucket_index = 0; bucket_index < K_RT_SMALL_BUCKET_COUNT; bucket_index++)
     {
@@ -86,7 +89,7 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
     }
 
     thread->heap.free_pages = NULL;
-    thread->heap.big_heap = &current_process->heap;
+    thread->heap.big_heap = &process->heap;
     thread->heap.spinlock = 0;
     thread->wait_thread = NULL;
     thread->queue_next = NULL;
@@ -105,95 +108,112 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
 
     uintptr_t kernel_stack_base;
 
-    if(init->user_stack)
+    if(init->user_stack_base)
     {
         /* user thread */
         kernel_stack_base = (uintptr_t)k_mem_AllocVirtualRange(K_PROC_THREAD_KERNEL_STACK_SIZE);
-        k_mem_MapLinearAddress(kernel_stack_base, init->kernel_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
+        k_mem_MapLinearAddress(kernel_stack_base, init->ring0_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
     }
     else
     {
         /* kernel thread */
-        kernel_stack_base = init->kernel_stack_base;
+        kernel_stack_base = init->ring0_stack_base;
     }
 
 
-    thread->kernel_stack_offset = kernel_stack_base - init->kernel_stack_base;
-    uintptr_t kernel_stack = kernel_stack_base + K_PROC_THREAD_KERNEL_STACK_SIZE;
-    thread->current_sp = (uintptr_t *)kernel_stack;
-    thread->start_sp = thread->current_sp;
-    thread->current_pmap = current_process->page_map;
+    thread->kernel_stack_offset = kernel_stack_base - init->ring0_stack_base;
+    uint32_t current_sp = K_PROC_THREAD_KERNEL_STACK_SIZE / sizeof(uintptr_t);
+    uintptr_t *ring0_stack = (uintptr_t *)init->ring0_stack_base;
+    uintptr_t *kernel_stack = (uintptr_t *)kernel_stack_base;
 
-    // k_printf("alloc %x          \n", thread);
+    // uintptr_t *kernel_stack = (kernel_stack_base + K_PROC_THREAD_KERNEL_STACK_SIZE;
+    // thread->current_sp = (uintptr_t *)kernel_stack;
+    thread->start_sp = (uintptr_t)(ring0_stack + current_sp);
+    // k_sys_TerminalPrintf("%x\n", thread->start_sp);
+    // thread->current_pmap = process->page_map;
 
     uint32_t code_seg = K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0);
     uint32_t data_seg = K_CPU_SEG_SEL(K_PROC_R0_DATA_SEG, 0, 0);
     uintptr_t start_eip;
 
-    if(current_process->ring)
+    // if(process->ring)
+    // {
+    //     thread->current_sp--;
+    //     *thread->current_sp = init->user_data;
+    //     thread->current_sp--;
+    //     *thread->current_sp = (uintptr_t)init->entry_point;
+    //     thread->current_sp--;
+    //     *thread->current_sp = init->user_stack;
+    //     thread->current_sp--;
+    //     *thread->current_sp = 0;
+    //     start_eip = (uintptr_t)&k_proc_SetupUserStack_a;
+    // }
+    // else
     {
-        thread->current_sp--;
-        *thread->current_sp = init->user_data;
-        thread->current_sp--;
-        *thread->current_sp = (uintptr_t)init->entry_point;
-        thread->current_sp--;
-        *thread->current_sp = init->user_stack;
-        thread->current_sp--;
-        *thread->current_sp = 0;
-        start_eip = (uintptr_t)&k_proc_SetupUserStack_a;
-    }
-    else
-    {
-        thread->current_sp--;
-        *thread->current_sp = init->user_data;
-        thread->current_sp--;
-        *thread->current_sp = (uintptr_t)init->entry_point;
-        thread->current_sp--;
-        *thread->current_sp = 0;
+        current_sp--;
+        kernel_stack[current_sp] = init->user_data;
+        current_sp--;
+        kernel_stack[current_sp] = (uintptr_t)init->entry_point;
+        current_sp--;
+        kernel_stack[current_sp] = 0;
+        /* r0 thread */
+        // thread->current_sp--;
+        // *thread->current_sp = init->user_data;
+        // thread->current_sp--;
+        // *thread->current_sp = (uintptr_t)init->entry_point;
+        // thread->current_sp--;
+        // *thread->current_sp = 0;
         start_eip = (uintptr_t)k_proc_StartKernelThread;
+        // k_sys_TerminalPrintf("%x\n", start_eip);
     }
-
-    
 
     /* eflags */
-    thread->current_sp--;
-    *thread->current_sp = K_CPU_STATUS_REG_INIT_VALUE | K_CPU_STATUS_FLAG_INT_ENABLE;
+    current_sp--;
+    kernel_stack[current_sp] = K_CPU_STATUS_REG_INIT_VALUE | K_CPU_STATUS_FLAG_INT_ENABLE;
     /* cs */
-    thread->current_sp--;
-    *thread->current_sp = code_seg;
+    current_sp--;
+    kernel_stack[current_sp] = code_seg;
     /* eip */
-    thread->current_sp--;
-    *thread->current_sp = start_eip;
+    current_sp--;
+    kernel_stack[current_sp] = start_eip;
     /* eax */
-    thread->current_sp--;
-    *thread->current_sp = 0;
+    current_sp--;
+    kernel_stack[current_sp] = 0;
     /* ebx */
-    thread->current_sp--;
-    *thread->current_sp = 0;
+    current_sp--;
+    kernel_stack[current_sp] = 0;
     /* ecx */
-    thread->current_sp--;
-    *thread->current_sp = 0;
+    current_sp--;
+    kernel_stack[current_sp] = 0;
     /* edx */
-    thread->current_sp--;
-    *thread->current_sp = 0;
+    current_sp--;
+    kernel_stack[current_sp] = 0;
     /* esi */
-    thread->current_sp--;
-    *thread->current_sp = 0;
+    current_sp--;
+    kernel_stack[current_sp] = 0;
     /* edi */
-    thread->current_sp--;
-    *thread->current_sp = 0;
+    current_sp--;
+    kernel_stack[current_sp] = 0;
     /* ebp */
-    thread->current_sp--;
-    *thread->current_sp = kernel_stack;
+    current_sp--;
+    kernel_stack[current_sp] = (uintptr_t)(thread->start_sp - 1);
     /* ds */
-    thread->current_sp--;
-    *thread->current_sp = data_seg;
+    current_sp--;
+    kernel_stack[current_sp] = data_seg;
     /* es */
-    thread->current_sp--;
-    *thread->current_sp = data_seg;
+    current_sp--;
+    kernel_stack[current_sp] = data_seg;
     /* fs */
-    thread->current_sp--;
-    *thread->current_sp = data_seg;
+    current_sp--;
+    kernel_stack[current_sp] = data_seg;
+    /* page map */
+    current_sp--;
+    kernel_stack[current_sp] = process->page_map;
+
+    thread->current_pmap = process->page_map;
+    thread->current_sp = (uintptr_t)(ring0_stack + current_sp);
+    // thread->current_sp--;
+    // *thread->current_sp = data_seg;
 
     k_proc_QueueReadyThread(thread);
 
@@ -265,7 +285,7 @@ void k_proc_DestroyThread(struct k_proc_thread_t *thread)
         k_mem_UnmapLinearAddress(kernel_stack_base);
         k_mem_FreeVirtualRange((void *)kernel_stack_base);
         k_mem_FreePhysicalPages(kernel_stack_page);
-            
+
         // union k_proc_thread_page_t *thread_page = (union k_proc_thread_page_t *)((uintptr_t)thread & K_MEM_4KB_ADDRESS_MASK);
         struct k_proc_thread_pool_t *thread_pool = &k_proc_core_state.thread_pool;
         struct k_proc_thread_t *old_head;
@@ -300,7 +320,7 @@ uint32_t k_proc_WaitThread(struct k_proc_thread_t *thread, uintptr_t *value)
         if(wait_thread->state != K_PROC_THREAD_STATE_TERMINATED)
         {
             current_thread->wait_thread = wait_thread;
-            current_thread->state = K_PROC_THREAD_STATE_WAITING;    
+            current_thread->state = K_PROC_THREAD_STATE_WAITING;
             k_proc_YieldThread();
         }
 
@@ -343,10 +363,16 @@ void k_proc_StartUserThread(k_proc_thread_func_t entry_point, void *user_data)
     // sys_TerminateThread()
 }
 
-void k_proc_StartKernelThread(k_proc_thread_func_t entry_point, void *user_data)
-{   
-    struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
-    // k_printf("start %x          \n", current_thread);
+// void k_proc_StartKernelThread(k_proc_thread_func_t entry_point, void *user_data)
+// {
+//     struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
+//     // k_printf("start %x          \n", current_thread);
+//     uintptr_t return_value = entry_point(user_data);
+//     k_proc_TerminateThread(return_value);
+// }
+
+void k_proc_StartThread(k_proc_thread_func_t entry_point, void *user_data)
+{
     uintptr_t return_value = entry_point(user_data);
     k_proc_TerminateThread(return_value);
 }
@@ -373,6 +399,12 @@ void k_proc_RunThread(struct k_proc_thread_t *thread)
 {
     thread->state = K_PROC_THREAD_STATE_RUNNING;
     k_apic_StartTimer(0x1fff);
+    // if(thread->current_pmap != k_proc_page_map)
+    // {
+    //     asm volatile ("nop\n nop\n");
+    // }
+
+    // k_sys_TerminalPrintf("run thread %x\n", thread);
     k_proc_SwitchToThread(thread);
     k_apic_StopTimer();
     k_apic_EndOfInterrupt();
@@ -402,7 +434,7 @@ void k_proc_RunThread(struct k_proc_thread_t *thread)
     {
         thread->state = K_PROC_THREAD_STATE_READY;
     }
-    
+
 }
 
 void k_proc_SwitchToThread(struct k_proc_thread_t *thread)
@@ -415,9 +447,10 @@ void k_proc_QueueReadyThread(struct k_proc_thread_t *thread)
 {
     if(K_PROC_THREAD_VALID(thread))
     {
-        struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
+        // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
         // struct k_proc_thread_t *ready_thread = thread;
         // struct k_proc_thread_t *last_thread = NULL;
+        // k_sys_TerminalPrintf("queue thread %x\n", thread);
         while(thread)
         {
             struct k_proc_thread_t *next_thread = thread->queue_next;

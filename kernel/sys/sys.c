@@ -130,6 +130,8 @@ char *k_sys_pf_messages[] =
     ] = "USER-MODE WRITE ATTEMPT PAGE-LEVEL PROTECTION VIOLATION",
 };
 
+// struct k_sys_shared_data_t *k_sys_shared_data;
+
 void k_sys_Init()
 {
     k_int_SetInterruptHandler(K_SYS_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);
@@ -166,17 +168,7 @@ void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)
         {
             uint32_t error_code = va_arg(args, uint32_t);
             k_sys_TerminalPrintf("            ERROR CODE: 0x%x\n", error_code);
-            // uint32_t eip = va_arg(args, uint32_t);
-            // uint32_t cs = va_arg(args, uint32_t);
         }
-            /* error code */
-            // error_values[0] = va_arg(args, uint32_t);
-            /* eip */
-            // error_values[1] = va_arg(args, uint32_t);
-            /* cs */
-            // error_values[2] = va_arg(args, uint32_t);
-
-            // value_count = 3;
         break;
 
         case K_EXCEPTION_PAGE_FAULT:
@@ -186,34 +178,14 @@ void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)
             k_sys_TerminalPrintf("            FAULT ADDRESS: 0x%x\n", fault_address);
             k_sys_TerminalPrintf("            ERROR CODE: %s (0x%x)\n", k_sys_pf_messages[error_code], error_code);
         }
-            // /* fault address */
-            // error_values[0] = va_arg(args, uint32_t);
-            // /* error code */
-            // error_values[1] = va_arg(args, uint32_t);
-            // /* eip */
-            // error_values[2] = va_arg(args, uint32_t);
-            // /* cs */
-            // error_values[3] = va_arg(args, uint32_t);
-
-            // value_count = 4;
         break;
 
         case K_EXCEPTION_DIVISION_BY_ZERO:
-            // /* eip */
-            // error_values[0] = va_arg(args, uint32_t);
-            // /* cs */
-            // error_values[1] = va_arg(args, uint32_t);
 
-            // value_count = 2;
         break;
 
         case K_EXCEPTION_INVALID_OPCODE:
-            // /* eip */
-            // error_values[0] = va_arg(args, uint32_t);
-            // /* cs */
-            // error_values[1] = va_arg(args, uint32_t);
 
-            // value_count = 2;
         break;
 
         case K_EXCEPTION_UNKNOWN:

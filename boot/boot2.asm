@@ -71,16 +71,16 @@ stage2_start:
     sub ax, offset k_kernel_start */
     mov ecx, 0x7c00
     mov eax, dword ptr [ecx + 4]
-    mov bx, 0x200
+    /* mov bx, 0x200 */
     /* how many sectors the kernel currently takes */
-    div bx
+    /* div bx
     cmp dx, 0
-    jz _exact_div
+    jz _exact_div */
     /* the kernel doesn't fit perfectly in a round number 
     of sectors, so we increment the number of sectors here
     to accomodate the remainder */
-    inc ax
-_exact_div:
+    /* inc ax
+_exact_div: */
     /* number of sectors */
     mov word ptr [si + 2], ax
     /* offset */

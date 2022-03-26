@@ -111,16 +111,19 @@ uint32_t k_kb_ReadKeyboard(unsigned char *out_buffer, uint32_t buffer_size)
 
     // return 0;
 }
-
+ 
 void k_kb_KeyboardHandler()
-{
+{ 
     char ch;
-
+     
     do
     {
-        struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+        // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+        struct k_proc_process_t *current_process = k_proc_GetFocusedProcess();
         uint8_t scan_code = k_8042_ReadScancode();
         ch = '\0';
+
+        // k_sys_TerminalPrintf("fuck\n");
 
         switch(scan_code)
         {

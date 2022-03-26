@@ -22,7 +22,7 @@ enum K_PROC_ELF_TYPES
     /* relocatable file */
     K_PROC_ELF_TYPE_REL = 1,
     /* executable */
-    K_PROC_ELF_TYPE_EXEC = 2, 
+    K_PROC_ELF_TYPE_EXEC = 2,
     /* shared object */
     K_PROC_ELF_TYPE_DYN = 3,
     K_PROC_ELF_TYPE_CORE = 4,
@@ -80,7 +80,7 @@ enum K_PROC_ELF_DATA_ENC
 struct k_proc_elfh_t
 {
     uint8_t ident[K_PROC_ELF_IDENT];
-    /* 32 bit, 64 bit, etc */
+    /* object file, executable, etc */
     uint16_t type;
     /* SPARC, x386, 68000k, etc */
     uint16_t machine;
@@ -152,7 +152,7 @@ enum K_PROC_SECTION_FLAGS
     /* section contains code */
     K_PROC_SECTION_FLAG_EXEC = 1 << 2,
     /*  */
-    K_PROC_SECTION_FLAG_MASKPROC = 0xf0000000 
+    K_PROC_SECTION_FLAG_MASKPROC = 0xf0000000
 };
 
 enum K_PROC_SECTION_INDEXES
@@ -170,18 +170,18 @@ enum K_PROC_SECTION_INDEXES
 
 /* Depending on the section type, 'link' and 'info' have different meanings:
 
-    K_PROC_SECTION_TYPE_DYNAMIC: 'link' holds the section header index of the 
+    K_PROC_SECTION_TYPE_DYNAMIC: 'link' holds the section header index of the
     string table used by this section. 'info' holds 0.
 
     K_PROC_SECTION_TYPE_HASH: 'link' holds the section header index of the
     symbol table it applies to. 'info' holds 0.
 
-    K_PROC_SECTION_TYPE_REL(A): 'link' holds the index for the associated 
+    K_PROC_SECTION_TYPE_REL(A): 'link' holds the index for the associated
     symbol table section header. 'info' holds the index of the section header
     to which the relocations apply.
 
     K_PROC_SECTION_TYPE_SYMTAB/DYNSIM: 'link' holds the section header index
-    of the associated string table. 'info' holds 
+    of the associated string table. 'info' holds
  */
 struct k_proc_sheader_t
 {
@@ -321,6 +321,13 @@ enum K_PROC_SEGMENT_TYPES
     K_PROC_SEGMENT_TYPE_LOPROC = 0x70000000,
     K_PROC_SEGMENT_TYPE_HIPROC = 0x7fffffff
 };
+
+enum K_PROC_SEGMENT_FLAGS
+{
+    K_PROC_SEGMENT_FLAG_EXECUTE = 1,
+    K_PROC_SEGMENT_FLAG_WRITE = 1 << 1,
+    K_PROC_SEGMENT_FLAG_READ = 1 << 2,
+};
 struct k_proc_pheader_t
 {
     /* segment type */
@@ -404,22 +411,30 @@ enum K_PROC_THREAD_FLAGS
 
 typedef uintptr_t (*k_proc_thread_func_t)(void *data);
 
-struct k_proc_thread_init_t 
+struct k_proc_thread_init_t
 {
     /* user callback */
     k_proc_thread_func_t entry_point;
-    /* physical page allocated by the process to be used during syscalls by the process 
-    and the kernel. This is here to avoid having the kernel access the process pmap to 
+
+    /* process */
+    struct k_proc_process_t *process;
+    /* physical page allocated by the process to be used during syscalls by the process
+    and the kernel. This is here to avoid having the kernel access the process pmap to
     discover the physical page associated with the r0 stack */
-    uintptr_t kernel_stack_page;
+    uintptr_t ring0_stack_page;
     /* r0 stack */
-    uintptr_t kernel_stack_base;
+    uintptr_t ring0_stack_base;
     /* thread stack, used exclusively by user code */
-    uintptr_t user_stack;
+    uintptr_t user_stack_base;
     /* data to be passed to the user callback */
     uintptr_t user_data;
     // uintptr_t ring;
 };
+
+// struct k_proc_thread_regs_t
+// {
+//     uint32_t regs[];
+// };
 
 struct k_proc_thread_t
 {
@@ -429,12 +444,12 @@ struct k_proc_thread_t
     /* current esp after all thread state gets saved during preemption/syscall */
     uintptr_t *current_sp;                           // 4
 
-    /* current page map when the thread got preempted. Most of the time this will 
-    be the process pmap, but sometimes it may be the kernel pmap if a thread gets 
+    /* current page map when the thread got preempted. Most of the time this will
+    be the process pmap, but sometimes it may be the kernel pmap if a thread gets
     preempted in the middle of a syscall */
     uintptr_t current_pmap;                           // 8
 
-    /* the kernel stack is mapped both in the kernel address space and in the 
+    /* the kernel stack is mapped both in the kernel address space and in the
     process address space, only to different linear addresses. Adding this value
     to the stack pointer brings the stack from process space to kernel space, and
     subtracting brings it back to process space. */
@@ -445,12 +460,13 @@ struct k_proc_thread_t
     /* thread function return value */
     uintptr_t return_data;                            // 20
 
+    struct k_proc_process_t *process;                 // 24
+
     // uint32_t id : K_PROC_THREAD_ID_BITS;
-    // uint32_t core : K_PROC_THREAD_CORE_BITS; 
+    // uint32_t core : K_PROC_THREAD_CORE_BITS;
     uint32_t state : 16;
     uint32_t flags : 16;
 
-    struct k_proc_process_t *process;
     struct k_proc_thread_t *process_next;
     struct k_proc_thread_t *process_prev;
     /* stream this thread is io blocked by */
@@ -470,8 +486,10 @@ struct k_proc_thread_t
 #define K_PROC_THREAD_PAGE_FIELDS                     \
     union k_proc_thread_page_t *next;                 \
     uint32_t count;                                   \
- 
+
 #define K_PROC_THREAD_PAGE_THREAD_COUNT  ( (4096 - sizeof(struct {K_PROC_THREAD_PAGE_FIELDS;})) / sizeof(struct k_proc_thread_t))
+#define K_PROC_INIT_STACK_ADDRESS 0x2000
+#define K_PROC_SHARED_DATA_ADDRESS 0x4000
 
 union k_proc_thread_page_t
 {
@@ -482,7 +500,7 @@ union k_proc_thread_page_t
     };
 
     uint8_t bytes[4096];
-};  
+};
 
 struct k_proc_thread_pool_t
 {
@@ -522,12 +540,18 @@ struct k_proc_thread_pool_t
 #define K_PROC_DATA_SEG_SEL 0x00000008
 #define K_PROC_STACK_SEG_SEL 0x00000010
 
+#define K_PROC_NULL_SEG 0
 #define K_PROC_R0_DATA_SEG 1
 #define K_PROC_R0_CODE_SEG 2
+#define K_PROC_R3_DATA_SEG 3
+#define K_PROC_R3_CODE_SEG 4
+#define K_PROC_TSS_SEG 5
+#define K_PROC_R0_C_CODE_SEG 6
 
 
 struct k_proc_process_t
 {
+    uint32_t page_map;
     struct k_proc_process_t *next;
     struct k_proc_process_t *prev;
     struct k_proc_thread_t *threads;
@@ -535,7 +559,6 @@ struct k_proc_process_t
     struct k_io_stream_t *streams;
     struct k_io_stream_t *terminal;
     struct k_rt_bheap_t heap;
-    uint32_t page_map;
     uint32_t pid : 30;
     uint32_t ring : 2;
 };
@@ -561,6 +584,13 @@ struct k_proc_core_state_t
     struct k_proc_thread_t scheduler_thread;    // 16
     struct k_proc_thread_t *cleanup_thread;
     struct k_proc_thread_pool_t thread_pool;
+};
+
+struct k_proc_shared_data_t
+{
+    uint32_t kernel_pmap;
+    uint32_t align0;
+    struct k_cpu_seg_desc_t gdt[8];
 };
 
 
