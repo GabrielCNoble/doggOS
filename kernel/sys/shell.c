@@ -79,6 +79,9 @@ uintptr_t k_sys_ShellMain(void *data)
         else if(!k_rt_StrCmp(keyboard_buffer, "test_app"))
         {
             struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
+            uintptr_t return_value;
+            k_proc_WaitProcess(process, &return_value);
+            k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
         }
         else if(keyboard_buffer[0] == '\0')
         {

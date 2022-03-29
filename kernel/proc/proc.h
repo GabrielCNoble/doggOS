@@ -11,7 +11,9 @@ struct k_proc_process_t *k_proc_LaunchProcess(const char *path, const char **arg
 
 uint32_t k_proc_WaitProcess(struct k_proc_process_t *process, uintptr_t *return_value);
 
-struct k_proc_process_t *k_proc_GetProcess(uint32_t process_id);
+uint32_t k_proc_TerminateProcess(uintptr_t return_value);
+
+// struct k_proc_process_t *k_proc_GetProcess(uint32_t process_id);
 
 struct k_proc_process_t *k_proc_GetCurrentProcess();
 

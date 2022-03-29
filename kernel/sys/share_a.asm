@@ -7,10 +7,6 @@
 k_sys_SysCall:
     push ebp
     mov ebp, esp
-    /* cli
-    hlt */
-    nop
-    nop
     /* save registers that will be clobbered */
     push ebx
     push ecx

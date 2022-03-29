@@ -8,10 +8,10 @@
 
 .global k_sys_SysCall_a
 k_sys_SysCall_a:
-    /* syscall arg buffer */
     push ebp
     mov ebp, esp
     sub esp, k_sys_syscall_args_size
+    /* syscall arg buffer */
     mov dword ptr [esp + 0], eax
     mov dword ptr [esp + 4], ebx
     mov dword ptr [esp + 8], ecx
@@ -27,17 +27,19 @@ k_sys_SysCall_a:
     mov eax, dword ptr [eax + k_proc_thread_kernel_stack_offset]
     add esp, eax
 
+    sti
+
     /* address of the syscall arg buffer */
     mov ecx, esp
     push ecx
     call k_sys_DispatchSysCall
     pop ecx
 
+    cli
+
     mov ecx, dword ptr [k_proc_core_state + k_proc_core_state_current_thread]
     mov ebx, dword ptr [ecx + k_proc_thread_process]
-    /* we need to use the process page map here, instead of the thread page map,
-    since the thread may have been preempted during the syscall, in which case
-    the current page map stored in its thread struct will be the kernel page map. */
+
     mov ebx, dword ptr [ebx + k_proc_process_page_map]
     mov dword ptr [ecx + k_proc_thread_current_pmap], ebx
 

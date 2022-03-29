@@ -408,7 +408,6 @@ enum K_PROC_THREAD_FLAGS
 #define K_PROC_THREAD_CORE(handle) (((handle) >> K_PROC_THREAD_CORE_BITS) & K_PROC_THREAD_CORE_MASK)
 #define K_PROC_THREAD_VALID(thread) (thread && thread->state != K_PROC_THREAD_STATE_INVALID)
 
-
 typedef uintptr_t (*k_proc_thread_func_t)(void *data);
 
 struct k_proc_thread_init_t
@@ -556,11 +555,19 @@ struct k_proc_process_t
     struct k_proc_process_t *prev;
     struct k_proc_thread_t *threads;
     struct k_proc_thread_t *last_thread;
+    struct k_proc_thread_t *main_thread;
     struct k_io_stream_t *streams;
     struct k_io_stream_t *terminal;
     struct k_rt_bheap_t heap;
+    uint32_t generation;
     uint32_t pid : 30;
     uint32_t ring : 2;
+};
+
+struct k_proc_phandle_t
+{
+    uint32_t generation;
+    struct k_proc_process_t *process;
 };
 
 // struct k_proc_crit_sec_t

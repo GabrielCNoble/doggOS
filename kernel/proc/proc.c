@@ -28,7 +28,7 @@
 // struct k_proc_thread_t *k_proc_finished_threads = NULL;
 
 struct k_proc_process_t *k_proc_processes = NULL;
-// struct k_proc_process_t *k_proc_last_process = NULL;
+struct k_proc_process_t *k_proc_last_process = NULL;
 // struct k_proc_process_t *k_proc_current_process = NULL;
 
 
@@ -87,8 +87,7 @@ struct k_proc_thread_t *k_proc_cleanup_thread;
 
 // struct k_cpu_seg_desc_t k_proc_syscall_ldt;
 
-extern void *k_proc_PreemptThread;
-extern void *k_proc_PreemptThread2;
+extern void *k_proc_PreemptThread_a;
 extern void *k_proc_StartUserThread_a;
 // extern void *k_sys_SysCall;
 uint32_t k_proc_page_map;
@@ -145,7 +144,7 @@ void k_proc_Init()
     k_cpu_Lgdt(k_proc_shared_data->gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
     k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
 
-    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_VECTOR, (uintptr_t)&k_proc_PreemptThread2, K_CPU_SEG_SEL(2, 0, 0), 3);
+    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(2, 0, 0), 3);
     k_int_SetInterruptHandler(K_PROC_START_USER_THREAD_VECTOR, (uintptr_t)&k_proc_StartUserThread_a, K_CPU_SEG_SEL(2, 0, 0), 0);
     // k_int_SetInterruptHandler(K_PROC_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall, K_CPU_SEG_SEL(2, 0, 0), 3);
     k_apic_WriteReg(K_APIC_REG_LVT_TIMER, (k_apic_ReadReg(K_APIC_REG_LVT_TIMER) | (K_PROC_PREEMPT_THREAD_VECTOR & 0xff) ) & (0xfff8ffff));
@@ -400,8 +399,20 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                 process->terminal = NULL;
                 process->ring = 0;
 
-                process->next = k_proc_processes;
-                k_proc_processes = process;
+                if(!k_proc_processes)
+                {
+                    k_proc_processes = process;
+                }
+                else
+                {
+                    k_proc_last_process->next = process;
+                    process->prev = process;
+                }
+
+                k_proc_last_process = process;
+
+                // process->next = k_proc_processes;
+                // k_proc_processes = process;
 
                 struct k_proc_thread_init_t thread_init = {};
                 thread_init.entry_point = elf_header->entry;
@@ -411,6 +422,7 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                 thread_init.process = process;
                 k_mem_MapLinearAddress(thread_init.ring0_stack_base, thread_init.ring0_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
                 k_proc_MapProcessAddress(&mem_init, K_PROC_INIT_STACK_ADDRESS, thread_init.ring0_stack_page);
+
 
                 k_proc_CreateThread(&thread_init);
 
@@ -439,24 +451,83 @@ uint32_t k_proc_WaitProcess(struct k_proc_process_t *process, uintptr_t *return_
 
     if(process && current_process != process)
     {
-        
+        k_proc_WaitThread(process->main_thread, return_value);
+        return K_STATUS_OK;
     }
 }
 
-struct k_proc_process_t *k_proc_GetProcess(uint32_t process_id)
+uint32_t k_proc_TerminateProcess(uintptr_t return_value)
 {
-    (void)process_id;
-    struct k_proc_process_t *process = NULL;
+    struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+    struct k_proc_thread_t *main_thread = current_process->main_thread;
 
-    // process = dg_StackListGetElement(&k_proc_processes, process_id);
+    struct k_mem_pentry_t *page_dir = k_mem_AllocVirtualRange(4096);
+    struct k_mem_pentry_t *page_table = k_mem_AllocVirtualRange(4096);
 
-    // if(process && process->pid == DG_INVALID_INDEX)
-    // {
-    //     process = NULL;
-    // }
+    k_mem_MapLinearAddress((uintptr_t)page_dir, current_process->page_map, K_MEM_PENTRY_FLAG_READ_WRITE);
 
-    return process;
+    for(uint32_t page_dir_entry_index = 0; page_dir_entry_index < 1024; page_dir_entry_index++)
+    {
+        uintptr_t page_table_entry = page_dir[page_dir_entry_index].entry & K_MEM_PENTRY_ADDR_MASK;
+
+        if(page_table_entry)
+        {
+            k_mem_MapLinearAddress((uintptr_t)page_table, page_table_entry, K_MEM_PENTRY_FLAG_READ_WRITE);
+
+            for(uint32_t page_table_entry_index = 0; page_table_entry_index < 1024; page_table_entry_index++)
+            {
+                uintptr_t page_entry = page_table[page_table_entry_index].entry & K_MEM_PENTRY_ADDR_MASK;
+
+                if(page_entry)
+                {
+                    k_mem_FreePhysicalPages(page_entry);
+                }
+            }
+
+            k_mem_UnmapLinearAddress((uintptr_t)page_table);
+            k_mem_FreePhysicalPages(page_table_entry);
+        }
+    }
+
+    k_mem_UnmapLinearAddress((uintptr_t)page_dir);
+    k_mem_FreePhysicalPages(current_process->page_map);
+
+    if(!current_process->prev)
+    {
+        k_proc_processes = current_process->next;
+    }
+    else
+    {
+        current_process->prev->next = current_process->next;
+    }
+
+    if(!current_process->next)
+    {
+        k_proc_last_process = current_process->prev;
+    }
+    else
+    {
+        current_process->next->prev = current_process->prev;
+    }
+
+    k_rt_Free(current_process);
+    k_proc_TerminateThread(return_value);
 }
+
+// struct k_proc_process_t *k_proc_GetProcess(uint32_t process_id)
+// {
+//     (void)process_id;
+//     struct k_proc_process_t *process = NULL;
+//
+//     // process = dg_StackListGetElement(&k_proc_processes, process_id);
+//
+//     // if(process && process->pid == DG_INVALID_INDEX)
+//     // {
+//     //     process = NULL;
+//     // }
+//
+//     return process;
+// }
 
 struct k_proc_process_t *k_proc_GetCurrentProcess()
 {
@@ -474,7 +545,7 @@ void k_proc_RunScheduler()
     k_proc_core_state.current_thread = &k_proc_core_state.scheduler_thread;
     k_cpu_DisableInterrupts();
     // asm volatile ("hlt\n");
-    asm volatile ("nop\n");
+    // asm volatile ("nop\n");
     k_proc_YieldThread();
 
     // struct k_proc_thread_t *queued_resume_threads = NULL;

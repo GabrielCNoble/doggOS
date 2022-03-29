@@ -211,9 +211,14 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
     kernel_stack[current_sp] = process->page_map;
 
     thread->current_pmap = process->page_map;
-    thread->current_sp = (uintptr_t)(ring0_stack + current_sp);
+    thread->current_sp = (uintptr_t)(kernel_stack + current_sp);
     // thread->current_sp--;
     // *thread->current_sp = data_seg;
+
+    if(!process->main_thread)
+    {
+        process->main_thread = thread;
+    }
 
     k_proc_QueueReadyThread(thread);
 
@@ -399,10 +404,10 @@ void k_proc_RunThread(struct k_proc_thread_t *thread)
 {
     thread->state = K_PROC_THREAD_STATE_RUNNING;
     k_apic_StartTimer(0x1fff);
-    // if(thread->current_pmap != k_proc_page_map)
-    // {
-    //     asm volatile ("nop\n nop\n");
-    // }
+    if(thread->current_pmap != k_proc_page_map)
+    {
+        asm volatile ("nop\n nop\n");
+    }
 
     // k_sys_TerminalPrintf("run thread %x\n", thread);
     k_proc_SwitchToThread(thread);

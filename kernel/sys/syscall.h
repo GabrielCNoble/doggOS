@@ -15,8 +15,10 @@ enum K_SYS_SYSCALLS
     K_SYS_SYSCALL_SUSPEND_THREAD,
     K_SYS_SYSCALL_KILL_THREAD,
     K_SYS_SYSCALL_TERMINATE_THREAD,
+    K_SYS_SYSCALL_TERMINATE_PROCESS,
+    K_SYS_SYSCALL_WAIT_PROCESS,
     K_SYS_SYSCALL_LAST
-}; 
+};
 
 extern uint32_t k_sys_SysCall(uint32_t number, uint32_t arg0, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 

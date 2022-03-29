@@ -23,7 +23,7 @@ stage2_start:
         /* however, some bioses signal the end of the list by setting the carry
         flag, so we test that too */
         jc _mem_map_loop_end
-        
+
         /* test whether this range is available */
         cmp dword ptr es:[edi + 16], 1
         jnz _mem_map_loop_start
@@ -76,27 +76,28 @@ stage2_start:
     /* div bx
     cmp dx, 0
     jz _exact_div */
-    /* the kernel doesn't fit perfectly in a round number 
+    /* the kernel doesn't fit perfectly in a round number
     of sectors, so we increment the number of sectors here
     to accomodate the remainder */
     /* inc ax
 _exact_div: */
     /* number of sectors */
-    mov word ptr [si + 2], ax
-    /* offset */
-    mov ax, 0x7c00
-    mov word ptr [si + 4], ax
-    /* segment */
-    mov ax, 0
-    mov word ptr [si + 6], ax
-    /* mov eax, offset k_kernel_sector */
-    mov eax, dword ptr [ecx]
-    mov dword ptr [si + 8], eax
-    /* restore the drive info */
-    mov edx, dword ptr[origin_drive]
-    mov ax, 0x4200
-    /* do the thing */
-    int 0x13
+    _copy_kernel_loop:
+        mov word ptr [si + 2], ax
+        /* offset */
+        mov ax, 0x7c00
+        mov word ptr [si + 4], ax
+        /* segment */
+        mov ax, 0
+        mov word ptr [si + 6], ax
+        /* mov eax, offset k_kernel_sector */
+        mov eax, dword ptr [ecx]
+        mov dword ptr [si + 8], eax
+        /* restore the drive info */
+        mov edx, dword ptr[origin_drive]
+        mov ax, 0x4200
+        /* do the thing */
+        int 0x13
 
     /* load gdt */
     mov ax, offset gdt_end
@@ -178,4 +179,3 @@ mem_ranges:
 .quad 0 /* range length */
 .quad 0 /* range type */
 .endr
-
