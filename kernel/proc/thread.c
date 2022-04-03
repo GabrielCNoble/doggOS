@@ -10,9 +10,10 @@
 #include "../mem/mngr.h"
 #include "../mem/pmap.h"
 
-extern struct k_proc_thread_t *k_proc_thread_wait_list;
-extern struct k_proc_thread_t *k_proc_io_wait_list;
-extern struct k_proc_thread_t *k_proc_suspended_threads;
+// extern struct k_proc_thread_t *k_proc_thread_wait_list;
+// extern struct k_proc_thread_t *k_proc_io_wait_list;
+// extern struct k_proc_thread_t *k_proc_suspended_threads;
+extern struct k_proc_thread_t *k_proc_cond_wait_list;
 
 // extern k_rt_spnl_t k_proc_ready_queue_spinlock;
 // extern struct k_proc_thread_t *k_proc_ready_queue;
@@ -74,7 +75,7 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
 
         }
     }
-    while(!k_rt_CmpXcgh32(&thread_pool->threads, thread, thread->queue_next, &old));
+    while(!k_rt_CmpXchg32(&thread_pool->threads, thread, thread->queue_next, &old));
 
     // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
     // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
@@ -95,6 +96,8 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
     thread->queue_next = NULL;
     thread->state = K_PROC_THREAD_STATE_CREATED;
     thread->flags = 0;
+    thread->condition = 0;
+    thread->wait_condition = NULL;
 
     // if(!current_process->threads)
     // {
@@ -150,21 +153,14 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
     // }
     // else
     {
+        /* r0 thread */
         current_sp--;
         kernel_stack[current_sp] = init->user_data;
         current_sp--;
         kernel_stack[current_sp] = (uintptr_t)init->entry_point;
         current_sp--;
         kernel_stack[current_sp] = 0;
-        /* r0 thread */
-        // thread->current_sp--;
-        // *thread->current_sp = init->user_data;
-        // thread->current_sp--;
-        // *thread->current_sp = (uintptr_t)init->entry_point;
-        // thread->current_sp--;
-        // *thread->current_sp = 0;
         start_eip = (uintptr_t)k_proc_StartKernelThread;
-        // k_sys_TerminalPrintf("%x\n", start_eip);
     }
 
     /* eflags */
@@ -298,7 +294,7 @@ void k_proc_DestroyThread(struct k_proc_thread_t *thread)
         {
             thread->queue_next = thread_pool->threads;
         }
-        while(!k_rt_CmpXcgh32((uint32_t *)&thread_pool->threads, (uint32_t)thread->queue_next, (uint32_t)thread, (uint32_t *)&old_head));
+        while(!k_rt_CmpXchg32((uint32_t *)&thread_pool->threads, (uint32_t)thread->queue_next, (uint32_t)thread, (uint32_t *)&old_head));
         // k_printf("free %x               \n", thread);
     }
 
@@ -324,13 +320,14 @@ uint32_t k_proc_WaitThread(struct k_proc_thread_t *thread, uintptr_t *value)
 
         if(wait_thread->state != K_PROC_THREAD_STATE_TERMINATED)
         {
-            current_thread->wait_thread = wait_thread;
-            current_thread->state = K_PROC_THREAD_STATE_WAITING;
-            k_proc_YieldThread();
+            // current_thread->wait_thread = wait_thread;
+            // current_thread->state = K_PROC_THREAD_STATE_WAITING;
+            // k_proc_YieldThread();
+            k_proc_WaitCondition(&wait_thread->condition);
         }
 
         *value = wait_thread->return_data;
-        current_thread->wait_thread = NULL;
+        current_thread->wait_condition = NULL;
         k_proc_DetachThread(wait_thread);
 
         return K_STATUS_OK;
@@ -339,42 +336,43 @@ uint32_t k_proc_WaitThread(struct k_proc_thread_t *thread, uintptr_t *value)
     return K_STATUS_INVALID_THREAD;
 }
 
-uint32_t k_proc_WaitStream(struct k_io_stream_t *stream)
+// uint32_t k_proc_WaitStream(struct k_io_stream_t *stream)
+// {
+//     struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
+// 
+//     if(stream)
+//     {
+//         // current_thread->wait_stream = stream;
+//         // current_thread->state = K_PROC_THREAD_STATE_IO_BLOCKED;
+//         // k_sys_TerminalPrintf("Thread %x will wait on stream %x\n", current_thread, stream);
+//         // k_proc_YieldThread();
+//         // k_sys_TerminalPrintf("Thread %x resumed after waiting on stream %x\n", current_thread, stream);
+//         k_proc_WaitCondition(&stream->condition, K_PROC_THREAD_STATE_IO_BLOCKED);
+// 
+//         return K_STATUS_OK;
+//     }
+// 
+//     return K_STATUS_INVALID_STREAM;
+// }
+
+uint32_t k_proc_WaitCondition(k_rt_cond_t *condition)
 {
     struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
-
-    if(stream)
+    
+    if(condition && !(*condition))
     {
-        current_thread->wait_stream = stream;
-        current_thread->state = K_PROC_THREAD_STATE_IO_BLOCKED;
-        // k_sys_TerminalPrintf("Thread %x will wait on stream %x\n", current_thread, stream);
+        current_thread->wait_condition = condition;
+        current_thread->state = K_PROC_THREAD_STATE_COND_WAIT;
         k_proc_YieldThread();
-        // k_sys_TerminalPrintf("Thread %x resumed after waiting on stream %x\n", current_thread, stream);
-
-        return K_STATUS_OK;
     }
-
-    return K_STATUS_INVALID_STREAM;
+    
+    return 0;
 }
 
 void k_proc_YieldThread()
 {
     k_proc_SwitchToThread(NULL);
 }
-
-void k_proc_StartUserThread(k_proc_thread_func_t entry_point, void *user_data)
-{
-    uintptr_t return_value = entry_point(user_data);
-    // sys_TerminateThread()
-}
-
-// void k_proc_StartKernelThread(k_proc_thread_func_t entry_point, void *user_data)
-// {
-//     struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
-//     // k_printf("start %x          \n", current_thread);
-//     uintptr_t return_value = entry_point(user_data);
-//     k_proc_TerminateThread(return_value);
-// }
 
 void k_proc_StartThread(k_proc_thread_func_t entry_point, void *user_data)
 {
@@ -396,7 +394,8 @@ void k_proc_TerminateThread(uintptr_t return_value)
         thread->state = K_PROC_THREAD_STATE_TERMINATED;
         thread->return_data = return_value;
     }
-
+    
+    k_rt_SignalCondition(&thread->condition);
     k_proc_YieldThread();
 }
 
@@ -422,12 +421,16 @@ void k_proc_RunThread(struct k_proc_thread_t *thread)
                 k_proc_QueueDetachedThread(thread);
             break;
 
-            case K_PROC_THREAD_STATE_WAITING:
+            // case K_PROC_THREAD_STATE_WAITING:
+            //     k_proc_QueueWaitingThread(thread);
+            // break;
+            // 
+            // case K_PROC_THREAD_STATE_IO_BLOCKED:
+            //     k_proc_QueueIOBlockedThread(thread);
+            // break;
+            
+            case K_PROC_THREAD_STATE_COND_WAIT:
                 k_proc_QueueWaitingThread(thread);
-            break;
-
-            case K_PROC_THREAD_STATE_IO_BLOCKED:
-                k_proc_QueueIOBlockedThread(thread);
             break;
 
             case K_PROC_THREAD_STATE_RUNNING:
@@ -488,29 +491,29 @@ void k_proc_QueueWaitingThread(struct k_proc_thread_t *thread)
 {
     if(K_PROC_THREAD_VALID(thread) && thread != k_proc_core_state.cleanup_thread)
     {
-        thread->state = K_PROC_THREAD_STATE_WAITING;
+        // thread->state = K_PROC_THREAD_STATE_WAITING;
         struct k_proc_thread_t *old_head;
         do
         {
-            thread->queue_next = k_proc_thread_wait_list;
+            thread->queue_next = k_proc_cond_wait_list;
         }
-        while(!k_rt_CmpXcgh((uintptr_t *)&k_proc_thread_wait_list, (uintptr_t)thread->queue_next, (uintptr_t)thread, (uintptr_t *)&old_head));
+        while(!k_rt_CmpXchg((uintptr_t *)&k_proc_cond_wait_list, (uintptr_t)thread->queue_next, (uintptr_t)thread, (uintptr_t *)&old_head));
     }
 }
 
-void k_proc_QueueIOBlockedThread(struct k_proc_thread_t *thread)
-{
-    if(K_PROC_THREAD_VALID(thread) && thread != k_proc_core_state.cleanup_thread)
-    {
-        thread->state = K_PROC_THREAD_STATE_IO_BLOCKED;
-        struct k_proc_thread_t *old_head;
-        do
-        {
-            thread->queue_next = k_proc_io_wait_list;
-        }
-        while(!k_rt_CmpXcgh((uintptr_t *)&k_proc_io_wait_list, (uintptr_t)thread->queue_next, (uintptr_t)thread, (uintptr_t *)&old_head));
-    }
-}
+// void k_proc_QueueIOBlockedThread(struct k_proc_thread_t *thread)
+// {
+//     if(K_PROC_THREAD_VALID(thread) && thread != k_proc_core_state.cleanup_thread)
+//     {
+//         thread->state = K_PROC_THREAD_STATE_IO_BLOCKED;
+//         struct k_proc_thread_t *old_head;
+//         do
+//         {
+//             thread->queue_next = k_proc_io_wait_list;
+//         }
+//         while(!k_rt_CmpXchg((uintptr_t *)&k_proc_io_wait_list, (uintptr_t)thread->queue_next, (uintptr_t)thread, (uintptr_t *)&old_head));
+//     }
+// }
 
 void k_proc_QueueDetachedThread(struct k_proc_thread_t *thread)
 {
@@ -522,6 +525,6 @@ void k_proc_QueueDetachedThread(struct k_proc_thread_t *thread)
         {
             thread->queue_next = k_proc_core_state.delete_list;
         }
-        while(!k_rt_CmpXcgh((uintptr_t *)delete_list, (uintptr_t )thread->queue_next, (uintptr_t )thread, (uintptr_t *)&old_head));
+        while(!k_rt_CmpXchg((uintptr_t *)delete_list, (uintptr_t )thread->queue_next, (uintptr_t )thread, (uintptr_t *)&old_head));
     }
 }

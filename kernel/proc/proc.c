@@ -51,10 +51,13 @@ struct k_rt_queue_t k_proc_ready_queue;
 
 // struct k_proc_thread_t *k_proc_finished_list = NULL;
 
-k_rt_spnl_t k_proc_wait_list_spinlock = 0;
-struct k_proc_thread_t *k_proc_thread_wait_list = NULL;
+// k_rt_spnl_t k_proc_wait_list_spinlock = 0;
+// struct k_proc_thread_t *k_proc_thread_wait_list = NULL;
 
-struct k_proc_thread_t *k_proc_io_wait_list = NULL;
+// struct k_proc_thread_t *k_proc_io_wait_list = NULL;
+
+
+struct k_proc_thread_t *k_proc_cond_wait_list = NULL;
 
 
 /* each core will have on of those */
@@ -263,6 +266,7 @@ void k_proc_MapProcessAddress(struct k_proc_process_mem_init_t *mem_init, uintpt
         }
 
         k_mem_MapLinearAddress((uintptr_t)mem_init->page, page_entry, K_MEM_PENTRY_FLAG_READ_WRITE);
+        mem_init->cur_page_entry = page_entry;
     }
 }
 
@@ -274,6 +278,11 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
     if(image)
     {
         struct k_proc_elfh_t *elf_header = (struct k_proc_elfh_t *)image;
+        
+        // for(uint32_t index = 0; index < K_PROC_ELF_IDENT; index++)
+        // {
+        //     k_sys_TerminalPrintf("%x ", elf_header->ident[index]);
+        // }
 
         if(elf_header->ident[K_PROC_ELF_MAGIC0_INDEX] == K_PROC_ELF_MAGIC0 &&
            elf_header->ident[K_PROC_ELF_MAGIC1_INDEX] == K_PROC_ELF_MAGIC1 &&
@@ -302,7 +311,7 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                 {
                     struct k_proc_pheader_t *program_header = (struct k_proc_pheader_t *)(program_headers + header_index * elf_header->pheader_esize);
                     uint8_t *segment = (uint8_t *)image + program_header->offset;
-
+                    
                     if(program_header->type == K_PROC_SEGMENT_TYPE_LOAD)
                     {
                         /* round segment start address downwards to closest page */
@@ -312,33 +321,31 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                         /* how many segment bytes we copied so far */
                         uint32_t copied_segment_bytes = 0;
 
-                        // k_sys_TerminalPrintf("Segment %d, with %d bytes, at virtual address %x\n", header_index, program_header->mem_size, linear_address);
-
-
                         while(linear_address < end_linear_address)
                         {
                             k_proc_MapProcessAddress(&mem_init, linear_address, 0);
 
                             uint32_t pad_size = 0;
-
+                            // k_sys_TerminalPrintf("%x, %x\n", linear_address, program_header->vaddr);
                             if(linear_address < program_header->vaddr)
                             {
                                 /* segment doesn't start exactly at the start of the page, so we need to pad it */
                                 pad_size = program_header->vaddr - linear_address;
-
+                                
                                 for(uint32_t index = 0; index < pad_size; index++)
                                 {
                                     mem_init.page[index] = 0;
                                 }
                             }
-
+                            
                             uint32_t copy_size = 0x1000 - pad_size;
+                            linear_address += pad_size;
 
                             if(copied_segment_bytes < program_header->file_size)
                             {
                                 /* we still have segment bytes to copy */
                                 uint32_t bytes_left = program_header->file_size - copied_segment_bytes;
-
+                                
                                 if(copy_size > bytes_left)
                                 {
                                     copy_size = bytes_left;
@@ -347,8 +354,6 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                                 // segment_file_size -= copy_size;
                                 k_rt_CopyBytes(mem_init.page + pad_size, segment + copied_segment_bytes, copy_size);
                                 copied_segment_bytes += copy_size;
-
-                                // k_sys_TerminalPrintf("copy %d bytes\n", copy_size);
                             }
 
                             linear_address += copy_size;
@@ -362,8 +367,6 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                                 {
                                     mem_init.page[index + copy_size] = 0;
                                 }
-
-                                // k_sys_TerminalPrintf("pad %d bytes\n", pad_size);
 
                                 linear_address += pad_size;
                             }
@@ -423,8 +426,10 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                 k_mem_MapLinearAddress(thread_init.ring0_stack_base, thread_init.ring0_stack_page, K_MEM_PENTRY_FLAG_READ_WRITE);
                 k_proc_MapProcessAddress(&mem_init, K_PROC_INIT_STACK_ADDRESS, thread_init.ring0_stack_page);
 
-
                 k_proc_CreateThread(&thread_init);
+
+                process->terminal = k_io_AllocStream();
+                k_io_UnblockStream(process->terminal);
 
                 /* FIXME: ugh, this sucks real bad... */
                 k_mem_UnmapLinearAddress((uintptr_t)mem_init.page_dir);
@@ -451,7 +456,9 @@ uint32_t k_proc_WaitProcess(struct k_proc_process_t *process, uintptr_t *return_
 
     if(process && current_process != process)
     {
+        k_proc_FocusProcess(process);
         k_proc_WaitThread(process->main_thread, return_value);
+        k_proc_FocusProcess(current_process);
         return K_STATUS_OK;
     }
 }
@@ -539,6 +546,11 @@ struct k_proc_process_t *k_proc_GetFocusedProcess()
     return k_proc_active_process;
 }
 
+void k_proc_FocusProcess(struct k_proc_process_t *process)
+{
+    k_proc_active_process = process;
+}
+
 void k_proc_RunScheduler()
 {
     // uint32_t thread_index = 0;
@@ -555,12 +567,12 @@ void k_proc_RunScheduler()
         struct k_proc_thread_t *waiting_thread = NULL;
         struct k_proc_thread_t *resume_thread = NULL;
         struct k_proc_thread_t *last_resume_thread = NULL;
-        k_rt_Xcgh32((uint32_t *)&k_proc_thread_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
+        k_rt_Xchg32((uint32_t *)&k_proc_cond_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
         while(waiting_thread)
         {
             struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
 
-            if(waiting_thread->wait_thread->state == K_PROC_THREAD_STATE_TERMINATED)
+            if(*waiting_thread->wait_condition)
             {
                 waiting_thread->queue_next = resume_thread;
                 resume_thread = waiting_thread;
@@ -573,23 +585,24 @@ void k_proc_RunScheduler()
             waiting_thread = next_thread;
         }
 
-        k_rt_Xcgh32((uint32_t *)&k_proc_io_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
-        while(waiting_thread)
-        {
-            struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
-
-            if(waiting_thread->wait_stream->read_offset != waiting_thread->wait_stream->write_offset)
-            {
-                waiting_thread->queue_next = resume_thread;
-                resume_thread = waiting_thread;
-            }
-            else
-            {
-                k_proc_QueueIOBlockedThread(waiting_thread);
-            }
-
-            waiting_thread = next_thread;
-        }
+        // k_rt_Xchg32((uint32_t *)&k_proc_io_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
+        // while(waiting_thread)
+        // {
+        //     struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
+        // 
+        //     // if(waiting_thread->wait_stream->read_offset != waiting_thread->wait_stream->write_offset)
+        //     if(*waiting_thread->wait_condition)
+        //     {
+        //         waiting_thread->queue_next = resume_thread;
+        //         resume_thread = waiting_thread;
+        //     }
+        //     else
+        //     {
+        //         k_proc_QueueIOBlockedThread(waiting_thread);
+        //     }
+        // 
+        //     waiting_thread = next_thread;
+        // }
 
         if(resume_thread)
         {
@@ -636,7 +649,7 @@ uintptr_t k_proc_CleanupThread(void *data)
         {
             uint32_t deleted_count = 0;
             struct k_proc_thread_t *deleted_thread;
-            k_rt_Xcgh32((uint32_t *)&k_proc_core_state.delete_list, (uint32_t)NULL, (uint32_t *)&deleted_thread);
+            k_rt_Xchg32((uint32_t *)&k_proc_core_state.delete_list, (uint32_t)NULL, (uint32_t *)&deleted_thread);
             while(deleted_thread)
             {
                 struct k_proc_thread_t *next_thread = deleted_thread->queue_next;

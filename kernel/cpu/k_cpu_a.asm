@@ -116,6 +116,27 @@ k_cpu_InW:
     mov dx, cx
     in ax, dx
     ret 
+.global k_cpu_InSW
+k_cpu_InSW:
+    nop
+    nop
+    push ebp
+    mov ebp, esp
+    push eax
+    push ecx
+    push edx
+    
+    mov dx, word ptr [ebp + 8]
+    mov edi, dword ptr [ebp + 12]
+    mov ecx, dword ptr [ebp + 16]  
+    
+    rep insw
+    
+    pop edx
+    pop ecx
+    pop eax
+    pop ebp
+    ret
 
 .global k_cpu_InD
 k_cpu_InD:

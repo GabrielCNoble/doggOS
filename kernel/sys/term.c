@@ -315,10 +315,12 @@ uint32_t k_sys_TerminalReadLine(char *output, uint32_t buffer_size)
 
     do
     {
-        while(k_io_ReadStream(current_process->terminal, &ch, 1) == K_STATUS_EMPTY_STREAM)
-        {
-            k_proc_WaitStream(current_process->terminal);
-        }
+        // while(k_io_ReadStream(current_process->terminal, 0, &ch, 1) == K_STATUS_EMPTY_STREAM)
+        // {
+        //     k_proc_WaitStream(current_process->terminal);
+        // }
+        
+        k_io_ReadStream(current_process->terminal, 0, &ch, 1);
 
         if(ch == 0x10)
         {

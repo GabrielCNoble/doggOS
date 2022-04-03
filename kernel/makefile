@@ -2,9 +2,9 @@ GCC_FLAGS := -Wall -std=gnu99 -ffreestanding -lgcc -masm=intel
 GAS_FLAGS := -I "./"
 
 KERNEL_LDS := linker.ld
-KERNEL_CSRC := $(wildcard ./*.c) $(wildcard ./*/*.c) $(wildcard ./*/*/*.c)
-KERNEL_ASRC := $(wildcard ./*.asm) $(wildcard ./*/*.asm)
-KERNEL_INC := $(wildcard ./*.h) $(wildcard ./*/*.h) $(wildcard ./*/*/*.h) $(wildcard ./*.inc) $(wildcard ./*/*.inc) ../version/version.h
+KERNEL_CSRC := $(wildcard ./*.c) $(wildcard ./*/*.c) $(wildcard ./*/*/*.c) $(wildcard ./*/*/*/*.c)
+KERNEL_ASRC := $(wildcard ./*.asm) $(wildcard ./*/*.asm) $(wildcard ./*/*/*.asm) $(wildcard ./*/*/*/*.asm)
+KERNEL_INC := $(wildcard ./*.h) $(wildcard ./*/*.h) $(wildcard ./*/*/*.h) $(wildcard ./*/*/*/*.h) $(wildcard ./*.inc) $(wildcard ./*/*.inc) ../version/version.h
 KERNEL_OBJ := $(KERNEL_CSRC:.c=.o) $(KERNEL_ASRC:.asm=.o)
 KERNEL_EXE := kernel.elf
 KERNEL_BIN := $(KERNEL_EXE:.elf=.bin)

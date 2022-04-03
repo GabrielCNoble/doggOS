@@ -81,39 +81,3 @@ k_proc_EnterThreadContext:
     push dword ptr [esp - 8]
 
     ret
-/* Switch between the scheduler thread and a normal thread, or between a normal thread and
-the scheduler thread */
-.global k_proc_PreemptThread_a
-k_proc_PreemptThread_a:
-    call k_proc_ExitThreadContext
-
-    mov edx, offset k_proc_core_state
-    mov ecx, dword ptr [edx + k_proc_core_state_current_thread]
-    mov dword ptr [ecx + k_proc_thread_current_sp], esp
-
-    /* next thread */
-    mov ebx, dword ptr [edx + k_proc_core_state_next_thread]
-    cmp ebx, 0
-    jne _valid_next_thread2
-        /* next thread is null, so we switch to the scheduler thread */
-        lea ebx, dword ptr [edx + k_proc_core_state_scheduler_thread]
-    _valid_next_thread2:
-
-    /* swap current thread for next thread, and clear next thread pointer */
-    mov dword ptr [edx + k_proc_core_state_current_thread], ebx
-    mov dword ptr [edx + k_proc_core_state_next_thread], 0
-
-    /* store the start of the switch stack segment into the loaded tss. This is just useful
-    for threads running out of ring 0 */
-    mov ecx, dword ptr [ebx + k_proc_thread_start_sp]
-
-    /* core tss */
-    mov eax, dword ptr [edx + k_proc_core_state_tss]
-    mov dword ptr [eax + 4], ecx
-
-    /* before we can start poping stuff from the next thread stack we need to set up its
-    page directory, since the stack is mapped only in it. */
-    mov esp, dword ptr [ebx + k_proc_thread_current_sp]
-
-    call k_proc_EnterThreadContext
-    iret

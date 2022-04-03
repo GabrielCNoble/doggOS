@@ -19,6 +19,8 @@ struct k_proc_process_t *k_proc_GetCurrentProcess();
 
 struct k_proc_process_t *k_proc_GetFocusedProcess();
 
+void k_proc_FocusProcess(struct k_proc_process_t *process);
+
 void k_proc_RunScheduler();
 
 uintptr_t k_proc_CleanupThread(void *data);

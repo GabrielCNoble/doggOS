@@ -369,8 +369,9 @@ struct k_proc_pheader_t
 
 enum K_PROC_THREAD_STATES
 {
-    K_PROC_THREAD_STATE_WAITING,
-    K_PROC_THREAD_STATE_IO_BLOCKED,
+    // K_PROC_THREAD_STATE_WAITING,
+    // K_PROC_THREAD_STATE_IO_BLOCKED,
+    K_PROC_THREAD_STATE_COND_WAIT,
     K_PROC_THREAD_STATE_SUSPENDED,
     K_PROC_THREAD_STATE_TERMINATED,
 
@@ -472,6 +473,9 @@ struct k_proc_thread_t
     struct k_io_stream_t *wait_stream;
     /* thread this thread is waiting on */
     struct k_proc_thread_t *wait_thread;
+    /* condition variable this thread is waiting on */
+    k_rt_cond_t *wait_condition;
+    k_rt_cond_t condition;
     struct k_proc_thread_t *queue_next;
     struct k_rt_sheap_t heap;
 };

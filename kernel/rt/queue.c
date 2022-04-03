@@ -34,7 +34,7 @@ void k_rt_AllocQueuePage(struct k_rt_queue_t *queue)
         {
             last_item->next = queue->free_items;
         }
-        while(!k_rt_CmpXcgh((uintptr_t *)&queue->free_items, (uintptr_t)last_item->next, (uintptr_t)first_item, NULL));
+        while(!k_rt_CmpXchg((uintptr_t *)&queue->free_items, (uintptr_t)last_item->next, (uintptr_t)first_item, NULL));
     }
 }
 
@@ -56,7 +56,7 @@ struct k_rt_queue_item_t *k_rt_AllocQueueItem(struct k_rt_queue_t *queue)
 
             item = queue->free_items;
         }
-        while(!k_rt_CmpXcgh((uintptr_t *)&queue->free_items, (uintptr_t)item, (uintptr_t)item->next, NULL));
+        while(!k_rt_CmpXchg((uintptr_t *)&queue->free_items, (uintptr_t)item, (uintptr_t)item->next, NULL));
 
         item->next = NULL;
         item->prev = NULL;
@@ -73,7 +73,7 @@ void k_rt_FreeQueueItem(struct k_rt_queue_t *queue, struct k_rt_queue_item_t *it
     if(queue && item)
     {
         item->next = queue->free_items;
-        while(!k_rt_CmpXcgh((uintptr_t *)&queue->free_items, (uintptr_t)item->next, (uintptr_t)item, (uintptr_t *)&item->next));
+        while(!k_rt_CmpXchg((uintptr_t *)&queue->free_items, (uintptr_t)item->next, (uintptr_t)item, (uintptr_t *)&item->next));
         // k_printf("free %x\n", item);
     }
 }
@@ -95,7 +95,7 @@ void k_rt_QueuePush(struct k_rt_queue_t *queue, void *element)
         struct k_rt_queue_item_t *old_tail = tail;
 
         item->item = element;
-        
+
         do
         {
             while(tail->next)
@@ -103,8 +103,8 @@ void k_rt_QueuePush(struct k_rt_queue_t *queue, void *element)
                 tail = tail->next;
             }
         }
-        while(!k_rt_CmpXcgh((uintptr_t *)&tail->next, (uintptr_t)NULL, (uintptr_t)item, NULL));
-        k_rt_CmpXcgh((uintptr_t *)&queue->tail, (uintptr_t)old_tail, (uintptr_t)item, NULL);
+        while(!k_rt_CmpXchg((uintptr_t *)&tail->next, (uintptr_t)NULL, (uintptr_t)item, NULL));
+        k_rt_CmpXchg((uintptr_t *)&queue->tail, (uintptr_t)old_tail, (uintptr_t)item, NULL);
     }
 }
 
@@ -117,12 +117,12 @@ void k_rt_QueuePushUnsafe(struct k_rt_queue_t *queue, void *element)
 void *k_rt_QueuePop(struct k_rt_queue_t *queue)
 {
     void *item = NULL;
-    // asm volatile ("cli\n hlt\n"); 
-    asm volatile ("nop\n nop\n"); 
+    // asm volatile ("cli\n hlt\n");
+    asm volatile ("nop\n nop\n");
     if(queue)
     {
         struct k_rt_queue_item_t *prev_head = queue->prev_head;
-        
+
         do
         {
             if(!prev_head->next)
@@ -130,7 +130,7 @@ void *k_rt_QueuePop(struct k_rt_queue_t *queue)
                 return NULL;
             }
         }
-        while(!k_rt_CmpXcgh((uintptr_t *)&queue->prev_head, (uintptr_t)prev_head, (uintptr_t)prev_head->next, (uintptr_t *)&prev_head));
+        while(!k_rt_CmpXchg((uintptr_t *)&queue->prev_head, (uintptr_t)prev_head, (uintptr_t)prev_head->next, (uintptr_t *)&prev_head));
         item = prev_head->next->item;
         k_rt_FreeQueueItem(queue, prev_head);
     }

@@ -3,7 +3,7 @@
 #include "../../cpu/k_cpu.h"
 #include "../../sys/term.h"
 #include "../../mem/mem.h"
-#include "piix3.h"
+#include "piix3/piix3.h"
 #include <stddef.h>
 
 struct k_pci_config_reg_t k_pci_config_regs[] =
@@ -41,13 +41,14 @@ struct k_pci_device_info_t k_pci_devices[] =
         .name = "PIIX3",
         .vendor_id = 0x8086,
         .device_id = 0x7000,
-        .funcs = (struct k_pci_func_info_t [])
-        {
-            { .name = "PCI to ISA bridge",  .index = 0x00,                       .init = k_PIIX3_F0_Init },
-            { .name = "IDE interface",      .index = 0x01,                       .init = k_PIIX3_F1_Init },
-            { .name = "USB",                .index = 0x02,                       .init = k_PIIX3_F2_Init },
-            { .name = NULL,                 .index = K_PCI_MAX_DEVICE_FUNCTIONS, .init = NULL }
-        }
+        .init = k_PIIX3_Init,
+        // .funcs = (struct k_pci_func_info_t [])
+        // {
+        //     { .name = "PCI to ISA bridge",  .index = 0x00,                       .init = k_PIIX3_F0_Init },
+        //     { .name = "IDE interface",      .index = 0x01,                       .init = k_PIIX3_F1_Init },
+        //     { .name = "USB",                .index = 0x02,                       .init = k_PIIX3_F2_Init },
+        //     { .name = NULL,                 .index = K_PCI_MAX_DEVICE_FUNCTIONS, .init = NULL }
+        // }
     },
     {
         .vendor_id = K_PCI_INVALID_VENDOR_ID,
@@ -71,22 +72,24 @@ void k_pci_Init()
             {
                 if(header.vendor_id == device_info->vendor_id && header.device_id == device_info->device_id)
                 {
-                    struct k_pci_func_info_t *func_info = device_info->funcs;
+                    device_info->init(0, device_index);
+                    // struct k_pci_func_info_t *func_info = device_info->funcs;
 
-                    for(uint32_t function_index = 0; function_index < K_PCI_MAX_DEVICE_FUNCTIONS; function_index++)
-                    {
-                        if(func_info->index == function_index)
-                        {
-                            struct k_pci_init_info_t init_info = {
-                                .device = device_info,
-                                .function = func_info,
-                                .header = &header
-                            }; 
-                            k_sys_TerminalPrintf("Device %x:%x, function %x (%s - %s)\n", device_info->vendor_id, device_info->device_id, func_info->index, device_info->name, func_info->name);
-                            k_dev_RegisterDevice(func_info->init, &init_info);
-                            func_info++;
-                        }
-                    }
+                    // for(uint32_t function_index = 0; function_index < K_PCI_MAX_DEVICE_FUNCTIONS; function_index++)
+                    // {
+                    //     if(func_info->index == function_index)
+                    //     {
+                    //         struct k_pci_init_info_t init_info = {
+                    //             .device = device_info,
+                    //             .function = func_info,
+                    //             .header = &header
+                    //         }; 
+                    //         k_sys_TerminalPrintf("Device %x:%x, function %x (%s - %s)\n", device_info->vendor_id, device_info->device_id, func_info->index, device_info->name, func_info->name);
+                    // 
+                    //         // k_dev_RegisterDevice(func_info->init, &init_info);
+                    //         func_info++;
+                    //     }
+                    // }
 
                     break;
                 }
@@ -123,10 +126,10 @@ uint32_t k_pci_ReadHeader(uint8_t bus, uint8_t device, uint8_t function, union k
     return 1;
 }
 
-uint32_t k_pci_ReadDword(uint32_t base_address, uint32_t dword)
+uint32_t k_pci_ReadDword(uint32_t base_address, uint32_t offset)
 {
-    base_address += dword << 2;
-    k_cpu_OutD(base_address, K_PCI_CONFIG_ADDRESS);
+    // base_address += dword << 2;
+    k_cpu_OutD(base_address + (offset & 0xfffffffc), K_PCI_CONFIG_ADDRESS);
     return k_cpu_InD(K_PCI_CONFIG_DATA);
 }
 
@@ -137,11 +140,19 @@ void k_pci_WriteDword(uint32_t base_address, uint32_t dword, uint32_t value)
     k_cpu_OutD(value, K_PCI_CONFIG_DATA);
 }
 
-uint16_t k_pci_ReadWord(uint32_t base_address, uint32_t word)
+uint16_t k_pci_ReadWord(uint32_t base_address, uint32_t offset)
 {
-    uint32_t value = k_pci_ReadDword(base_address, word >> 1);    
-    uint32_t shift = (word & 1) << 4;
-    return (uint16_t)(value >> shift);
+    // k_cpu_OutD(base_address + (offset & 0xfffffffc), K_PCI_CONFIG_ADDRESS);
+    // uint32_t value = k_cpu_InD(K_PCI_CONFIG_DATA);
+    
+    uint32_t value = k_pci_ReadDword(base_address, offset);
+    
+    if(offset & 2)
+    {
+        value >>= 16;
+    }
+    // uint32_t shift = (offset & 2) << 3;
+    return (uint16_t)value;
 }
 
 void k_pci_WriteWord(uint32_t base_address, uint32_t word, uint32_t value)

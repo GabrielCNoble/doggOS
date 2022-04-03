@@ -1,8 +1,10 @@
-#ifndef K_SYS_TERM_H
-#define K_SYS_TERM_H
+#ifndef SYS_TERM_H
+#define SYS_TERM_H
 
 #include "../defs.h"
 
-void k_sys_Printf(struct k_sys_syscall_args_t *args);
+uint32_t k_sys_Puts(struct k_sys_syscall_args_t *args);
+
+uint32_t k_sys_ReadLine(struct k_sys_syscall_args_t *args);
 
 #endif

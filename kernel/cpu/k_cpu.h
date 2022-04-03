@@ -36,6 +36,8 @@ extern fastcall uint8_t k_cpu_InB(uint16_t port);
 
 extern fastcall uint16_t k_cpu_InW(uint16_t port);
 
+extern void k_cpu_InSW(uint16_t port, uint16_t *buffer, uint32_t count);
+
 extern fastcall uint32_t k_cpu_InD(uint16_t port);
 
 extern void k_cpu_WriteMSR(uint32_t reg, uint64_t value);

@@ -6,6 +6,7 @@
 #include "term.h"
 #include "proc/thread.h"
 #include "proc/proc.h"
+#include "io/term.h"
 #include <stdarg.h>
 
 uint32_t k_sys_TestSysCall(struct k_sys_syscall_args_t *args)
@@ -26,7 +27,9 @@ uint32_t (*k_sys_syscall_table[])(struct k_sys_syscall_args_t *args) = {
     [K_SYS_SYSCALL_CRASH] = k_sys_CrashSysCall,
     [K_SYS_SYSCALL_YIELD_THREAD] = k_sys_YieldThread,
     [K_SYS_SYSCALL_TERMINATE_PROCESS] = k_sys_TerminateProcess,
-    [K_SYS_SYSCALL_WAIT_PROCESS] = k_sys_WaitProcess
+    [K_SYS_SYSCALL_WAIT_PROCESS] = k_sys_WaitProcess,
+    [K_SYS_SYSCALL_PUTS] = k_sys_Puts,
+    [K_SYS_SYSCALL_READ_LINE] = k_sys_ReadLine
 };
 
 uint32_t k_sys_DispatchSysCall(struct k_sys_syscall_args_t *args)

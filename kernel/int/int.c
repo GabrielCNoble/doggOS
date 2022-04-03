@@ -2,6 +2,7 @@
 #include "../sys/sys.h"
 #include "../sys/term.h"
 #include "../cpu/k_cpu.h"
+#include "../dev/pci/piix3/82C59.h"
 #include "../k_rng.h"
 #include "apic.h"
 
@@ -250,12 +251,16 @@ void k_int_Int32()
 {
     // k_printf("cmci\n");
     // k_cpu_InB(0x60);
+    // k_PIIX3_82C59_EndOfInterrupt();
+    // k_sys_TerminalPrintf("cock\n");
+    k_PIIX3_82C59_EndOfInterrupt();
 }
 
 
 void k_int_Int33()
 {
-    
+    // k_PIIX3_82C59_EndOfInterrupt();
+    // k_sys_TerminalPrintf("cock\n");
 }
 
 void k_int_Int34()

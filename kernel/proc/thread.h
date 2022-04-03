@@ -2,7 +2,8 @@
 #define K_THREAD_H
 
 #include "defs.h"
-#include "../io.h"
+// #include "../io.h"
+#include "../rt/atm.h"
 
 struct k_proc_thread_t *k_proc_CreateKernelThread(k_proc_thread_func_t entry_point, void *user_data);
 
@@ -22,7 +23,9 @@ void k_proc_SuspendThread(struct k_proc_thread_t *thread);
 
 uint32_t k_proc_WaitThread(struct k_proc_thread_t *thread, uintptr_t *value);
 
-uint32_t k_proc_WaitStream(struct k_io_stream_t *stream);
+// uint32_t k_proc_WaitStream(struct k_io_stream_t *stream);
+
+uint32_t k_proc_WaitCondition(k_rt_cond_t *condition);
 
 void k_proc_YieldThread();
 

@@ -2,6 +2,7 @@
 #include "rt/alloc.h"
 #include "rt/mem.h"
 #include "proc/proc.h"
+#include "proc/thread.h"
 
 struct k_io_stream_t *k_io_AllocStream(uint32_t flags)
 {
@@ -12,10 +13,16 @@ struct k_io_stream_t *k_io_AllocStream(uint32_t flags)
     stream->last_buffer = NULL;
     stream->read_offset = 0;
     stream->write_offset = 0;
-    stream->alloc_size = 0;
-    stream->free_size = 0;
+    stream->available_count = 0;
+    stream->condition = 0;
+    // stream->alloc_size = 0;
+    // stream->free_size = 0;
     stream->free_buffers = NULL;
     stream->flags = flags & (K_IO_STREAM_FLAG_READ | K_IO_STREAM_FLAG_WRITE);
+    
+    k_io_AllocStreamBuffer(stream);
+    stream->read_buffer = stream->buffers;
+    stream->write_buffer = stream->buffers;
     // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
     // stream->next = current_process->streams;
     // current_process->streams = stream;
@@ -51,13 +58,13 @@ void k_io_AllocStreamBuffer(struct k_io_stream_t *stream)
             {
                 buffer = stream->free_buffers;
             }
-            while(!k_rt_CmpXcgh((uintptr_t *)&stream->free_buffers, (uintptr_t)buffer, (uintptr_t)buffer->next, NULL));
+            while(!k_rt_CmpXchg((uintptr_t *)&stream->free_buffers, (uintptr_t)buffer, (uintptr_t)buffer->next, NULL));
         }
         else
         {
             buffer = k_rt_Malloc(sizeof(struct k_io_stream_buf_t ), 4);
         }
-        
+
 
         if(!stream->buffers)
         {
@@ -69,18 +76,13 @@ void k_io_AllocStreamBuffer(struct k_io_stream_t *stream)
         }
 
         buffer->prev = stream->last_buffer;
-        buffer->next = stream->buffers;
         stream->last_buffer = buffer;
-        stream->alloc_size += K_IO_STREAM_BUF_DATA_SIZE;
-        stream->free_size += K_IO_STREAM_BUF_DATA_SIZE;
-
-        // k_sys_TerminalPrintf("alloc buf %x\n", buffer);
     }
 }
 
 uint32_t k_io_FlushStream(struct k_io_stream_t *stream)
 {
-    
+
 }
 
 uint32_t k_io_SeekStream(struct k_io_stream_t *stream, uint32_t offset, uint32_t pos)
@@ -88,7 +90,7 @@ uint32_t k_io_SeekStream(struct k_io_stream_t *stream, uint32_t offset, uint32_t
 
 }
 
-uint32_t k_io_ReadStream(struct k_io_stream_t *stream, void *data, uint32_t size)
+uint32_t k_io_ReadStreamData(struct k_io_stream_t *stream, void *data, uint32_t size)
 {
     if(!stream)
     {
@@ -109,13 +111,8 @@ uint32_t k_io_ReadStream(struct k_io_stream_t *stream, void *data, uint32_t size
     {
         return K_STATUS_EMPTY_STREAM;
     }
-
-    if(!stream->read_buffer)
-    {
-        stream->read_buffer = stream->buffers;
-    }
-
-    uint32_t data_size = stream->alloc_size - stream->free_size;
+    
+    uint32_t data_size = stream->available_count;
 
     uint32_t data_offset = 0;
     uint32_t freed_size = 0;
@@ -126,7 +123,7 @@ uint32_t k_io_ReadStream(struct k_io_stream_t *stream, void *data, uint32_t size
     {
         size = data_size;
     }
-
+    
     while(size)
     {
         uint32_t buffer_offset = stream->read_offset % K_IO_STREAM_BUF_DATA_SIZE;
@@ -137,7 +134,6 @@ uint32_t k_io_ReadStream(struct k_io_stream_t *stream, void *data, uint32_t size
         {
             last_freed_buffers = buffer;
             stream->read_buffer = stream->read_buffer->next;
-            freed_size += K_IO_STREAM_BUF_DATA_SIZE;
         }
         else
         {
@@ -146,21 +142,56 @@ uint32_t k_io_ReadStream(struct k_io_stream_t *stream, void *data, uint32_t size
 
         k_rt_CopyBytes((uint8_t *)data + data_offset, buffer->data + buffer_offset, copy_size);
         data_offset += copy_size;
-        stream->read_offset = (stream->read_offset + copy_size) % stream->alloc_size;
+        stream->read_offset += copy_size;
         size -= copy_size;
     }
+    
+    stream->available_count -= data_offset;
 
     if(stream->flags & K_IO_STREAM_FLAG_CLEAR_READ && last_freed_buffers)
     {
+        if(first_freed_buffer == stream->buffers)
+        {
+            stream->buffers = last_freed_buffers->next;
+        }
+        else
+        {
+            first_freed_buffer->prev->next = last_freed_buffers->next;
+        }
+        
+        if(last_freed_buffers == stream->last_buffer)
+        {
+            stream->last_buffer = first_freed_buffer->prev;
+        }
+        else
+        {
+            last_freed_buffers->next->prev = first_freed_buffer->prev;
+        }
+        
         last_freed_buffers->next = stream->free_buffers;
         stream->free_buffers = first_freed_buffer;
-        stream->free_size += freed_size;
     }
-    
+
     return K_STATUS_OK;
 }
 
-uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t size)
+uint32_t k_io_ReadStream(struct k_io_stream_t *stream, uint32_t offset, void *data, uint32_t size)
+{    
+    if(stream->request_read)
+    {
+        stream->request_read(stream, offset, size);
+    }
+    
+    // k_proc_WaitCondition(&stream->condition, )
+    k_io_WaitStream(stream);
+    
+    uint32_t result = k_io_ReadStreamData(stream, data, size);
+    k_rt_ClearCondition(&stream->condition);
+    
+    return result;
+}
+
+uint32_t k_io_WriteStreamData(struct k_io_stream_t *stream, void *data, uint32_t size)
 {
     if(!stream)
     {
@@ -177,19 +208,9 @@ uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t siz
         return K_STATUS_BLOCKED_STREAM;
     }
 
-    while(stream->free_size < size)
-    {
-        k_io_AllocStreamBuffer(stream);
-    }
-
-    if(!stream->write_buffer)
-    {
-        stream->write_buffer = stream->buffers;
-    }
-
     uint32_t data_offset = 0;
-
-    stream->free_size -= size;
+    
+    struct k_io_stream_buf_t *cur_write_buffer = stream->write_buffer;
 
     while(size)
     {
@@ -199,6 +220,11 @@ uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t siz
 
         if(copy_size <= size)
         {
+            if(!stream->write_buffer->next)
+            {
+                k_io_AllocStreamBuffer(stream);
+            }
+            
             stream->write_buffer = stream->write_buffer->next;
         }
         else
@@ -206,13 +232,25 @@ uint32_t k_io_WriteStream(struct k_io_stream_t *stream, void *data, uint32_t siz
             copy_size = size;
         }
 
-        k_rt_CopyBytes(&buffer->data[buffer_offset], ((uint8_t *)data) + data_offset, copy_size);
+        k_rt_CopyBytes(&buffer->data[buffer_offset], (uint8_t *)data + data_offset, copy_size);
         data_offset += copy_size;
-        stream->write_offset = (stream->write_offset + copy_size) % stream->alloc_size;
+        stream->write_offset += copy_size;
         size -= copy_size;
+    }
+    
+    stream->available_count += data_offset;
+    
+    if(!stream->read_buffer)
+    {
+        stream->read_buffer = cur_write_buffer;
     }
 
     return K_STATUS_OK;
+}
+
+uint32_t k_io_WriteStream(struct k_io_stream_t *stream, uint32_t offset, void *data, uint32_t size)
+{
+    return k_io_WriteStreamData(stream, data, size);
 }
 
 uint32_t k_io_UnblockStream(struct k_io_stream_t *stream)
@@ -228,5 +266,29 @@ uint32_t k_io_BlockStream(struct k_io_stream_t *stream)
     if(stream)
     {
         stream->flags |= K_IO_STREAM_FLAG_BLOCKED;
+    }
+}
+
+uint32_t k_io_SignalStream(struct k_io_stream_t *stream)
+{
+    if(stream)
+    {
+        k_rt_SignalCondition(&stream->condition);
+    }
+}
+
+uint32_t k_io_UnsignalStream(struct k_io_stream_t *stream)
+{
+    if(stream)
+    {
+        k_rt_ClearCondition(&stream->condition);
+    }
+}
+
+uint32_t k_io_WaitStream(struct k_io_stream_t *stream)
+{
+    if(stream)
+    {
+        k_proc_WaitCondition(&stream->condition);
     }
 }

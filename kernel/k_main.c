@@ -290,9 +290,29 @@ void k_main()
 
     // k_cpu_DisableInterrupts();
     // k_cpu_Halt();
-
+    // void *mem = k_rt_Malloc(0xffff, 4);
+    // struct k_io_stream_t *stream = k_io_AllocStream();
+    // k_io_UnblockStream(stream);
+    // 
+    // for(uint32_t index = 0; index < 256 * 18; index++)
+    // {
+    //     uint16_t data = 1;
+    //     k_io_WriteStream(stream, &data, sizeof(uint16_t));
+    // }
+    
+    // k_sys_TerminalPrintf("write offset: %x\n", stream->write_offset);
+    // k_io_ReadStream(stream, mem, 8192);
+    // k_sys_TerminalPrintf("read offset: %x\n", stream->read_offset);
+    // 
+    // k_cpu_DisableInterrupts();
+    // k_cpu_Halt();
     struct k_proc_thread_t *shell_thread = k_proc_CreateKernelThread(k_sys_ShellMain, NULL);
     k_proc_RunScheduler();
 
     return;
 }
+
+
+
+
+

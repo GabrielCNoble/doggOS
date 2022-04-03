@@ -1,12 +1,13 @@
 #include "kb.h"
 #include "rt/mem.h"
+#include "rt/atm.h"
 #include "int/int.h"
 #include "cpu/k_cpu.h"
 #include "dev/drv/8042.h"
 #include "proc/proc.h"
 #include "io.h"
 
-char k_kb_scancode_lut[256] = 
+char k_kb_scancode_lut[256] =
 {
     [0x02] = '1',
     [0x03] = '2',
@@ -53,10 +54,11 @@ char k_kb_scancode_lut[256] =
     [0x1c] = '\n',
     [0x0e] = 0x10,
     [0x33] = ',',
-    [0x34] = '.'
+    [0x34] = '.',
+    [0x35] = '/',
 };
 
-char k_kb_scancode_shift_lut[256] = 
+char k_kb_scancode_shift_lut[256] =
 {
     [0x02] = '!',
     [0x03] = '@',
@@ -75,7 +77,8 @@ char k_kb_scancode_shift_lut[256] =
     [0x28] = '\"',
 
     [0x33] = '<',
-    [0x34] = '>'
+    [0x34] = '>',
+    [0x35] = '?',
 };
 
 uint8_t k_kb_lshift_down = 0;
@@ -85,10 +88,13 @@ uint8_t k_kb_rshift_down = 0;
 // unsigned char k_keyboard_buffer[K_KEYBOARD_MAX_CHARS];
 
 extern void *k_kb_KeyboardHandler_a;
+extern struct k_int_desc_t k_int_idt[];
 
 void k_kb_Init()
 {
-    k_int_SetInterruptHandler(K_KEYBOARD_VECTOR, &k_kb_KeyboardHandler_a, K_CPU_SEG_SEL(6, 3, 0), 3);
+    k_int_SetInterruptHandler(K_KEYBOARD_VECTOR, &k_kb_KeyboardHandler_a, K_CPU_SEG_SEL(2, 3, 0), 3);
+    // k_int_idt[32] = K_INT_DESCRIPTOR(&k_kb_KeyboardHandler_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    // k_PIIX3_82C59_EndOfInterrupt();
 }
 
 uint32_t k_kb_ReadKeyboard(unsigned char *out_buffer, uint32_t buffer_size)
@@ -111,19 +117,19 @@ uint32_t k_kb_ReadKeyboard(unsigned char *out_buffer, uint32_t buffer_size)
 
     // return 0;
 }
- 
+
 void k_kb_KeyboardHandler()
-{ 
+{
     char ch;
-     
+    // k_sys_TerminalPrintf("fuck\n");
+    struct k_proc_process_t *current_process;
+    
     do
     {
         // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
-        struct k_proc_process_t *current_process = k_proc_GetFocusedProcess();
+        current_process = k_proc_GetFocusedProcess();
         uint8_t scan_code = k_8042_ReadScancode();
         ch = '\0';
-
-        // k_sys_TerminalPrintf("fuck\n");
 
         switch(scan_code)
         {
@@ -162,13 +168,17 @@ void k_kb_KeyboardHandler()
 
                     if(current_process->terminal)
                     {
-                        k_io_WriteStream(current_process->terminal, &ch, sizeof(char));
+                        k_io_WriteStreamData(current_process->terminal, &ch, sizeof(char));
+                        k_io_SignalStream(current_process->terminal);
+                        // k_rt_SignalCondition(&current_process->terminal->condition);
                     }
                 }
             break;
         }
     }
     while((k_8042_ReadStatus() & K_8042_STATUS_OUT_BUFFER_FULL) && ch);
+    k_PIIX3_82C59_EndOfInterrupt();
+    // asm volatile ("hlt");
 }
 
 struct k_io_stream_t *k_kb_OpenStream()

@@ -2,8 +2,8 @@
 .intel_syntax noprefix
 .section .text
 
-.global k_rt_Xcgh32
-k_rt_Xcgh32:
+.global k_rt_Xchg32
+k_rt_Xchg32:
     push ebp
     mov ebp, esp
     push ebx
@@ -18,10 +18,10 @@ k_rt_Xcgh32:
     pop ebp
     ret
 
-.global k_rt_CmpXcgh
-k_rt_CmpXcgh:
-.global k_rt_CmpXcgh32
-k_rt_CmpXcgh32:
+.global k_rt_CmpXchg
+k_rt_CmpXchg:
+.global k_rt_CmpXchg32
+k_rt_CmpXchg32:
     push ebp
     mov ebp, esp
     push ebx
@@ -142,6 +142,35 @@ k_rt_SpinUnlock:
     and eax, 0xfffffffe
     xchg dword ptr [ecx], eax
     pop ecx
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+    
+    
+.global k_rt_SignalCondition
+k_rt_SignalCondition:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    mov eax, 1
+    mov ebx, dword ptr [ebp + 8]
+    xchg dword ptr [ebx], eax
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+    
+  .global k_rt_ClearCondition
+  k_rt_ClearCondition:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    mov eax, 0
+    mov ebx, dword ptr [ebp + 8]
+    xchg dword ptr [ebx], eax
     pop ebx
     pop eax
     pop ebp
