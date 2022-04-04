@@ -1,7 +1,7 @@
 #ifndef K_DRV_H
 #define K_DRV_H
 
-#include "k_defs.h"
+#include "defs.h"
 
 struct k_dsk_cmd_page_t *k_dsk_AllocCmdPage();
 

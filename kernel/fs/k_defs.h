@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../dsk/k_defs.h"
+#include "../dsk/defs.h"
 
 
 struct k_fs_vol_t;

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "../../drv/ide.h"
+#include "../../../dsk/defs.h"
 
 #define K_PIIX3_IDE_CH0_PCI_IDETIM_REG 0x40
 
@@ -26,7 +27,9 @@ uint8_t K_PIIX3_IDE_ReadError();
 
 void k_PIIX3_IDE_ExecCmd(uint8_t cmd);
 
-void k_PIIX3_IDE_Read(uint32_t lba, uint32_t size);
+// void k_PIIX3_IDE_Read(uint32_t lba, uint32_t size);
+
+uint32_t k_PIIX3_IDE_Read(struct k_dsk_cmd_t *cmd);
 
 void k_PIIX3_IDE_Handler();
 

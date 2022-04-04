@@ -11,6 +11,7 @@ void stdcall k_Init(struct k_init_data_t *init_data)
     k_mem_Init(init_data->ranges, init_data->range_count);
     k_gfx_Init();
     k_sys_Init();
+    k_dsk_Init();
     k_timer_Init();
     k_proc_Init();
     k_rng_Seed(3);

@@ -6,7 +6,7 @@
 #include "../cpu/k_cpu.h"
 #include "../rt/atm.h"
 // #include "../cont/k_defs.h"
-#include "../dsk/k_defs.h"
+// #include "../dsk/k_defs.h"
 #include "../io.h"
 
 /*

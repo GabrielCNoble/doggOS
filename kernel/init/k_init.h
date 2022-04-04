@@ -10,7 +10,7 @@
 #include "../sys/term.h"
 #include "../int/int.h"
 #include "../dev/dev.h"
-#include "../dsk/k_dsk.h"
+#include "../dsk/dsk.h"
 #include "../cpu/k_cpu.h"
 #include "../k_rng.h"
 #include "../timer/k_timer.h"
