@@ -2,6 +2,7 @@
 #include "../mem/mem.h"
 #include "../rt/alloc.h"
 #include "../proc/thread.h"
+#include "../sys/term.h"
 // #include "../../libdg/container/dg_slist.h"
 // #include "../k_term.h"
 
@@ -38,6 +39,8 @@ struct k_dsk_disk_t *k_dsk_CreateDisk(uint32_t block_size, uint32_t block_count,
     }
     
     k_dsk_last_disk = disk;
+    
+    k_sys_TerminalPrintf("create disk %x, block size = %x, block count = %x", disk, block_size, block_count);
     
     disk->thread = k_proc_CreateKernelThread(k_dsk_DiskThread, disk);
     
@@ -106,11 +109,28 @@ uint32_t k_dsk_Read(struct k_dsk_disk_t *disk, uint32_t start, uint32_t count, v
 
 uint32_t k_dsk_Write(struct k_dsk_disk_t *disk, uint32_t start, uint32_t count, void *data)
 {
-    (void)disk;
-    (void)start;
-    (void)count;
-    (void)data;
+    struct k_dsk_cmd_t *cmd = k_dsk_AllocCmd();
+    
+    cmd->type = K_DSK_CMD_TYPE_WRITE;
+    cmd->buffer = data;
+    cmd->address = start;
+    cmd->size = count;
+    
+    k_dsk_EnqueueCmd(disk, cmd);
+    k_proc_WaitCondition(&cmd->condition);
+    k_dsk_FreeCmd(cmd);
+    
     return 0;
+}
+
+uint32_t k_dsk_ReadStream(struct k_io_stream_t *stream)
+{
+    
+}
+
+uint32_t k_dsk_WriteStream(struct k_io_stream_t *stream)
+{
+    
 }
 
 uintptr_t k_dsk_DiskThread(void *data)

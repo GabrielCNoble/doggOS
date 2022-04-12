@@ -4,7 +4,7 @@
 #include "thread.h"
 #include "../sys/term.h"
 #include "../int/apic.h"
-#include "../int/int.h"
+#include "../int/irq.h"
 #include "../k_rng.h"
 #include "../mem/mem.h"
 #include "../mem/pmap.h"
@@ -100,7 +100,7 @@ extern void *k_shared_start;
 extern void *k_shared_end;
 extern void *k_kernel_end2;
 
-extern struct k_int_desc_t k_int_idt[K_INT_HANDLER_LAST];
+extern struct k_irq_desc_t k_int_idt[K_IRQ_HANDLER_LAST];
 
 void k_proc_Init()
 {
@@ -147,10 +147,10 @@ void k_proc_Init()
     k_cpu_Lgdt(k_proc_shared_data->gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
     k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
 
-    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(2, 0, 0), 3);
+    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_IRQ_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(2, 0, 0), 3);
     k_int_SetInterruptHandler(K_PROC_START_USER_THREAD_VECTOR, (uintptr_t)&k_proc_StartUserThread_a, K_CPU_SEG_SEL(2, 0, 0), 0);
     // k_int_SetInterruptHandler(K_PROC_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall, K_CPU_SEG_SEL(2, 0, 0), 3);
-    k_apic_WriteReg(K_APIC_REG_LVT_TIMER, (k_apic_ReadReg(K_APIC_REG_LVT_TIMER) | (K_PROC_PREEMPT_THREAD_VECTOR & 0xff) ) & (0xfff8ffff));
+    k_apic_WriteReg(K_APIC_REG_LVT_TIMER, (k_apic_ReadReg(K_APIC_REG_LVT_TIMER) | (K_PROC_PREEMPT_THREAD_IRQ_VECTOR & 0xff) ) & (0xfff8ffff));
     k_apic_WriteReg(K_APIC_REG_DIV_CONFIG, k_apic_ReadReg(K_APIC_REG_DIV_CONFIG) & (~0xb));
     k_apic_WriteReg(K_APIC_REG_SPUR_INT_VEC, k_apic_ReadReg(K_APIC_REG_SPUR_INT_VEC) | 34);
 

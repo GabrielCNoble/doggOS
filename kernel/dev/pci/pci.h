@@ -294,7 +294,7 @@ void k_pci_WriteDword(uint32_t base_address, uint32_t dword, uint32_t value);
 
 uint16_t k_pci_ReadWord(uint32_t base_address, uint32_t offset);
 
-void k_pci_WriteWord(uint32_t base_address, uint32_t word, uint32_t value);
+void k_pci_WriteWord(uint32_t base_address, uint32_t offset, uint16_t value);
 
 // uint32_t k_pci_read_config_reg(uint8_t bus, uint8_t device, uint8_t function, uint8_t reg);
 

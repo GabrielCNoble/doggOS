@@ -1,18 +1,18 @@
 #ifndef K_FS_H
 #define K_FS_H
 
-#include "k_defs.h"
+#include "defs.h"
 
 
 
 
 void k_fs_Init();
 
-struct k_fs_fsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *fsys);
+// struct k_fs_fsys_t *k_fs_RegisterFileSystem(struct k_fs_fsys_t *fsys);
 
-void k_fs_UnregisterFileSystem(char *name);
+// void k_fs_UnregisterFileSystem(char *name);
 
-struct k_fs_fsys_t *k_fs_GetFileSystem(char *name);
+// struct k_fs_fsys_t *k_fs_GetFileSystem(char *name);
 
 /*
 =========================================================================================
@@ -20,7 +20,7 @@ struct k_fs_fsys_t *k_fs_GetFileSystem(char *name);
 =========================================================================================
 */
 
-void k_fs_EnumerateDiskPartitions(struct k_dsk_disk_t *disk);
+// void k_fs_EnumerateDiskPartitions(struct k_dsk_disk_t *disk);
 
 struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition);
 

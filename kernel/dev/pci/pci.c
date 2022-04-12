@@ -128,41 +128,41 @@ uint32_t k_pci_ReadHeader(uint8_t bus, uint8_t device, uint8_t function, union k
 
 uint32_t k_pci_ReadDword(uint32_t base_address, uint32_t offset)
 {
-    // base_address += dword << 2;
     k_cpu_OutD(base_address + (offset & 0xfffffffc), K_PCI_CONFIG_ADDRESS);
     return k_cpu_InD(K_PCI_CONFIG_DATA);
 }
 
-void k_pci_WriteDword(uint32_t base_address, uint32_t dword, uint32_t value)
+void k_pci_WriteDword(uint32_t base_address, uint32_t offset, uint32_t value)
 {
-    base_address += dword << 2;
-    k_cpu_OutD(base_address, K_PCI_CONFIG_ADDRESS);
+    k_cpu_OutD(base_address + (offset & 0xffffffc), K_PCI_CONFIG_ADDRESS);
     k_cpu_OutD(value, K_PCI_CONFIG_DATA);
 }
 
 uint16_t k_pci_ReadWord(uint32_t base_address, uint32_t offset)
-{
-    // k_cpu_OutD(base_address + (offset & 0xfffffffc), K_PCI_CONFIG_ADDRESS);
-    // uint32_t value = k_cpu_InD(K_PCI_CONFIG_DATA);
-    
+{    
     uint32_t value = k_pci_ReadDword(base_address, offset);
     
     if(offset & 2)
     {
         value >>= 16;
     }
-    // uint32_t shift = (offset & 2) << 3;
     return (uint16_t)value;
 }
 
-void k_pci_WriteWord(uint32_t base_address, uint32_t word, uint32_t value)
+void k_pci_WriteWord(uint32_t base_address, uint32_t offset, uint16_t value)
 {
-    uint32_t shift = (word & 1) << 4;
-    uint32_t mask = 0xffff0000 >> shift;
-    word >>= 1;
-    uint32_t read_value = k_pci_ReadDword(base_address, word) & mask;
-    read_value |= value << shift;
-    k_pci_WriteDword(base_address, word, read_value);
+    uint32_t dword = k_pci_ReadDword(base_address, offset);
+    
+    if(offset & 0x2)
+    {
+        dword = (((uint32_t)value) << 16) | (dword & 0x0000ffff);
+    }
+    else
+    {
+        dword = (dword & 0xffff0000) | ((uint32_t)value);
+    }
+    
+    k_pci_WriteDword(base_address, offset, dword);
 }
 
 // uint32_t k_pci_read_config_reg(uint8_t bus, uint8_t device, uint8_t function, uint8_t reg)

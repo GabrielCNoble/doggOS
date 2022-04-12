@@ -20,11 +20,9 @@ all: version boot kernel libc $(LINKER_SCRIPT)
 	dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
 	dd conv=notrunc if=$(BOOT_BIN) of=$(DISK_NAME)
 	dd conv=notrunc seek=4 if=$(KERNEL_BIN) of=$(DISK_NAME)
-	dd conv=notrunc seek=140 if=test/exp/exp.out of=$(DISK_NAME)
-	dd conv=notrunc seek=170 if=test/derp/derp.out of=$(DISK_NAME)
-
-	#dd if=/dev/zero of=$(DISK_NAME) bs=16M count=1
-	#dd conv=notrunc if=$(BIN_NAME) of=$(DISK_NAME)
+	dd conv=notrunc seek=170 if=tools/mkfs/disk.pup of=$(DISK_NAME)
+	#dd conv=notrunc seek=170 if=test/exp/exp.out of=$(DISK_NAME)
+	#dd conv=notrunc seek=210 if=test/derp/derp.out of=$(DISK_NAME)
 
 version:
 	./version/update_version ./version/version.h

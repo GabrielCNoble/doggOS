@@ -1,6 +1,6 @@
 #include "sys.h"
 #include "term.h"
-#include "../int/int.h"
+#include "../int/irq.h"
 #include "../cpu/k_cpu.h"
 #include "../rt/alloc.h"
 #include "defs.h"
@@ -26,51 +26,51 @@ char *k_sys_exception_codes[] =
 char *k_sys_pf_messages[] = 
 {
     [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (!K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (!K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "KERNEL-MODE READ ATTEMPT",
 
     [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
+        (!K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (!K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "KERNEL-MODE INSTRUCTION FETCH ATTEMPT",
 
     [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (!K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "KERNEL-MODE READ PAGE-LEVEL PROTECTION VIOLATION",
 
     [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
+        (K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (!K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "KERNEL-MODE INSTRUCTION FETCH PAGE-LEVEL PROTECTION VIOLATION",
 
     [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (!K_IRQ_PF_FLAG_NON_PAGED) | 
+        (K_IRQ_PF_FLAG_WRITE) | 
+        (!K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "KERNEL-MODE WRITE ATTEMPT",
 
     [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (!K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (K_IRQ_PF_FLAG_NON_PAGED) | 
+        (K_IRQ_PF_FLAG_WRITE) | 
+        (!K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "KERNEL-MODE WRITE ATTEMPT PAGE-LEVEL PROTECTION VIOLATION",
 
 
@@ -82,51 +82,51 @@ char *k_sys_pf_messages[] =
 
 
     [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (!K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "USER-MODE READ ATTEMPT",
 
     [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
+        (!K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "USER-MODE INSTRUCTION FETCH ATTEMPT",
 
     [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "USER-MODE READ PAGE-LEVEL PROTECTION VIOLATION",
 
     [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (!K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (K_INT_PF_FLAG_INSTR_FETCH)
+        (K_IRQ_PF_FLAG_NON_PAGED) | 
+        (!K_IRQ_PF_FLAG_WRITE) | 
+        (K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "USER-MODE INSTRUCTION FETCH PAGE-LEVEL PROTECTION VIOLATION",
 
     [
-        (!K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (!K_IRQ_PF_FLAG_NON_PAGED) | 
+        (K_IRQ_PF_FLAG_WRITE) | 
+        (K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "USER-MODE WRITE ATTEMPT",
 
     [
-        (K_INT_PF_FLAG_NON_PAGED) | 
-        (K_INT_PF_FLAG_WRITE) | 
-        (K_INT_PF_FLAG_USER) | 
-        (!K_INT_PF_FLAG_RES) | 
-        (!K_INT_PF_FLAG_INSTR_FETCH)
+        (K_IRQ_PF_FLAG_NON_PAGED) | 
+        (K_IRQ_PF_FLAG_WRITE) | 
+        (K_IRQ_PF_FLAG_USER) | 
+        (!K_IRQ_PF_FLAG_RES) | 
+        (!K_IRQ_PF_FLAG_INSTR_FETCH)
     ] = "USER-MODE WRITE ATTEMPT PAGE-LEVEL PROTECTION VIOLATION",
 };
 
@@ -134,9 +134,8 @@ char *k_sys_pf_messages[] =
 
 void k_sys_Init()
 {
-    k_int_SetInterruptHandler(K_SYS_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);
+    k_int_SetInterruptHandler(K_SYS_SYSCALL_IRQ_VECTOR, (uintptr_t)&k_sys_SysCall_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);
     k_sys_TerminalInit();
-    // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
 }
 
 void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)

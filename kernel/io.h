@@ -25,8 +25,8 @@ struct k_io_stream_buf_t
 struct k_io_stream_t
 {
     struct k_io_stream_t *next;
-    uint32_t (*request_read)(struct k_io_stream_t *stream, uint32_t offset, uint32_t size);
-    uint32_t (*request_write)(struct k_io_stream_t *stream, uint32_t offset, uint32_t size);
+    uint32_t (*read)(struct k_io_stream_t *stream, uint32_t offset, uint32_t size);
+    uint32_t (*write)(struct k_io_stream_t *stream, uint32_t offset, uint32_t size);
     // uint32_t (*update)(struct k_io_stream_t *stream);
 
     void *target;

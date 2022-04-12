@@ -17,6 +17,7 @@ void stdcall k_Init(struct k_init_data_t *init_data)
     k_rng_Seed(3);
     k_dev_Init();
     k_kb_Init();
+    k_mouse_Init();
     k_cpu_EnableInterrupts();
     k_main();
 }

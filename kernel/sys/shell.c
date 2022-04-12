@@ -7,6 +7,7 @@
 #include "../proc/proc.h"
 #include "../proc/defs.h"
 #include "../dsk/dsk.h"
+#include "../fs/fs.h"
 #include "../dev/pci/piix3/ide.h"
 // #include "../proc/elf.h"
 #include <stddef.h>
@@ -20,6 +21,7 @@ void k_sys_Help()
     k_sys_TerminalPrintf("    syscall: executes test syscall\n");
     k_sys_TerminalPrintf("    exp: launches expression parser program\n");
     k_sys_TerminalPrintf("    derp: launches derp program\n");
+    k_sys_TerminalPrintf("    disks: prints information about detected disks\n");
     // k_sys_TerminalPrintf("    test_read: does a test disk read\n");
 }
 
@@ -29,6 +31,7 @@ extern void *k_share_end;
 
 // extern struct k_io_stream_t *k_PIIX3_IDE_stream;
 extern struct k_dsk_disk_t *k_PIIX3_IDE_disk;
+extern struct k_dsk_disk_t *k_dsk_disks;
 
 void k_sys_Crash()
 {
@@ -58,6 +61,9 @@ uintptr_t k_sys_ShellMain(void *data)
     struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
     current_process->terminal = k_io_AllocStream();
     k_io_UnblockStream(current_process->terminal);
+    
+    struct k_fs_part_t partition = {.start = 170, .disk = k_PIIX3_IDE_disk};
+    k_fs_MountVolume(&partition);
 
     // k_sys_TerminalPrintf("%x %x\n", &k_share_start, &k_share_end);
     // struct k_proc_process_t *process = k_proc_CreateProcess(&k_kernel_end2, 0x1000);
@@ -99,7 +105,7 @@ uintptr_t k_sys_ShellMain(void *data)
             // k_rt_Free(image_buffer);
             
             void *image_buffer = k_rt_Malloc(0xffff, 4);
-            k_dsk_Read(k_PIIX3_IDE_disk, 140 * 512, 32 * 512, image_buffer);
+            k_dsk_Read(k_PIIX3_IDE_disk, 170 * 512, 32 * 512, image_buffer);
             // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
             struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
             uintptr_t return_value;
@@ -110,13 +116,22 @@ uintptr_t k_sys_ShellMain(void *data)
         else if(!k_rt_StrCmp(keyboard_buffer, "derp"))
         {
             void *image_buffer = k_rt_Malloc(0xffff, 4);
-            k_dsk_Read(k_PIIX3_IDE_disk, 170 * 512, 32 * 512, image_buffer);
+            k_dsk_Read(k_PIIX3_IDE_disk, 210 * 512, 32 * 512, image_buffer);
             // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
             struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
             uintptr_t return_value;
             k_proc_WaitProcess(process, &return_value);
             k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
             k_rt_Free(image_buffer);
+        }
+        else if(!k_rt_StrCmp(keyboard_buffer, "disks"))
+        {
+            struct k_dsk_disk_t *disk = k_dsk_disks;
+            while(disk)
+            {
+                k_sys_TerminalPrintf("disk: %x, block size = %d, block count = %d\n", disk, disk->block_size, disk->block_count);
+                disk = disk->next;
+            }
         }
         // else if(!k_rt_StrCmp(keyboard_buffer, "test_read"))
         // {

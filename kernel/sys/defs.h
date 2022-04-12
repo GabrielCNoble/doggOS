@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define K_SYS_SYSCALL_VECTOR 69
+#define K_SYS_SYSCALL_IRQ_VECTOR 69
 #define K_SYS_SYSCALL_MAX_ARGS 8
 
 /* sizeof(uint32_t) * 8 == 32 */

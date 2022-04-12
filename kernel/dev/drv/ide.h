@@ -1,6 +1,23 @@
 #ifndef K_IDE_H
 #define K_IDE_H
 
+#include <stdint.h>
+#include "../../dsk/defs.h"
+
+enum K_IDE_CMD_REGS
+{
+    K_IDE_CMD_REG_DATA          = 0x00,
+    K_IDE_CMD_REG_ERROR         = 0x01,
+    K_IDE_CMD_REG_FEAT          = 0x01,
+    K_IDE_CMD_REG_SEC_COUNT     = 0x02,
+    K_IDE_CMD_REG_SEC_NUMBER    = 0x03,
+    K_IDE_CMD_REG_CYL_LOW       = 0x04,
+    K_IDE_CMD_REG_CYL_HI        = 0x05,
+    K_IDE_CMD_REG_DRV_HEAD      = 0x06,
+    K_IDE_CMD_REG_STATUS        = 0x07,
+    K_IDE_CMD_REG_CMD           = 0x07
+};
+
 enum K_IDE_CMDS
 {
     K_IDE_CMD_ACK_MEDIA_CHANGE  = 0xdb,
@@ -47,5 +64,58 @@ enum K_IDE_ERROR_FLAGS
     K_IDE_ERROR_FLAG_TKONF  = 1 << 1,
     K_IDE_ERROR_FLAG_ABRT   = 1 << 2,
 };
+
+struct k_ide_info_t
+{
+    uint16_t general_info;
+    uint16_t cylinder_count;
+    uint16_t reserved0;
+    uint16_t head_count;
+    uint16_t bytes_per_track;
+    uint16_t bytes_per_sector;
+    uint16_t vendor_unique0[3];
+    uint16_t serial[10];
+    uint16_t buffer_type;
+    uint16_t buffer_size;
+    uint16_t ecc_byte_count;
+    uint16_t firmare_revision[4];
+    uint16_t model_number[20];
+    uint16_t vendor_unique1;
+    uint16_t dword_io_capable;
+    uint16_t capabilites;
+    uint16_t reserved1;
+    uint16_t pio_tx_time_mode;
+    uint16_t dma_tx_time_moed;
+    uint16_t valid_extra;
+    uint16_t cur_cylinder_count;
+    uint16_t cur_head_count;
+    uint16_t cur_bytes_per_track;
+    uint16_t cur_capacity[2];
+    uint16_t ignore0;
+    uint16_t lba_sector_count[2];
+    uint16_t ignore3;
+    uint16_t ignore4;
+    uint16_t reserved2[64];
+    uint16_t vendor_unique2[32];
+    uint16_t reserved[97];
+};
+
+struct k_ide_device_t
+{
+    uint16_t    (*read_reg)(uint8_t reg);
+    void        (*write_reg)(uint8_t reg, uint8_t value);
+};
+
+uint8_t k_IDE_ReadStatus(struct k_ide_device_t *device);
+
+void k_IDE_ExecCmd(struct k_ide_device_t *device, uint8_t cmd);
+
+void k_IDE_ReadCmd(struct k_dsk_cmd_t *cmd);
+
+void k_IDE_WriteCmd(struct k_dsk_cmd_t *cmd);
+
+void k_IDE_IdentifyCmd(struct k_dsk_cmd_t *cmd);
+
+void k_IDE_InterruptHandler();
 
 #endif

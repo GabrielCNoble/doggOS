@@ -21,7 +21,7 @@ SECTIONS
         ./sys/syscall_s_a.o
         ./sys/syscall_m_a.o
         ./k_string.o
-        ./int/int.o
+        ./int/irq.o
         ./kb*.o
         k_shared_end = .;
         ./*
@@ -30,6 +30,6 @@ SECTIONS
 
     k_kernel_end2 = 0x200 * 140;
     /* k_kernel_size = 200; */
-    /* k_kernel_size = 0x80; */
-    k_kernel_size = (k_kernel_end - k_kernel_start) / 0x200;
+    k_kernel_size = 0x80;
+    /* k_kernel_size = (k_kernel_end - k_kernel_start) / 0x200; */
 }

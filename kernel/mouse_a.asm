@@ -1,11 +1,14 @@
 .intel_syntax noprefix
 .code32
 
-
 .section .text
-.global k_PIIX3_IDE_Handler_a
-k_PIIX3_IDE_Handler_a:
+
+.global k_mouse_MouseHandler_a
+k_mouse_MouseHandler_a:
     call k_proc_ExitThreadContext
-    call k_PIIX3_IDE_Handler
+    sti
+    call k_mouse_MouseHandler
+    cli
     call k_proc_EnterThreadContext
     iret
+    

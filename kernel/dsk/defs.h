@@ -34,17 +34,19 @@ enum K_DSK_CMD_TYPES
     // K_DSK_CMD_TYPE_TRANSFER_PART,
     K_DSK_CMD_TYPE_READ,
     K_DSK_CMD_TYPE_WRITE,
+    K_DSK_CMD_TYPE_IDENTIFY,
     K_DSK_CMD_TYPE_LAST
 };
 
 struct k_dsk_cmd_t
 {
     struct k_dsk_cmd_t *next;
-    k_rt_cond_t condition;
-    uint32_t address;
-    uint32_t size;
-    uint32_t type;
-    void *buffer;
+    k_rt_cond_t         condition;
+    uint32_t            address;
+    uint32_t            size;
+    uint32_t            type : 16;
+    uint32_t            status: 16;
+    void               *buffer;
 };
 
 struct k_dsk_cmd_page_t

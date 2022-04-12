@@ -1,5 +1,5 @@
 #include "apic.h"
-#include "int.h"
+#include "irq.h"
 #include "../mem/mem.h"
 
 uint32_t k_apic_regs_base = 0;

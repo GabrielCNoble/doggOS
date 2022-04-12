@@ -177,9 +177,9 @@ uint32_t k_io_ReadStreamData(struct k_io_stream_t *stream, void *data, uint32_t 
 
 uint32_t k_io_ReadStream(struct k_io_stream_t *stream, uint32_t offset, void *data, uint32_t size)
 {    
-    if(stream->request_read)
+    if(stream->read)
     {
-        stream->request_read(stream, offset, size);
+        stream->read(stream, offset, size);
     }
     
     // k_proc_WaitCondition(&stream->condition, )

@@ -2,7 +2,7 @@
 #include "../proc/defs.h"
 #include "../proc/proc.h"
 #include "../cpu/k_defs.h"
-#include "../int/int.h"
+#include "../int/irq.h"
 #include "term.h"
 #include "proc/thread.h"
 #include "proc/proc.h"

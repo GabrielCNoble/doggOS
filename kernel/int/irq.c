@@ -1,8 +1,8 @@
-#include "int.h"
+#include "irq.h"
 #include "../sys/sys.h"
 #include "../sys/term.h"
 #include "../cpu/k_cpu.h"
-#include "../dev/pci/piix3/82C59.h"
+#include "../dev/pci/piix3/isa.h"
 #include "../k_rng.h"
 #include "apic.h"
 
@@ -31,118 +31,7 @@ extern void *k_int38_a;
 extern void *k_int69_a;
 extern void *k_proc_PreemptCurrentThread;
 uint32_t blah;
-struct k_int_desc_t k_int_idt[K_INT_HANDLER_LAST];
-
-// extern uint32_t k_gfx_vga_width;
-// extern uint32_t k_gfx_vga_height;
-// extern uint16_t *k_gfx_vga_cur_mem_map;
-
-// char *k_int_pf_messages[] = 
-// {
-//     [
-//         (!K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (!K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "supervisor-mode data read attempt from unpaged address %x\n",
-
-//     [
-//         (!K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (!K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "supervisor-mode instruction fetch attempt from unpaged address %x\n",
-
-//     [
-//         (K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (!K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "page-level protection violation during supervisor-mode data read attempt from address %x\n",
-
-//     [
-//         (K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (!K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "page-level protection violation during supervisor-mode instruction fetch attempt from address %x\n",
-
-//     [
-//         (!K_INT_PF_FLAG_NON_PAGED) | 
-//         (K_INT_PF_FLAG_WRITE) | 
-//         (!K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "supervisor-mode data write attempt to unpaged address %x\n",
-
-//     [
-//         (K_INT_PF_FLAG_NON_PAGED) | 
-//         (K_INT_PF_FLAG_WRITE) | 
-//         (!K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "page-level protection violation during supervisor-mode data write attempt to address %x\n",
-
-
-
-
-
-    
-
-
-
-//     [
-//         (!K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "user-mode data read attempt from unpaged address %x\n",
-
-//     [
-//         (!K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "user-mode instruction fetch attempt from unpaged address %x\n",
-
-//     [
-//         (K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "page-level protection violation during user-mode data read attempt from address %x\n",
-
-//     [
-//         (K_INT_PF_FLAG_NON_PAGED) | 
-//         (!K_INT_PF_FLAG_WRITE) | 
-//         (K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "page-level protection violation during user-mode instruction fetch attempt from address %x\n",
-
-//     [
-//         (!K_INT_PF_FLAG_NON_PAGED) | 
-//         (K_INT_PF_FLAG_WRITE) | 
-//         (K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "user-mode data write attempt to unpaged address %x\n",
-
-//     [
-//         (K_INT_PF_FLAG_NON_PAGED) | 
-//         (K_INT_PF_FLAG_WRITE) | 
-//         (K_INT_PF_FLAG_USER) | 
-//         (!K_INT_PF_FLAG_RES) | 
-//         (!K_INT_PF_FLAG_INSTR_FETCH)
-//     ] = "page-level protection violation during user-mode data write attempt to address %x\n",
-// };
+struct k_irq_desc_t k_int_idt[K_IRQ_HANDLER_LAST];
 
 void k_int_Init()
 {
@@ -151,18 +40,18 @@ void k_int_Init()
     //     k_int_idt[exception] = K_INT_DESCRIPTOR(&k_intn_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT); 
     // }
 
-    k_int_idt[K_INT_HANDLER_DE] = K_INT_DESCRIPTOR(&k_int0_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_NMI] = K_INT_DESCRIPTOR(&k_int2_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_BP] = K_INT_DESCRIPTOR(&k_int3_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_TRAP_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_OF] = K_INT_DESCRIPTOR(&k_int4_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_TRAP_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_BR] = K_INT_DESCRIPTOR(&k_int5_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_UD] = K_INT_DESCRIPTOR(&k_int6_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_NM] = K_INT_DESCRIPTOR(&k_int7_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_DF] = K_INT_DESCRIPTOR(&k_int8_temp_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_BAD_TSS] = K_INT_DESCRIPTOR(&k_int10_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_GP] = K_INT_DESCRIPTOR(&k_int13_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[K_INT_HANDLER_PF] = K_INT_DESCRIPTOR(&k_int14_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_idt[32] = K_INT_DESCRIPTOR(&k_int32_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_DE] = K_IRQ_DESCRIPTOR(&k_int0_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_NMI] = K_IRQ_DESCRIPTOR(&k_int2_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_BP] = K_IRQ_DESCRIPTOR(&k_int3_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_TRAP_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_OF] = K_IRQ_DESCRIPTOR(&k_int4_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_TRAP_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_BR] = K_IRQ_DESCRIPTOR(&k_int5_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_UD] = K_IRQ_DESCRIPTOR(&k_int6_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_NM] = K_IRQ_DESCRIPTOR(&k_int7_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_DF] = K_IRQ_DESCRIPTOR(&k_int8_temp_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_BAD_TSS] = K_IRQ_DESCRIPTOR(&k_int10_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_GP] = K_IRQ_DESCRIPTOR(&k_int13_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[K_IRQ_HANDLER_PF] = K_IRQ_DESCRIPTOR(&k_int14_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+    k_int_idt[32] = K_IRQ_DESCRIPTOR(&k_int32_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
     // k_int_idt[33] = K_INT_DESCRIPTOR(&k_int33_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
 
     // k_int_idt[K_INT_HANDLER_CMCI] = K_INT_DESCRIPTOR(&k_int32_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
@@ -172,12 +61,12 @@ void k_int_Init()
     // k_int_idt[K_INT_HANDLER_ERROR] = K_INT_DESCRIPTOR(&k_int36_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     // k_int_idt[K_INT_HANDLER_TIMOUT] = K_INT_DESCRIPTOR(&k_int38_a, K_CPU_SEG_SEL(6, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     // k_int_idt[K_INT_HANDLER_TIME_SLICE] = K_INT_DESCRIPTOR(&k_proc_PreemptCurrentThread, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
-    k_int_Lidt(k_int_idt, K_INT_HANDLER_LAST);
+    k_int_Lidt(k_int_idt, K_IRQ_HANDLER_LAST);
 }
 
 void k_int_SetInterruptHandler(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl)
 {
-    k_int_idt[vector] = K_INT_DESCRIPTOR(handler, seg_sel, gate_pl, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
+    k_int_idt[vector] = K_IRQ_DESCRIPTOR(handler, seg_sel, gate_pl, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
     // k_int_Lidt(k_int_idt, K_INT_HANDLER_LAST);
 }
 
@@ -253,7 +142,7 @@ void k_int_Int32()
     // k_cpu_InB(0x60);
     // k_PIIX3_82C59_EndOfInterrupt();
     // k_sys_TerminalPrintf("cock\n");
-    k_PIIX3_82C59_EndOfInterrupt();
+    k_PIIX3_ISA_EndOfInterrupt();
 }
 
 

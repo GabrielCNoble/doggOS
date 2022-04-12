@@ -8,7 +8,7 @@
 #include "../gfx/k_gfx.h"
 // #include "../k_term.h"
 #include "../sys/term.h"
-#include "../int/int.h"
+#include "../int/irq.h"
 #include "../dev/dev.h"
 #include "../dsk/dsk.h"
 #include "../cpu/k_cpu.h"
@@ -17,6 +17,7 @@
 #include "../proc/proc.h"
 #include "../sys/sys.h"
 #include "../kb.h"
+#include "../mouse.h"
 
 void stdcall k_Init(struct k_init_data_t *init_data);
 

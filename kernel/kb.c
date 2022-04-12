@@ -1,10 +1,11 @@
 #include "kb.h"
 #include "rt/mem.h"
 #include "rt/atm.h"
-#include "int/int.h"
+#include "int/irq.h"
 #include "cpu/k_cpu.h"
 #include "dev/drv/8042.h"
 #include "proc/proc.h"
+#include "dev/pci/piix3/isa.h"
 #include "io.h"
 
 char k_kb_scancode_lut[256] =
@@ -88,11 +89,11 @@ uint8_t k_kb_rshift_down = 0;
 // unsigned char k_keyboard_buffer[K_KEYBOARD_MAX_CHARS];
 
 extern void *k_kb_KeyboardHandler_a;
-extern struct k_int_desc_t k_int_idt[];
+// extern struct k_int_desc_t k_int_idt[];
 
 void k_kb_Init()
 {
-    k_int_SetInterruptHandler(K_KEYBOARD_VECTOR, &k_kb_KeyboardHandler_a, K_CPU_SEG_SEL(2, 3, 0), 3);
+    k_int_SetInterruptHandler(K_KEYBOARD_IRQ_VECTOR, &k_kb_KeyboardHandler_a, K_CPU_SEG_SEL(2, 3, 0), 3);
     // k_int_idt[32] = K_INT_DESCRIPTOR(&k_kb_KeyboardHandler_a, K_CPU_SEG_SEL(2, 3, 0), 3, K_INT_DESC_TYPE_INT_GATE, K_INT_DESC_FLAG_32BIT);
     // k_PIIX3_82C59_EndOfInterrupt();
 }
@@ -177,7 +178,7 @@ void k_kb_KeyboardHandler()
         }
     }
     while((k_8042_ReadStatus() & K_8042_STATUS_OUT_BUFFER_FULL) && ch);
-    k_PIIX3_82C59_EndOfInterrupt();
+    k_PIIX3_ISA_EndOfInterrupt();
     // asm volatile ("hlt");
 }
 

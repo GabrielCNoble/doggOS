@@ -6,6 +6,8 @@
 *.txt
 *.elf
 *.md
+*.pup
+*.out
 .vscode
 makefile.new
 bochsrc

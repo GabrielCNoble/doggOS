@@ -3,7 +3,7 @@
 // #include "k_pmap.h"
 // #include "../k_term.h"
 #include "../cpu/k_cpu.h"
-#include "../int/int.h"
+// #include "../int/int.h"
 #include "../proc/defs.h"
 #include "../rt/alloc.h"
 
@@ -266,6 +266,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     /* how many ranges do we need to cover the whole 4G address space, considering
     the memory overhead for the ranges */
     uint32_t vrange_block_count = 0xffffffff / covered_virtual_bytes_block_size;
+    
 
     if(0xffffffff % covered_virtual_bytes_block_size)
     {
@@ -284,6 +285,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     k_mem_virtual_ranges.ranges[0].start = 0x00001000;
     k_mem_virtual_ranges.ranges[0].size = (0xffffffff - 0x1000) >> K_MEM_4KB_ADDRESS_SHIFT;
+    
 
     /*
         physical memory ranges
@@ -373,15 +375,18 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     struct k_mem_pentry_t *pdir = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
     struct k_mem_pentry_t *ptable = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
 
+    
     for(uint32_t index = 0; index < 1024; index++)
     {
         pdir[index].entry = 0;
         ptable[index].entry = 0;
     }
+    
 
     pdir[K_MEM_PMAP_PDIR_INDEX].entry = ((uintptr_t)ptable) | flags;
     ptable[K_MEM_PMAP_PDIR_INDEX].entry = ((uintptr_t)pdir) | flags;
     ptable[K_MEM_PMAP_PTABLE_INDEX].entry = ((uintptr_t)ptable) | flags;
+    
 
     // pdir[0].entry = ((uintptr_t)low_mem_ptable) | flags;
     // ptable[0].entry = ((uintptr_t)low_mem_ptable) | flags;
