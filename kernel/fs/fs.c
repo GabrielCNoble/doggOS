@@ -13,7 +13,8 @@
 
 struct k_fs_fsys_t k_fs_file_systems[K_FS_FILE_SYSTEM_LAST] = {
     [K_FS_FILE_SYSTEM_PUP] = {
-        .init_volume = k_fs_InitPupVolume,
+        .mount_volume = k_fs_PupMountVolume,
+        .unmount_volume = k_fs_PupUnmountVolume
     }
 };
 
@@ -93,14 +94,14 @@ struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
     volume->partition.end = partition->end;
     volume->file_system = &k_fs_file_systems[K_FS_FILE_SYSTEM_PUP];
     
-    volume->file_system->init_volume(volume);
+    volume->file_system->mount_volume(volume);
     
     return volume;
 }
 
 void k_fs_UnmountVolume(struct k_fs_vol_t *volume)
 {
-    (void)volume;
+    volume->file_system->unmount_volume(volume);
 }
 
 void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys)

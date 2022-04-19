@@ -133,7 +133,7 @@ void k_PIIX3_IDE_Handler()
     {
         // uint8_t error = K_PIIX3_IDE_ReadError();
         
-        // k_sys_TerminalPrintf("disk io error: %x\n", (uint32_t)K_PIIX3_IDE_ReadError());
+        k_sys_TerminalPrintf("disk io error: %x\n", (uint32_t)K_PIIX3_IDE_ReadError());
         k_rt_SignalCondition(&cmd->condition);
     }
     else

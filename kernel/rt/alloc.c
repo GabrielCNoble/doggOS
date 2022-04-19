@@ -36,7 +36,7 @@ void *k_rt_BigAlloc(size_t size, size_t align)
         
         size_t page_count = size >> K_MEM_4KB_ADDRESS_SHIFT;
 
-        if(!page_count)
+        if(size % K_MEM_4KB_ADDRESS_OFFSET)
         {
             page_count++;
         }

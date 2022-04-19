@@ -45,9 +45,16 @@ k_rt_CmpXchg32:
 
 .global k_rt_Inc32Wrap
 k_rt_Inc32Wrap:
-    mov ebx, dword ptr [esp + 4]
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    mov ebx, dword ptr [ebp + 8]
     mov eax, 1
     lock xadd dword ptr [ebx], eax
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 .global k_rt_Inc32Clamp
@@ -66,12 +73,19 @@ k_rt_Inc32Clamp:
     mov dword ptr [ebx], eax
     mov eax, ecx
     ret
-
+    
 .global k_rt_Dec32Wrap
 k_rt_Dec32Wrap:
-    mov ebx, dword ptr [esp + 4]
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    mov ebx, dword ptr [ebp + 8]
     mov eax, 0xffffffff
     lock xadd dword ptr [ebx], eax
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 .global k_rt_Dec32Clamp
@@ -127,6 +141,20 @@ k_rt_TrySpinLock:
     movzx eax, al
     pop ecx
     pop ebx
+    pop ebp
+    ret
+
+.global k_rt_SpinWait
+k_rt_SpinWait:
+    push ebp
+    mov ebp, esp
+    push eax
+    mov eax, dword ptr [ebp + 8]        /* spinlock */
+    _spinwait_loop:
+        test dword ptr [eax], 0x1
+        jnz _spinwait_loop
+    _spinwait_loop_exit:
+    pop eax
     pop ebp
     ret
 

@@ -2,6 +2,7 @@
 #define K_FS_PUP_H
 
 #include "defs.h"
+#include "../rt/atm.h"
 
 #define K_FS_PUP_LOGICAL_BLOCK_SIZE 0x200
 #define K_FS_PUP_MAX_RNODE_RANGES 4
@@ -83,6 +84,7 @@ struct k_fs_pup_node_t
     uint8_t type;
     uint8_t flags;
     uint16_t align;
+    k_rt_spnl_t lock;
     
     union
     {
@@ -91,6 +93,76 @@ struct k_fs_pup_node_t
     };
 };
 
-void k_fs_InitPupVolume(struct k_fs_vol_t *volume);
+#define K_FS_PUP_CACHE_SET_COUNT 32
+#define K_FS_PUP_BLOCKS_PER_ENTRY 4
+
+#define K_FS_PUP_CACHE_SET_INDEX_SHIFT 2
+#define K_FS_PUP_CACHE_SET_INDEX_MASK (K_FS_PUP_CACHE_SET_COUNT - 1)
+#define K_FS_PUP_CACHE_SET_INDEX(block_address) (((block_address) >> K_FS_PUP_CACHE_SET_INDEX_SHIFT) & K_FS_PUP_CACHE_SET_INDEX_MASK)
+
+/* max of 16 MB of memory dedicated for a single disk */
+#define K_FS_PUP_MAX_CACHE_MEM 0x1000000
+
+enum K_FS_PUP_SLOT_FLAGS
+{
+    K_FS_PUP_SLOT_FLAG_DIRTY = 1,
+};
+
+struct k_fs_pup_centry_t
+{
+    struct k_fs_pup_centry_t *next;
+    struct k_fs_pup_centry_t *prev;
+    k_rt_spnl_t               touch_lock;
+    uint32_t                  first_block;
+    uint16_t                  flags;
+    uint16_t                  align0;
+    uint8_t                   buffer[];
+};
+
+struct k_fs_pup_cset_t
+{
+    struct k_fs_pup_centry_t *first_entry;
+    struct k_fs_pup_centry_t *last_entry;
+    // k_rt_spnl_t read_lock;
+    uint32_t read_count;
+    k_rt_spnl_t write_lock;
+};
+
+struct k_fs_pup_volume_t
+{
+    struct k_fs_pup_root_t    root;
+    // int32_t                  block_size_shift;
+    // uint32_t                 cached_block_buffer_size;
+    // uint8_t                 *cached_blocks_base;
+    // uint32_t                  used_slots;
+    uint32_t                  lru_bitmask;
+    uint32_t                  allocated_memory;
+    struct k_fs_pup_cset_t    cache_sets[K_FS_PUP_CACHE_SET_COUNT];
+    // struct k_fs_pup_centry_t *entry_pool;
+};
+
+void k_fs_PupMountVolume(struct k_fs_vol_t *volume);
+
+void k_fs_PupUnmountVolume(struct k_fs_vol_t *volume);
+
+uint32_t k_fs_PupTryCopyEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry, uint8_t *block_buffer, uint32_t block_start, uint32_t block_count);
+
+void k_fs_PupTouchEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry);
+
+void k_fs_PupRead(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer);
+
+void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer);
+
+struct k_fs_pup_centry_t *k_fs_PupAllocCacheEntry(struct k_fs_vol_t *volume);
+
+void k_fs_PupFreeCacheEntry(struct k_fs_vol_t *volume, struct k_fs_pup_centry_t *entry);
+
+void k_fs_PupCacheEntry(struct k_fs_pup_volume_t *volume, struct k_fs_pup_centry_t *entry);
+
+struct k_fs_pup_centry_t *k_fs_PupEvictOldestEntry(struct k_fs_vol_t *volume);
+
+// struct k_fs_pup_slot_t *k_fs_PupFindSlot(struct k_fS_vol_t *volume, uint32_t block_address);
+
+void k_fs_PupFlushCache(struct k_fs_vol_t *volume);
 
 #endif

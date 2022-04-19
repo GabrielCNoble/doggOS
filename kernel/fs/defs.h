@@ -26,7 +26,8 @@ struct k_fs_fsys_t
 {
     // char                   name[8];
     // uint32_t               index;
-    void                 (*init_volume)(struct k_fs_vol_t *volume);
+    void                 (*mount_volume)(struct k_fs_vol_t *volume);
+    void                 (*unmount_volume)(struct k_fs_vol_t *volume);
     struct k_fs_fdesc_t *(*create_file)(struct k_fs_vol_t *volume, char *path);
     void                 (*destroy_file)(struct k_fs_vol_t *volume, char *path);
     struct k_fs_fdesc_t *(*open_file)(struct k_fs_vol_t *volume, char *path);
@@ -71,6 +72,7 @@ struct k_fs_vol_t
     struct k_fs_vol_t *next;
     struct k_fs_fsys_t *file_system;
     struct k_fs_part_t partition;
+    void *data;
 };
 
 struct k_fs_ptrace_t

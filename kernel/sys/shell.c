@@ -9,6 +9,7 @@
 #include "../dsk/dsk.h"
 #include "../fs/fs.h"
 #include "../dev/pci/piix3/ide.h"
+#include "../fs/pup.h"
 // #include "../proc/elf.h"
 #include <stddef.h>
 
@@ -22,7 +23,7 @@ void k_sys_Help()
     k_sys_TerminalPrintf("    exp: launches expression parser program\n");
     k_sys_TerminalPrintf("    derp: launches derp program\n");
     k_sys_TerminalPrintf("    disks: prints information about detected disks\n");
-    // k_sys_TerminalPrintf("    test_read: does a test disk read\n");
+    k_sys_TerminalPrintf("    fs_test: does a test disk read through the file system\n");
 }
 
 extern void *k_kernel_end2;
@@ -63,7 +64,10 @@ uintptr_t k_sys_ShellMain(void *data)
     k_io_UnblockStream(current_process->terminal);
     
     struct k_fs_part_t partition = {.start = 170, .disk = k_PIIX3_IDE_disk};
-    k_fs_MountVolume(&partition);
+    struct k_fs_volume_t *pup_volume = k_fs_MountVolume(&partition);
+    
+    // uint8_t *buffer = k_rt_Malloc(8192, 4);
+    // k_fs_PupRead(pup_volume, 0, 1, buffer);
 
     // k_sys_TerminalPrintf("%x %x\n", &k_share_start, &k_share_end);
     // struct k_proc_process_t *process = k_proc_CreateProcess(&k_kernel_end2, 0x1000);
@@ -132,6 +136,17 @@ uintptr_t k_sys_ShellMain(void *data)
                 k_sys_TerminalPrintf("disk: %x, block size = %d, block count = %d\n", disk, disk->block_size, disk->block_count);
                 disk = disk->next;
             }
+        }
+        else if(!k_rt_StrCmp(keyboard_buffer, "fs_test"))
+        {    
+            uint8_t *buffer = k_rt_Malloc(8192, 4);
+            k_fs_PupRead(pup_volume, 0, 1, buffer);
+            // k_sys_TerminalPrintf("test for pup volume signature...\n");
+            // if(!k_rt_StrCmp(buffer, K_FS_PUP_MAGIC))
+            // {
+            //     k_sys_TerminalPrintf("valid pup volume!\n");
+            // }
+            k_rt_Free(buffer);
         }
         // else if(!k_rt_StrCmp(keyboard_buffer, "test_read"))
         // {
