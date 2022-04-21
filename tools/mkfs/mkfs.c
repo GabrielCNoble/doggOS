@@ -32,6 +32,8 @@ struct k_fs_pup_range_t find_free_block_range(uint8_t *disk_buffer, uint32_t cou
 {
     struct k_fs_pup_root_t *root = (struct k_fs_pup_root_t *)disk_buffer;
     struct k_fs_pup_range_t range = {};
+    uint32_t first_block = 0;
+    uint32_t block_count = 0;
     uint8_t status_mask = 0;
     uint8_t alloc_mask = 0;
     
@@ -58,26 +60,27 @@ struct k_fs_pup_range_t find_free_block_range(uint8_t *disk_buffer, uint32_t cou
                 
                 if(bitmask_byte == K_FS_PUP_BLOCK_STATUS_FREE || bitmask_byte == status_mask)
                 {
-                    if(!range.first_block)
+                    if(!first_block)
                     {
-                        range.first_block = root->available_block_start;
-                        range.first_block += root->block_size * K_FS_PUP_FREE_BITMASK_BLOCKS_PER_BYTE * block_index;
-                        range.first_block += byte_index * K_FS_PUP_FREE_BITMASK_BLOCKS_PER_BYTE;
+                        first_block = root->available_block_start;
+                        first_block += root->block_size * K_FS_PUP_FREE_BITMASK_BLOCKS_PER_BYTE * block_index;
+                        first_block += byte_index * K_FS_PUP_FREE_BITMASK_BLOCKS_PER_BYTE;
                         // range.first_block += (root->block_size * block_index + byte_index) * K_FS_PUP_FREE_BITMASK_BLOCKS_PER_BYTE;
-                        range.first_block += pair_shift >> 1;
-                        range.block_count = 0;
+                        first_block += pair_shift >> 1;
+                        block_count = 0;
                     }
                     
-                    range.block_count++;
+                    block_count++;
                     
-                    if(range.block_count == count)
+                    if(block_count == count)
                     {
                         // printf("return range %lld, %lld\n", range.first_block, range.block_count);
+                        range.first_count = K_FS_PUP_RANGE_FIRST_COUNT(first_block, block_count);
                         return range;
                     }
                 }
                 
-                range.first_block = 0;
+                first_block = 0;
             }
         }
     }
@@ -88,12 +91,13 @@ struct k_fs_pup_range_t find_free_block_range(uint8_t *disk_buffer, uint32_t cou
 void set_range_status(uint8_t *disk_buffer, struct k_fs_pup_range_t *range, uint32_t status)
 {
     struct k_fs_pup_root_t *root = (struct k_fs_pup_root_t *)disk_buffer;
-    
-    if(range->first_block)
+    uint32_t range_first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range->first_count);
+    uint32_t range_block_count = K_FS_PUP_RANGE_BLOCK_COUNT(range->first_count);
+    if(range_first_block)
     {
         uint32_t blocks_per_bitmask_block = root->block_size * K_FS_PUP_FREE_BITMASK_BLOCKS_PER_BYTE;
-        uint32_t first_block = range->first_block - root->available_block_start;
-        uint32_t last_block = first_block + range->block_count;
+        uint32_t first_block = range_first_block - root->available_block_start;
+        uint32_t last_block = range_first_block + range_block_count;
         
         for(uint32_t block_index = first_block; block_index < last_block; block_index++)
         {
@@ -112,8 +116,8 @@ struct k_fs_pup_range_t alloc_blocks(uint8_t *disk_buffer, uint32_t count)
     struct k_fs_pup_root_t *root = (struct k_fs_pup_root_t *)disk_buffer;
     // printf("alloc_blocks\n");
     struct k_fs_pup_range_t range = find_free_block_range(disk_buffer, count, K_FS_PUP_BLOCK_STATUS_DATA);
-    
-    if(range.first_block)
+    uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range.first_count);
+    if(first_block)
     {
         set_range_status(disk_buffer, &range, K_FS_PUP_BLOCK_STATUS_DATA);
     }
@@ -127,12 +131,12 @@ struct k_fs_pup_link_t alloc_node(uint8_t *disk_buffer, uint32_t type)
     struct k_fs_pup_link_t link = {};
     // printf("alloc_node\n");
     struct k_fs_pup_range_t range = find_free_block_range(disk_buffer, 1, K_FS_PUP_BLOCK_STATUS_NODE);
-    
-    if(range.first_block)
+    uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range.first_count);
+    if(first_block)
     {
         set_range_status(disk_buffer, &range, K_FS_PUP_BLOCK_STATUS_NODE);
         
-        struct k_fs_pup_node_t *node_block = (struct k_fs_pup_node_t *)(disk_buffer + range.first_block * root->block_size);
+        struct k_fs_pup_node_t *node_block = (struct k_fs_pup_node_t *)(disk_buffer + first_block * root->block_size);
         uint32_t node_count = root->block_size / sizeof(struct k_fs_pup_node_t);
 
         for(uint32_t node_index = 0; node_index < node_count; node_index++)
@@ -149,7 +153,7 @@ struct k_fs_pup_link_t alloc_node(uint8_t *disk_buffer, uint32_t type)
                 // node->flags = 0;
                 // printf("node %p, type %d, %d\n", node, node->type, type);
                 link.link = node_index;
-                link.link |= range.first_block << root->node_index_shift;
+                link.link |= first_block << root->node_index_shift;
                 // printf("alloc node %llx\n", link.link);
                 // printf("%d\n", root->node_index_shift);
                 break;
@@ -194,8 +198,12 @@ void add_node(uint8_t *disk_buffer, char *parent_path, char *node_name)
             
             for(uint32_t range_index = 0; range_index < K_FS_PUP_MAX_RNODE_RANGES; range_index++)
             {
-                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + parent_node->ranges[range_index].first_block * root->block_size);
-                uint32_t max_entries = (parent_node->ranges[range_index].block_count * root->block_size - sizeof(uint32_t)) / sizeof(struct k_fs_pup_dirent_t);
+                uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(parent_node->ranges[range_index].first_count);
+                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + first_block * root->block_size);
+                struct k_fs_pup_range_t *range = parent_node->ranges + range_index;
+                uint32_t range_block_count = K_FS_PUP_RANGE_BLOCK_COUNT(range->first_count);
+                uint32_t max_entries = (range_block_count * root->block_size - sizeof(uint32_t)) / sizeof(struct k_fs_pup_dirent_t);
+                // uint32_t max_entries = (parent_node->ranges[range_index].block_count * root->block_size - sizeof(uint32_t)) / sizeof(struct k_fs_pup_dirent_t);
                 
                 if(entry_list->used_count < max_entries)
                 {
@@ -269,7 +277,7 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
         }
         
         path_fragment[path_fragment_cursor] = '\0';
-        struct k_fs_pup_node_t *next_node = NULL;
+        struct k_fs_pup_node_t *next_node = NULL; 
         
         // printf("node type: %d\n", node->type);
         
@@ -280,7 +288,8 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
             for(uint32_t range_index = 0; range_index < K_FS_PUP_MAX_RNODE_RANGES && !next_node; range_index++)
             {
                 struct k_fs_pup_range_t *range = node->ranges + range_index;
-                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + range->first_block * root->block_size);
+                uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range->first_count);
+                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + first_block * root->block_size);
                 // uint32_t entry_count = range->block_count * (root->block_size / sizeof(struct k_fs_pup_direntry_t));
                 // printf("blah\n");
                 for(uint32_t entry_index = 0; entry_index < entry_list->used_count; entry_index++)
@@ -321,12 +330,13 @@ void print_fs_recursive(uint8_t *disk_buffer, struct k_fs_pup_node_t *parent_nod
         for(uint32_t range_index = 0; range_index < K_FS_PUP_MAX_RNODE_RANGES; range_index++)
         {
             struct k_fs_pup_range_t *range = parent_node->ranges + range_index;
-            if(range->first_block)
+            uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range->first_count);
+            if(first_block)
             {
-                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + range->first_block * root->block_size);
+                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + first_block * root->block_size);
                 for(uint32_t entry_index = 0; entry_index < entry_list->used_count; entry_index++)
                 {
-                    struct k_fs_pup_dirent_t *entry = entry_list->entries + entry_index;
+                    struct k_fs_pup_dirent_t *entry = entry_list->entries + entry_index; 
                     
                     // if(depth)
                     // {

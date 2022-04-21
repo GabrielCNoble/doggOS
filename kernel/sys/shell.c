@@ -63,8 +63,8 @@ uintptr_t k_sys_ShellMain(void *data)
     current_process->terminal = k_io_AllocStream();
     k_io_UnblockStream(current_process->terminal);
     
-    struct k_fs_part_t partition = {.start = 170, .disk = k_PIIX3_IDE_disk};
-    struct k_fs_volume_t *pup_volume = k_fs_MountVolume(&partition);
+    struct k_fs_part_t partition = {.first_block = 170, .disk = k_PIIX3_IDE_disk};
+    struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
     
     // uint8_t *buffer = k_rt_Malloc(8192, 4);
     // k_fs_PupRead(pup_volume, 0, 1, buffer);
@@ -139,27 +139,18 @@ uintptr_t k_sys_ShellMain(void *data)
         }
         else if(!k_rt_StrCmp(keyboard_buffer, "fs_test"))
         {    
-            uint8_t *buffer = k_rt_Malloc(8192, 4);
-            k_fs_PupRead(pup_volume, 0, 1, buffer);
+            // uint8_t *buffer = k_rt_Malloc(8192, 4);
+            // k_fs_PupRead(pup_volume, 0, 1, buffer);
             // k_sys_TerminalPrintf("test for pup volume signature...\n");
             // if(!k_rt_StrCmp(buffer, K_FS_PUP_MAGIC))
             // {
             //     k_sys_TerminalPrintf("valid pup volume!\n");
             // }
-            k_rt_Free(buffer);
+            // k_rt_Free(buffer);
+            
+            struct k_fs_pup_node_t *node = k_fs_PupFindNode(pup_volume, "/a", NULL);
+            k_sys_TerminalPrintf("node at %x\n", node);
         }
-        // else if(!k_rt_StrCmp(keyboard_buffer, "test_read"))
-        // {
-        //     k_PIIX3_IDE_Read(142, 1);
-        //     for(uint32_t x = 0; x < 0xffffff; x++);
-        //     k_io_ReadStream(k_PIIX3_IDE_stream, keyboard_buffer, K_PROC_ELF_IDENT);
-        // 
-        //     for(uint32_t ident = 0; ident < K_PROC_ELF_IDENT; ident++)
-        //     {
-        //         k_sys_TerminalPrintf("%x ", keyboard_buffer[ident]);
-        //     }
-        //     k_sys_TerminalPrintf("\n");
-        // }
         else if(keyboard_buffer[0] == '\0')
         {
 

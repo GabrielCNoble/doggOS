@@ -12,13 +12,12 @@ k_rt_spnl_t k_mem_physical_ranges_spinlock = 0;
 
 void *k_mem_AllocVirtualRange(size_t size)
 {
-    uintptr_t memory;
+    void *memory = NULL;
+    size_t request_size = size >> K_MEM_4KB_ADDRESS_SHIFT;
 
-    size >>= K_MEM_4KB_ADDRESS_SHIFT;
-
-    if(!size)
+    if(size % K_MEM_4KB_ADDRESS_OFFSET)
     {
-        size++;
+        request_size++;
     }
 
     k_rt_SpinLock(&k_mem_virtual_ranges_spinlock);
@@ -27,14 +26,14 @@ void *k_mem_AllocVirtualRange(size_t size)
     {
         struct k_mem_vrange_t *free_range = k_mem_virtual_ranges.ranges + index;
 
-        if(free_range->size >= size)
+        if(free_range->size >= request_size)
         {
             // k_printf("found range %x - %x\n", free_range->start, free_range->start + free_range->size);
             memory = (void *)(free_range->start << K_MEM_4KB_ADDRESS_SHIFT);
-            uint32_t used_index = k_mem_UsedVirtualRangeIndex((void *)(free_range->start << K_MEM_4KB_ADDRESS_SHIFT));
+            uint32_t used_index = k_mem_UsedVirtualRangeIndex(memory);
             struct k_mem_vrange_t *used_range = k_mem_virtual_ranges.ranges + used_index;
 
-            if(free_range->size > size)
+            if(free_range->size > request_size)
             {
                 for(uint32_t move_index = k_mem_virtual_ranges.range_count; move_index > used_index; move_index--)
                 {
@@ -44,23 +43,23 @@ void *k_mem_AllocVirtualRange(size_t size)
                 k_mem_virtual_ranges.range_count++;
 
                 used_range->start = free_range->start;
-                used_range->size = size;
+                used_range->size = request_size;
 
-                free_range->start += size;
-                free_range->size -= size;
+                free_range->start += request_size;
+                free_range->size -= request_size;
             }
             else
             {
-                uint32_t start = free_range->size;
-                uint32_t size = free_range->size;
+                uint32_t range_start = free_range->size;
+                uint32_t range_size = free_range->size;
 
                 for(uint32_t move_index = index; move_index < used_index; move_index++)
                 {
                     k_mem_virtual_ranges.ranges[move_index] = k_mem_virtual_ranges.ranges[move_index + 1];
                 }
 
-                used_range->start = start;
-                used_range->size = size;
+                used_range->start = range_start;
+                used_range->size = range_size;
 
                 k_mem_virtual_ranges.free_count--;
             }

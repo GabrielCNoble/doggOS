@@ -8,10 +8,21 @@
 
 
 struct k_fs_vol_t;
-struct k_fs_fdesc_t
+struct k_fs_file_t
 {
-    uint32_t handle;
-    uint32_t mode;
+    void              *handle;
+    uint32_t           mode;
+    struct k_fs_vol_t *volume;
+};
+
+struct k_fs_dir_entry_t
+{
+    char path[64];
+};
+
+struct k_fs_dir_t
+{
+    uint32_t offset;
     struct k_fs_vol_t *volume;
 };
 
@@ -26,17 +37,23 @@ struct k_fs_fsys_t
 {
     // char                   name[8];
     // uint32_t               index;
-    void                 (*mount_volume)(struct k_fs_vol_t *volume);
-    void                 (*unmount_volume)(struct k_fs_vol_t *volume);
-    struct k_fs_fdesc_t *(*create_file)(struct k_fs_vol_t *volume, char *path);
-    void                 (*destroy_file)(struct k_fs_vol_t *volume, char *path);
-    struct k_fs_fdesc_t *(*open_file)(struct k_fs_vol_t *volume, char *path);
-    void                 (*close_file)(struct k_fs_fdesc_t *fdesc);
-    uint32_t             (*read_file)(struct k_fs_fdesc_t *fdesc, uint32_t start, uint32_t count, void *data);
-    uint32_t             (*write_file)(struct k_fs_fdesc_t *fdesc, uint32_t start, uint32_t count, void *data);
-    uint32_t             (*file_exists)(struct k_fs_vol_t *volume, char *path);
-    uint32_t             (*file_size)(struct k_fs_vol_t *volume, char *path);
-    uint32_t             (*format_volume)(struct k_fs_vol_t *volume);
+    void                     (*mount_volume)(struct k_fs_vol_t *volume);
+    void                     (*unmount_volume)(struct k_fs_vol_t *volume);
+    struct k_fs_file_t      *(*create_file)(struct k_fs_vol_t *volume, char *path);
+    void                     (*destroy_file)(struct k_fs_vol_t *volume, char *path);
+    struct k_fs_file_t      *(*open_file)(struct k_fs_vol_t *volume, char *path);
+    void                     (*close_file)(struct k_fs_file_t *file);
+    uint32_t                 (*read_file)(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
+    uint32_t                 (*write_file)(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
+    uint32_t                 (*file_exists)(struct k_fs_vol_t *volume, char *path);
+    uint32_t                 (*file_size)(struct k_fs_vol_t *volume, char *path);
+    uint32_t                 (*format_volume)(struct k_fs_vol_t *volume);
+    
+    struct k_fs_dir_t       *(*open_dir)(struct k_fs_vol_t *volume, char *path);
+    void                     (*close_dir)(struct k_fs_dir_t *director);
+    struct k_fs_dir_entry_t *(*next_entry)(struct k_fs_dir_t *directory);
+    void                     (*rewind_dir)(struct k_fs_dir_t *directory);
+    
 };
 
 enum K_FS_PART_TABLE_TYPES
@@ -61,18 +78,18 @@ struct k_fs_mbr_part_t
 
 struct k_fs_part_t
 {
-    char name[24];
+    char                 name[24];
     struct k_dsk_disk_t *disk;
-    uint32_t start;
-    uint32_t end;
+    uint32_t             first_block;
+    uint32_t             block_count;
 };
 
 struct k_fs_vol_t
 {
-    struct k_fs_vol_t *next;
-    struct k_fs_fsys_t *file_system;
-    struct k_fs_part_t partition;
-    void *data;
+    struct k_fs_vol_t       *next;
+    struct k_fs_fsys_t      *file_system;
+    struct k_fs_part_t       partition;
+    void                    *data;
 };
 
 struct k_fs_ptrace_t

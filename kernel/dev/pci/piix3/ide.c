@@ -97,7 +97,7 @@ uint32_t k_PIIX3_IDE_Read(struct k_dsk_cmd_t *cmd)
     uint32_t lba = cmd->address >> 9;
     uint32_t size = cmd->size >> 9;
     
-    if(cmd->size & 0x1ff)
+    if(cmd->size % 0x200)
     {
         size++;
     }

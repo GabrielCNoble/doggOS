@@ -1,10 +1,12 @@
 #include "pup.h"
 #include "../rt/alloc.h"
 #include "../rt/mem.h"
+#include "../rt/string.h"
 #include "../dsk/dsk.h"
 #include "../sys/term.h"
 #include "../mem/pmap.h"
 #include "../cpu/k_cpu.h"
+#include "fs.h"
 
 // uint32_t k_fs_pup_block_size;
 // uint8_t *k_fs_pup_disk_buffer;
@@ -14,11 +16,12 @@ void k_fs_PupMountVolume(struct k_fs_vol_t *volume)
 {
     volume->data = k_rt_Malloc(sizeof(struct k_fs_pup_volume_t), 4);
     struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
-    uint32_t root_address = volume->partition.start * volume->partition.disk->block_size;
+    uint32_t root_address = volume->partition.first_block * volume->partition.disk->block_size;
     k_dsk_Read(volume->partition.disk, root_address, sizeof(struct k_fs_pup_root_t), &pup_volume->root);
-    // pup_volume->cached_blocks_base = k_rt_Malloc(pup_volume->block_size * K_FS_PUP_BLOCKS_PER_SLOT * K_FS_PUP_CACHE_SLOT_COUNT, 4);
     
     pup_volume->lru_bitmask = 0;
+    pup_volume->entry_pool = NULL;
+    
     for(uint32_t set_index = 0; set_index < K_FS_PUP_CACHE_SET_COUNT; set_index++)
     {
         struct k_fs_pup_cset_t *set = pup_volume->cache_sets + set_index;
@@ -26,17 +29,9 @@ void k_fs_PupMountVolume(struct k_fs_vol_t *volume)
         set->last_entry = NULL;
         set->read_count = 0;
         set->write_lock = 0;
-        // slot->buffer = pup_volume->cached_blocks_base + slot_index * pup_volume->block_size * K_FS_PUP_BLOCKS_PER_SLOT;
-        
-        // slot->valid_blocks = 0;
-        // slot->access_age = 0;
-        // slot->flags = 0;
-        // slot->first_block = 0;
     }
     
-    k_sys_TerminalPrintf("pup volume mounted, block size: %d bytes\n", pup_volume->root.block_size);
-    
-    // pup_volume->used_slots = 0;
+    // k_sys_TerminalPrintf("pup volume mounted, block size: %d bytes\n", pup_volume->root.block_size);
 }
 
 void k_fs_PupUnmountVolume(struct k_fs_vol_t *volume)
@@ -44,77 +39,87 @@ void k_fs_PupUnmountVolume(struct k_fs_vol_t *volume)
     (void)volume;
 }
 
-uint32_t k_fs_PupTryCopyEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry, uint8_t *block_buffer, uint32_t block_start, uint32_t block_count)
-{
-    // uint32_t entry_end = entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY;
-    // uint32_t block_buffer_offset = 0;
-    // uint32_t entry_buffer_offset = 0;
-    // uint32_t copy_size = 0;
-    // 
-    // if(entry->first_block >= block_start && entry->first_block < block_end)
-    // {
-    //     block_buffer_offset = entry->first_block - block_start;
-    // 
-    //     if(entry_end >= block_end)
-    //     {
-    //         copy_size = block_end - entry->first_block;
-    //     }
-    //     else
-    //     {
-    //         copy_size = entry_end - entry->first_block;
-    //     }
-    // }
-    // else if(block_start >= entry->first_block && block_start < entry_end)
-    // {
-    //     entry_buffer_offset = block_start - entry->first_block;
-    // 
-    //     if(block_end >= entry_end)
-    //     {
-    //         copy_size = entry_end - block_start;
-    //     }
-    //     else
-    //     {
-    //         copy_size = block_end - block_start;
-    //     }
-    // }
-    // else
-    // {
-    //     return 0;
-    // }
-    // 
-    // k_fs_PupTouchEntry(volume, set_index, entry);
-    // 
-    // block_buffer_offset *= volume->root.block_size;
-    // entry_buffer_offset *= volume->root.block_size;
-    // copy_size *= volume->block_size;
-    // k_rt_CopyBytes(block_buffer + block_buffer_offset, entry->buffer + entry_buffer_offset, copy_size * volume->block_size);
-    // return copy_size;
-}
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
+// uint32_t k_fs_PupTryCopyEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry, uint8_t *block_buffer, uint32_t block_start, uint32_t block_count)
+// {
+//     // uint32_t entry_end = entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY;
+//     // uint32_t block_buffer_offset = 0;
+//     // uint32_t entry_buffer_offset = 0;
+//     // uint32_t copy_size = 0;
+//     // 
+//     // if(entry->first_block >= block_start && entry->first_block < block_end)
+//     // {
+//     //     block_buffer_offset = entry->first_block - block_start;
+//     // 
+//     //     if(entry_end >= block_end)
+//     //     {
+//     //         copy_size = block_end - entry->first_block;
+//     //     }
+//     //     else
+//     //     {
+//     //         copy_size = entry_end - entry->first_block;
+//     //     }
+//     // }
+//     // else if(block_start >= entry->first_block && block_start < entry_end)
+//     // {
+//     //     entry_buffer_offset = block_start - entry->first_block;
+//     // 
+//     //     if(block_end >= entry_end)
+//     //     {
+//     //         copy_size = entry_end - block_start;
+//     //     }
+//     //     else
+//     //     {
+//     //         copy_size = block_end - block_start;
+//     //     }
+//     // }
+//     // else
+//     // {
+//     //     return 0;
+//     // }
+//     // 
+//     // k_fs_PupTouchEntry(volume, set_index, entry);
+//     // 
+//     // block_buffer_offset *= volume->root.block_size;
+//     // entry_buffer_offset *= volume->root.block_size;
+//     // copy_size *= volume->block_size;
+//     // k_rt_CopyBytes(block_buffer + block_buffer_offset, entry->buffer + entry_buffer_offset, copy_size * volume->block_size);
+//     // return copy_size;
+// }
 
 void k_fs_PupTouchEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry)
 {
-    struct k_fs_pup_cset_t *set = volume->cache_sets + set_index;
-    
-    k_rt_SpinLock(&set->write_lock);
-    
-    if(entry->prev)
+    if(entry)
     {
-        entry->prev->next = entry->next;
+        struct k_fs_pup_cset_t *set = volume->cache_sets + set_index;
+        return;
         
-        if(entry->next)
-        {
-            entry->next->prev = entry->prev;
-        }
-        else
-        {
-            set->last_entry = set->last_entry->prev;
+        k_rt_SpinLock(&set->write_lock);
+        
+        if(entry->prev)
+        { 
+            entry->prev->next = entry->next;
+            
+            if(entry->next)
+            {
+                entry->next->prev = entry->prev;
+            }
+            else
+            {
+                set->last_entry = set->last_entry->prev;
+            }
+            
+            entry->next = set->first_entry;
+            set->first_entry = entry;
         }
         
-        entry->next = set->first_entry;
-        set->first_entry = entry;
+        k_rt_SpinUnlock(&set->write_lock);
     }
-    
-    k_rt_SpinUnlock(&set->write_lock);
     
     // do
     // {
@@ -141,169 +146,70 @@ void k_fs_PupTouchEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, st
     // while(!)
 }
 
-void k_fs_PupRead(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer)
-{
-    struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
-    uint32_t copied_blocks = 0;
-    uint32_t block_end = block_start + block_count;
-    uint8_t *block_buffer = (uint8_t *)buffer;
-    uint32_t request_ranges_count = 0;
-    struct k_fs_pup_range_t request_ranges[4];
-    
-    // k_sys_TerminalPrintf("read %x blocks, starting at %x\n", block_count, block_start);
-    
-    while(copied_blocks < block_count)
-    {
-        // uint32_t set_index = K_FS_PUP_CACHE_SET_INDEX(block_start);
-        uint32_t set_index = 0;
-        struct k_fs_pup_cset_t *set = pup_volume->cache_sets + set_index;
-        
-        k_rt_Inc32Wrap(&set->read_count);
-        k_rt_SpinWait(&set->write_lock);
-        
-        struct k_fs_pup_centry_t *entry = set->first_entry;
-        uint32_t block_buffer_offset = 0;
-        uint32_t entry_buffer_offset = 0;
-        uint32_t copy_size = 0;
-        
-        while(entry)
-        {
-            struct k_fs_pup_centry_t *next_entry = entry->next;
-            uint32_t entry_end = entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY;
-            
-            if(entry->first_block >= block_start && entry->first_block < block_end)
-            {
-                block_buffer_offset = entry->first_block - block_start;
-        
-                if(entry_end >= block_end)
-                {
-                    copy_size = block_end - entry->first_block;
-                }
-                else
-                {
-                    copy_size = entry_end - entry->first_block;
-                }
-            }
-            else if(block_start >= entry->first_block && block_start < entry_end)
-            {
-                entry_buffer_offset = block_start - entry->first_block;
-        
-                if(block_end >= entry_end)
-                {
-                    copy_size = entry_end - block_start;
-                }
-                else
-                {
-                    copy_size = block_end - block_start;
-                }
-            }
-            else
-            {
-                entry = next_entry;
-                continue;
-            }
-            
-            /* found an entry, so touch it to keep mark it as recently accessed */
-            k_fs_PupTouchEntry(volume, set_index, entry);
-            break;
-        }
-        
-        k_rt_Dec32Wrap(&set->read_count);
-        
-        if(!entry)
-        {
-            // k_sys_TerminalPrintf("Entry for block %x not in cache...\n", block_start);
-            /* entry not in cache, so load it from disk */
-            uint32_t block_multiplier = pup_volume->root.block_size / volume->partition.disk->block_size;
-            uint32_t read_count = K_FS_PUP_BLOCKS_PER_ENTRY * pup_volume->root.block_size;
-            uint32_t read_start = (block_start & (~(K_FS_PUP_BLOCKS_PER_ENTRY - 1))) * pup_volume->root.block_size;
-            read_start += volume->partition.start * volume->partition.disk->block_size;
-            entry = k_fs_PupAllocCacheEntry(volume);
-            k_dsk_Read(volume->partition.disk, read_start, read_count, entry->buffer); 
-            entry_buffer_offset = block_start % pup_volume->root.block_size;
-            copy_size = K_FS_PUP_BLOCKS_PER_ENTRY - entry_buffer_offset;
-            block_buffer_offset = block_start;
-            k_fs_PupCacheEntry(pup_volume, entry);
-            // k_sys_TerminalPrintf("entry %x for block %x cached\n", entry, block_start);
-        }
-        // else
-        // {
-        //     // k_sys_TerminalPrintf("cached entry %x for block %x found\n", entry, block_start);
-        // }
-        
-        if(copy_size > block_count)
-        {
-            copy_size = block_count;
-        }
-        
-        block_buffer_offset *= pup_volume->root.block_size;
-        entry_buffer_offset *= pup_volume->root.block_size;
-        k_rt_CopyBytes(block_buffer + block_buffer_offset, entry->buffer + entry_buffer_offset, copy_size * pup_volume->root.block_size);
-        copied_blocks += copy_size;
-        block_start += copy_size;
-    }
-}
-
-void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer)
-{
-    
-}
-
 struct k_fs_pup_centry_t *k_fs_PupAllocCacheEntry(struct k_fs_vol_t *volume)
 {
     struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
     struct k_fs_pup_centry_t *entry = NULL;
-    // struct k_fs_pup_centry_t *entry = pup_volume->entry_pool;
     
-    // while(1)
-    // {
-// struct k_fs_pup_centry_t **pool_head = &pup_volume->entry_pool;
-    // while(entry && !k_rt_CmpXcgh((uintptr_t *)pool_head, (uintptr_t)entry, (uintptr_t)entry->next, (uintptr_t *)&entry));
-    
-    // if(!entry)
-    do
+    while(!entry)
     {
-        /* no entry in the pool */
+        // struct k_fs_pup_centry_t **pool_head = &pup_volume->entry_pool;
+        // entry = pup_volume->entry_pool;
+        // 
+        // while(entry && !k_rt_CmpXchg((uintptr_t *)pool_head, (uintptr_t)entry, (uintptr_t)entry->next, (uintptr_t *)&entry));
         
-        if(pup_volume->allocated_memory < K_FS_PUP_MAX_CACHE_MEM)
+        if(!entry)
         {
-            /* we're still under the memory budget for this disk, so malloc a new cache entry */
-            uint32_t alloc_size = sizeof(struct k_fs_pup_centry_t) + pup_volume->root.block_size * K_FS_PUP_BLOCKS_PER_ENTRY;
-            /* FIXME: race condition when modifying allocated_memory */
-            pup_volume->allocated_memory += alloc_size;
-            // k_sys_TerminalPrintf("alloc %d bytes\n", alloc_size);
-            entry = k_rt_Malloc(alloc_size, 4);
-        }
-        else
-        {
-            /* well, crap. We're over budget here, so keep evicting the oldest entry 
-            in the cache and tring until we get one */
-            entry = k_fs_PupEvictOldestEntry(volume);
+            /* no entry in the pool */        
+            if(pup_volume->allocated_memory < K_FS_PUP_MAX_CACHE_MEM)
+            {
+                /* we're still under the memory budget for this disk, so malloc a new cache entry */
+                uint32_t alloc_size = sizeof(struct k_fs_pup_centry_t) + pup_volume->root.block_size * (K_FS_PUP_BLOCKS_PER_ENTRY);
+                // k_sys_TerminalPrintf("entry size: %d\n", alloc_size);
+                /* FIXME: race condition when modifying allocated_memory */
+                pup_volume->allocated_memory += alloc_size;
+                entry = k_rt_Malloc(alloc_size, 4);
+            }
+            else
+            {
+                /* well, crap. We're over budget here, so keep evicting the oldest entry 
+                in the cache and tring until we get one */
+                entry = k_fs_PupDropOldestEntry(volume);
+            }
         }
     }
-    while(!entry);
-    // }
+    
+    entry->next = NULL;
+    entry->prev = NULL;
     
     return entry;
 }
 
 void k_fs_PupFreeCacheEntry(struct k_fs_vol_t *volume, struct k_fs_pup_centry_t *entry)
 {
-    (void)volume;
-    (void)entry;
-    // struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
-    // entry->next = pup_volume->entry_pool;
-    // while(!k_rt_CmpXcgh((uintptr_t *)&pup_volume->entry_pool, (uintptr_t)entry->next, (uintptr_t)entry, (uintptr_t *)&entry->next));
+    struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
+    struct k_fs_pup_centry_t **pool_head = &pup_volume->entry_pool;
+    
+    entry->next = pup_volume->entry_pool;
+    
+    while(!k_rt_CmpXchg((uintptr_t *)pool_head, (uintptr_t)entry->next, (uintptr_t)entry, (uintptr_t *)&entry->next))
+    {
+        /* nothing to see here */
+    }
 }
 
-void k_fs_PupCacheEntry(struct k_fs_pup_volume_t *volume, struct k_fs_pup_centry_t *entry)
+void k_fs_PupCacheEntry(struct k_fs_pup_volume_t *volume, struct k_fs_pup_cset_t *set, struct k_fs_pup_centry_t *entry)
 {
     /* FIXME: there's a race condition between the time a thread requests a line from disk
     and when it get inserted in the cache. If another thread tries to read the same location
     it won't find the line in cache and will also request it. Insertion in the cache should
     check for duplicated entries */
     
-    struct k_fs_pup_cset_t *set = volume->cache_sets;
+    // if(!set)
+    // {
+    //     struct k_fs_pup_cset_t *set = volume->cache_sets;
+    // }
+    
     /* wait until no one is touching this line */
     while(set->read_count);
     
@@ -319,9 +225,82 @@ void k_fs_PupCacheEntry(struct k_fs_pup_volume_t *volume, struct k_fs_pup_centry
     }
     set->last_entry = entry;
     k_rt_SpinUnlock(&set->write_lock);
+    
+    // k_sys_TerminalPrintf("cache entry %x for %x - %x on set %x\n", entry, entry->first_block, entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY, set);
+    // struct k_fs_pup_centry_t *test_entry = set->first_entry;
+    // while(test_entry)
+    // {
+    //     k_sys_TerminalPrintf("entry in set %x: %x (%x - %x)\n", set, test_entry, test_entry->first_block, test_entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY);
+    //     test_entry = test_entry->next;
+    // }
 }
 
-struct k_fs_pup_centry_t *k_fs_PupEvictOldestEntry(struct k_fs_vol_t *volume)
+struct k_fs_pup_centry_t *k_fs_PupFindEntryInSetWithCopyFields(struct k_fs_pup_cset_t *set, uint32_t block_start, uint32_t block_end, struct k_fs_pup_centry_copy_t *copy)
+{
+    struct k_fs_pup_centry_t *entry = set->first_entry;
+    uint32_t block_buffer_offset = 0;
+    uint32_t entry_buffer_offset = 0;
+    uint32_t copy_size = 0;
+    
+    // k_sys_TerminalPrintf("search entry for %x - %x on set %x\n", block_start, block_end, set);
+    
+    while(entry)
+    {
+        uint32_t entry_end = entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY;
+        // k_sys_TerminalPrintf("test entry %x (%x - %x)\n", entry, entry->first_block, entry_end);
+        if(entry->first_block >= block_start && entry->first_block < block_end)
+        {
+            block_buffer_offset = entry->first_block - block_start;
+    
+            if(entry_end >= block_end)
+            {
+                copy_size = block_end - entry->first_block;
+            }
+            else
+            {
+                copy_size = entry_end - entry->first_block;
+            }
+        }
+        else if(block_start >= entry->first_block && block_start < entry_end)
+        {
+            entry_buffer_offset = block_start - entry->first_block;
+    
+            if(block_end >= entry_end)
+            {
+                copy_size = entry_end - block_start;
+            }
+            else
+            {
+                copy_size = block_end - block_start;
+            }
+        }
+        else
+        {
+            entry = entry->next;
+            continue;
+        }
+        
+        if(copy)
+        {
+            copy->entry_buffer_offset = entry_buffer_offset;
+            copy->data_buffer_offset = block_buffer_offset;
+            copy->copy_size = copy_size;
+        }
+        
+        break;
+    }
+    
+    // k_sys_TerminalPrintf("entry %x\n", entry);
+    
+    return entry;
+}
+
+struct k_fs_pup_centry_t *k_fs_PupFindEntryInSet(struct k_fs_pup_cset_t *set, uint32_t block_start, uint32_t block_end)
+{
+    return k_fs_PupFindEntryInSetWithCopyFields(set, block_start, block_end, NULL);
+}
+
+struct k_fs_pup_centry_t *k_fs_PupDropOldestEntry(struct k_fs_vol_t *volume)
 {
     struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
     uint32_t start_access_bitmask = pup_volume->lru_bitmask;
@@ -340,7 +319,6 @@ struct k_fs_pup_centry_t *k_fs_PupEvictOldestEntry(struct k_fs_vol_t *volume)
     
     struct k_fs_pup_cset_t *set = pup_volume->cache_sets + set_index;
     
-    // k_rt_SpinWait(&set->read_lock);
     while(set->read_count);
     
     k_rt_SpinLock(&set->write_lock);
@@ -350,30 +328,218 @@ struct k_fs_pup_centry_t *k_fs_PupEvictOldestEntry(struct k_fs_vol_t *volume)
     k_rt_SpinUnlock(&set->write_lock);
     
     return oldest_entry;
-    // k_fs_PupFreeCacheEntry(oldest_entry);
 }
 
-// struct k_fs_pup_bcache_t *k_fs_PupFindBlock(struct k_fS_vol_t *volume, uint32_t block_address)
-// {
-//     struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
-//     struct k_fs_pup_bcache_t *cached_block = NULL;
-//     for(uint32_t block_index = 0; block_index < pup_volume->cached_count; block_index++)
-//     {
-//         struct k_fs_pup_bcache_t *block = pup_volume->cached_blocks + block_index;
-//         if(block.range.first_block <= block_address && block_address <= block->range.first_block + block->range.block_count)
-//         {
-//             cached_block = block;
-//             block->access_age = 0;
-//         }
-// 
-//         if(block->access_age)
-//         {
-//             block->access_age--;
-//         }
-//     }
-// 
-//     return cached_block;
-// }
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
+void k_fs_PupRead(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer)
+{
+    struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
+    uint32_t block_end = block_start + block_count;
+    uint8_t *block_buffer = (uint8_t *)buffer;
+    uint32_t buffer_cursor = 0;
+    // uint32_t request_ranges_count = 0;
+    // struct k_fs_pup_range_t request_ranges[4];
+    
+    while(block_start < block_end)
+    {
+        // uint32_t set_index = K_FS_PUP_CACHE_SET_INDEX(block_start);
+        // k_sys_TerminalPrintf("%d\n", block_start);
+        uint32_t set_index = 0;
+        struct k_fs_pup_cset_t *set = pup_volume->cache_sets + set_index;
+        
+        k_rt_Inc32Wrap(&set->read_count);
+        k_rt_SpinWait(&set->write_lock);
+        
+        struct k_fs_pup_centry_copy_t copy = {};
+        struct k_fs_pup_centry_t *entry = k_fs_PupFindEntryInSetWithCopyFields(set, block_start, block_end, &copy);
+        
+        k_fs_PupTouchEntry(pup_volume, set_index, entry);
+        k_rt_Dec32Wrap(&set->read_count);
+        
+        if(!entry)
+        {
+            // k_sys_TerminalPrintf("no entry for block %x\n", block_start);
+            /* entry not in cache, so load it from disk */
+            uint32_t first_block = block_start & (~(K_FS_PUP_BLOCKS_PER_ENTRY - 1));
+            uint32_t block_count = K_FS_PUP_BLOCKS_PER_ENTRY;
+            entry = k_fs_PupAllocCacheEntry(volume);
+            entry->first_block = first_block;
+            
+            copy.entry_buffer_offset = block_start % K_FS_PUP_BLOCKS_PER_ENTRY;
+            copy.data_buffer_offset = buffer_cursor;
+            copy.copy_size = K_FS_PUP_BLOCKS_PER_ENTRY - copy.entry_buffer_offset;
+            // k_sys_TerminalPrintf("offset: %d\n", copy.entry_buffer_offset);
+            k_fs_ReadVolume(volume, pup_volume->root.block_size, first_block, block_count, entry->buffer);
+            k_fs_PupCacheEntry(pup_volume, set, entry);
+        }
+        
+        // struct k_fs_pup_centry_t *test_entry = set->first_entry;
+        // while(test_entry)
+        // {
+        //     k_sys_TerminalPrintf("%x %x - %x\n", test_entry, test_entry->first_block, test_entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY);
+        //     test_entry = test_entry->next;
+        // }
+        
+        if(copy.copy_size > block_count)
+        {
+            copy.copy_size = block_count;
+        }
+        
+        copy.data_buffer_offset *= pup_volume->root.block_size;
+        copy.entry_buffer_offset *= pup_volume->root.block_size;
+        // k_sys_TerminalPrintf("copy from %x, start at %x, end at %x\n", entry->buffer + copy.entry_buffer_offset, block_buffer + copy.data_buffer_offset, block_buffer + copy.data_buffer_offset + copy.copy_size * pup_volume->root.block_size);
+        // k_sys_TerminalPrintf("Copy of %d blocks, offset %d\n", copy.copy_size, copy.data_buffer_offset);
+        k_rt_CopyBytes(block_buffer + copy.data_buffer_offset, entry->buffer + copy.entry_buffer_offset, copy.copy_size * pup_volume->root.block_size);
+        // k_sys_TerminalPrintf("copy size: %d\n", copy.copy_size);
+        // struct k_fs_pup_centry_t *test_entry = pup_volume->cache_sets->first_entry;
+        // while(test_entry)
+        // {
+        //     k_sys_TerminalPrintf("%x %x - %x\n", test_entry, test_entry->first_block, test_entry->first_block + K_FS_PUP_BLOCKS_PER_ENTRY);
+        //     test_entry = test_entry->next;
+        // }
+        block_start += copy.copy_size;
+        buffer_cursor += copy.copy_size;
+        block_count -= copy.copy_size;
+    }
+    
+}
+
+void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer)
+{
+    
+}
+
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
+struct k_fs_pup_centry_t *k_fs_PupGetBlock(struct k_fs_vol_t *volume, struct k_fs_pup_cset_t *set, uint64_t block_address)
+{
+    struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
+    struct k_fs_pup_centry_t *entry = k_fs_PupFindEntryInSet(set, (uint32_t)block_address, (uint32_t)block_address + 1);
+    
+    if(!entry)
+    {
+        // k_sys_TerminalPrintf("no entry for block %x\n", (uint32_t)block_address);
+        // block_address &= ~(K_FS_PUP_BLOCKS_PER_ENTRY - 1);
+        entry = k_fs_PupAllocCacheEntry(volume);
+        entry->first_block = (uint32_t)block_address;    
+        entry->first_block &= ~(K_FS_PUP_BLOCKS_PER_ENTRY - 1);
+        // k_sys_TerminalPrintf("balls\n");
+        k_fs_PupRead(volume, entry->first_block, K_FS_PUP_BLOCKS_PER_ENTRY, entry->buffer);
+        
+        
+        k_fs_PupCacheEntry(pup_volume, set, entry);
+        // k_sys_TerminalPrintf("cache entry %x\n", entry);
+    }
+    
+    return entry;
+}
+
+struct k_fs_pup_node_t *k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_node_t *start_node)
+{
+    // struct k_fs_pup_node_t *cur_node;
+    struct k_fs_pup_node_t *node = NULL;
+    struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
+    struct k_fs_pup_cset_t cache = {};
+    uint32_t path_fragment_cursor = 0;
+    uint32_t path_cursor = 0;
+    char path_fragment[256];
+    
+    if(!start_node && path[path_cursor] == '/')
+    {
+        path_cursor++;
+        node = k_fs_PupGetNode(volume, pup_volume->root.root_node, &cache);
+    }
+    else
+    {
+        node = start_node;
+    }
+        
+    while(path[path_cursor] && node)
+    {
+        path_fragment_cursor = 0;
+        while(path[path_cursor] != '/' && path[path_cursor])
+        {
+            path_fragment[path_fragment_cursor] = path[path_cursor];
+            path_fragment_cursor++;
+            path_cursor++;
+        }
+        
+        if(path[path_cursor] == '/')
+        {
+            path_cursor++;
+        }
+        
+        path_fragment[path_fragment_cursor] = '\0';
+        struct k_fs_pup_node_t *next_node = NULL;
+        
+        if(node->type == K_FS_PUP_NODE_TYPE_DIR)
+        {                
+            for(uint32_t range_index = 0; range_index < K_FS_PUP_MAX_RNODE_RANGES && !next_node; range_index++)
+            {
+                struct k_fs_pup_range_t *range = node->ranges + range_index;
+                uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range->first_count);
+                
+                // if(!first_block)
+                // {
+                //     continue;
+                // }
+                
+                struct k_fs_pup_centry_t *block = k_fs_PupGetBlock(volume, &cache, first_block);
+                uint32_t dir_entry_list_block = first_block % K_FS_PUP_BLOCKS_PER_ENTRY;
+                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(block->buffer + dir_entry_list_block * pup_volume->root.block_size);
+                
+                for(uint32_t entry_index = 0; entry_index < entry_list->used_count; entry_index++)
+                {
+                    
+                    struct k_fs_pup_dirent_t *entry = entry_list->entries + entry_index;
+                    if(!entry->node.link)
+                    {
+                        break;
+                    }
+                    
+                    if(!k_rt_StrCmp(path_fragment, entry->name))
+                    {
+                        next_node = k_fs_PupGetNode(volume, entry->node, &cache);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        node = next_node;
+    }
+    
+    return node;
+}
+
+struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_cset_t *cache)
+{
+    struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
+    struct k_fs_pup_node_t *node = NULL;
+    uint32_t node_block = ((uint32_t)node_address.link) >> pup_volume->root.node_index_shift;
+    uint32_t node_index_mask = (1 << pup_volume->root.node_index_shift) - 1;
+    uint32_t node_index = ((uint32_t)node_address.link) & node_index_mask;
+    
+    /* offset relative to the start of the cache entry */
+    node_block %= K_FS_PUP_BLOCKS_PER_ENTRY;
+    
+    // k_sys_TerminalPrintf("%d %d\n", node_block, node_index);
+    
+    struct k_fs_pup_centry_t *entry = k_fs_PupGetBlock(volume, cache, node_block);
+    struct k_fs_pup_node_t *node_list = (struct k_fs_pup_node_t *)(entry->buffer + node_block * pup_volume->root.block_size);
+    node = node_list + node_index;
+    
+    return node;
+}
 
 void k_fs_PupFlushCache(struct k_fs_vol_t *volume)
 {

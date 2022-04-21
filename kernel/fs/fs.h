@@ -30,19 +30,23 @@ void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys);
 
 void k_fs_FormatDisk(struct k_dsk_disk_t *disk, uint32_t part_table_type);
 
+void k_fs_ReadVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer);
+
+void k_fs_WriteVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer);
+
 /*
 =========================================================================================
 =========================================================================================
 =========================================================================================
 */
 
-struct k_fs_fdesc_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *mode);
+struct k_fs_file_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *mode);
 
-void k_fs_CloseFile(struct k_fs_fdesc_t *file);
+void k_fs_CloseFile(struct k_fs_file_t *file);
 
-uint32_t k_fs_ReadFile(struct k_fs_fdesc_t *file, uint32_t start, uint32_t count, void *data);
+uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
 
-uint32_t k_fs_WriteFile(struct k_fs_fdesc_t *file, uint32_t start, uint32_t count, void *data);
+uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
 
 
 #endif

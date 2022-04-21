@@ -42,16 +42,24 @@ struct k_fs_pup_root_t
     
     /* block size, in bytes */
     uint16_t block_size;
-    uint8_t node_index_shift;
     /* node index of the file system root node */
+    uint8_t node_index_shift;
     // uint8_t root_node;
 };
 
+#define K_FS_PUP_RANGE_FIRST_BLOCK_BITS 40
+#define K_FS_PUP_RANGE_BLOCK_COUNT_BITS 24
+
 struct k_fs_pup_range_t
 {
-    uint64_t first_block : 40;
-    uint64_t block_count : 24;
+    // uint64_t first_block : 40;
+    // uint64_t block_count : 24;
+    uint64_t first_count;
 };
+
+#define K_FS_PUP_RANGE_FIRST_BLOCK(first_count) ((first_count) >> K_FS_PUP_RANGE_FIRST_BLOCK_BITS);
+#define K_FS_PUP_RANGE_BLOCK_COUNT(first_count) ((first_count) & ((1 << K_FS_PUP_RANGE_BLOCK_COUNT_BITS) - 1))
+#define K_FS_PUP_RANGE_FIRST_COUNT(first_block, block_count) ( (((uint64_t)(first_block)) << K_FS_PUP_RANGE_FIRST_BLOCK_BITS) | ((uint64_t)(block_count)) )
 
 /* directory entry */
 struct k_fs_pup_dirent_t
@@ -63,6 +71,7 @@ struct k_fs_pup_dirent_t
 struct k_fs_pup_dirlist_t
 {
     uint32_t used_count;
+    uint32_t align0;
     struct k_fs_pup_dirent_t entries[];
 };
 
@@ -103,9 +112,9 @@ struct k_fs_pup_node_t
 /* max of 16 MB of memory dedicated for a single disk */
 #define K_FS_PUP_MAX_CACHE_MEM 0x1000000
 
-enum K_FS_PUP_SLOT_FLAGS
+enum K_FS_PUP_CENTRY_FLAGS
 {
-    K_FS_PUP_SLOT_FLAG_DIRTY = 1,
+    K_FS_PUP_CENTRY_FLAG_DIRTY = 1,
 };
 
 struct k_fs_pup_centry_t
@@ -123,43 +132,81 @@ struct k_fs_pup_cset_t
 {
     struct k_fs_pup_centry_t *first_entry;
     struct k_fs_pup_centry_t *last_entry;
-    // k_rt_spnl_t read_lock;
     uint32_t read_count;
     k_rt_spnl_t write_lock;
+};
+
+struct k_fs_pup_centry_copy_t
+{
+    uint32_t entry_buffer_offset;
+    uint32_t data_buffer_offset;
+    uint32_t copy_size;
 };
 
 struct k_fs_pup_volume_t
 {
     struct k_fs_pup_root_t    root;
-    // int32_t                  block_size_shift;
-    // uint32_t                 cached_block_buffer_size;
-    // uint8_t                 *cached_blocks_base;
-    // uint32_t                  used_slots;
     uint32_t                  lru_bitmask;
     uint32_t                  allocated_memory;
     struct k_fs_pup_cset_t    cache_sets[K_FS_PUP_CACHE_SET_COUNT];
-    // struct k_fs_pup_centry_t *entry_pool;
+    struct k_fs_pup_centry_t *entry_pool;
 };
 
 void k_fs_PupMountVolume(struct k_fs_vol_t *volume);
 
 void k_fs_PupUnmountVolume(struct k_fs_vol_t *volume);
 
-uint32_t k_fs_PupTryCopyEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry, uint8_t *block_buffer, uint32_t block_start, uint32_t block_count);
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
 
 void k_fs_PupTouchEntry(struct k_fs_pup_volume_t *volume, uint32_t set_index, struct k_fs_pup_centry_t *entry);
 
-void k_fs_PupRead(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer);
+void k_fs_PupCacheEntry(struct k_fs_pup_volume_t *volume, struct k_fs_pup_cset_t *set, struct k_fs_pup_centry_t *entry);
 
-void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer);
+struct k_fs_pup_centry_t *k_fs_PupFindEntryInSetWithCopyFields(struct k_fs_pup_cset_t *set, uint32_t block_start, uint32_t block_end, struct k_fs_pup_centry_copy_t *copy);
+
+struct k_fs_pup_centry_t *k_fs_PupFindEntryInSet(struct k_fs_pup_cset_t *set, uint32_t block_start, uint32_t block_end);
 
 struct k_fs_pup_centry_t *k_fs_PupAllocCacheEntry(struct k_fs_vol_t *volume);
 
 void k_fs_PupFreeCacheEntry(struct k_fs_vol_t *volume, struct k_fs_pup_centry_t *entry);
 
-void k_fs_PupCacheEntry(struct k_fs_pup_volume_t *volume, struct k_fs_pup_centry_t *entry);
+struct k_fs_pup_centry_t *k_fs_PupDropOldestEntry(struct k_fs_vol_t *volume);
 
-struct k_fs_pup_centry_t *k_fs_PupEvictOldestEntry(struct k_fs_vol_t *volume);
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
+void k_fs_PupRead(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer);
+
+void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t block_count, void *buffer);
+
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
+struct k_fs_pup_centry_t *k_fs_PupGetBlock(struct k_fs_vol_t *volume, struct k_fs_pup_cset_t *set, uint64_t block_address);
+
+// void k_fs_PupReleaseBlock(struct k_fs_vol_t *volume, void *block);
+
+struct k_fs_pup_node_t *k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_node_t *start_node);
+
+struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_cset_t *cache);
+
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
+
 
 // struct k_fs_pup_slot_t *k_fs_PupFindSlot(struct k_fS_vol_t *volume, uint32_t block_address);
 

@@ -90,8 +90,8 @@ struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
     k_fs_volumes = volume;
     
     volume->partition.disk = partition->disk;
-    volume->partition.start = partition->start;
-    volume->partition.end = partition->end;
+    volume->partition.first_block = partition->first_block;
+    volume->partition.block_count = partition->block_count;
     volume->file_system = &k_fs_file_systems[K_FS_FILE_SYSTEM_PUP];
     
     volume->file_system->mount_volume(volume);
@@ -110,13 +110,26 @@ void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys)
     (void)fsys;
 }
 
+void k_fs_ReadVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)
+{
+    uint32_t read_count = block_count * block_size;
+    uint32_t read_start = volume->partition.first_block * volume->partition.disk->block_size;
+    read_start += first_block * block_size;
+    k_dsk_Read(volume->partition.disk, read_start, read_count, buffer); 
+}
+
+void k_fs_WriteVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)
+{
+    
+}
+
 /*
 =========================================================================================
 =========================================================================================
 =========================================================================================
 */
 
-struct k_fs_fdesc_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *mode)
+struct k_fs_file_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *mode)
 {
     (void)volume;
     (void)path;
@@ -125,12 +138,12 @@ struct k_fs_fdesc_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *
     return NULL;
 }
 
-void k_fs_CloseFile(struct k_fs_fdesc_t *file)
+void k_fs_CloseFile(struct k_fs_file_t *file)
 {
     (void)file;
 }
 
-uint32_t k_fs_ReadFile(struct k_fs_fdesc_t *file, uint32_t start, uint32_t count, void *data)
+uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data)
 {
     (void)file;
     (void)start;
@@ -140,7 +153,7 @@ uint32_t k_fs_ReadFile(struct k_fs_fdesc_t *file, uint32_t start, uint32_t count
     return 0;
 }
 
-uint32_t k_fs_WriteFile(struct k_fs_fdesc_t *file, uint32_t start, uint32_t count, void *data)
+uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data)
 {
     (void)file;
     (void)start;
