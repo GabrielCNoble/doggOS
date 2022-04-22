@@ -97,8 +97,10 @@ struct k_fs_pup_node_t
     // uint16_t align;
     uint32_t type;
     uint32_t flags;
-    k_rt_spnl_t lock;
     uint32_t align;
+    uint32_t lock;
+    // k_rt_spnl_t lock;
+    struct k_fs_pup_link_t parent;
     
     union
     {
@@ -157,6 +159,21 @@ struct k_fs_pup_volume_t
     struct k_fs_pup_centry_t *entry_pool;
 };
 
+enum K_FS_PUP_PATH_TYPE
+{
+    K_FS_PUP_PATH_TYPE_CUR_DIR,
+    K_FS_PUP_PATH_TYPE_PARENT_DIR,
+    K_FS_PUP_PATH_TYPE_ROOT,
+    K_FS_PUP_PATH_TYPE_NORMAL,
+};
+
+struct k_fs_pup_path_t
+{
+    const char *path_buffer;
+    uint32_t start;
+    uint32_t end;
+};
+
 void k_fs_PupMountVolume(struct k_fs_vol_t *volume);
 
 void k_fs_PupUnmountVolume(struct k_fs_vol_t *volume);
@@ -197,6 +214,8 @@ void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t blo
 =========================================================================================
 =========================================================================================
 */
+
+void k_fs_PupNextPathComponent(struct k_fs_pup_path_t *path);
 
 struct k_fs_pup_centry_t *k_fs_PupGetBlock(struct k_fs_vol_t *volume, struct k_fs_pup_cset_t *set, uint64_t block_address);
 

@@ -77,7 +77,37 @@ const char *k_rt_StrStr(const char *search_in, const char *search_for)
     return match;
 }
 
-int32_t k_rt_StrLen(const char *str)
+uint32_t k_rt_StrCat(char *buffer, uint32_t buffer_size, const char *str)
+{
+    uint32_t length;
+    uint32_t buffer_length;
+    uint32_t index = 0;
+
+    if(buffer_size > 0)
+    {
+        buffer_length = (uint32_t)buffer_size;
+        length = k_rt_StrLen(str) + 1;
+        index = k_rt_StrLen(buffer);
+
+        if(index + length < buffer_length)
+        {
+            buffer += index;
+            uint32_t str_index = 0;
+
+            while(str_index < length)
+            {
+                buffer[str_index] = str[str_index];
+                str_index++;
+            }
+
+            index += length;
+        }
+    }
+
+    return index;
+}
+
+uint32_t k_rt_StrLen(const char *str)
 {
     uint32_t cursor = 0;
     

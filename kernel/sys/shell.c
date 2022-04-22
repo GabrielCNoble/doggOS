@@ -20,11 +20,11 @@ void k_sys_Help()
     k_sys_TerminalPrintf("    help: runs this command\n");
     k_sys_TerminalPrintf("    clear: clears the screen\n");
     k_sys_TerminalPrintf("    crash: crashes the system\n");
-    k_sys_TerminalPrintf("    syscall: executes test syscall\n");
-    k_sys_TerminalPrintf("    exp: launches expression parser program\n");
-    k_sys_TerminalPrintf("    derp: launches derp program\n");
+    // k_sys_TerminalPrintf("    syscall: executes test syscall\n");
+    // k_sys_TerminalPrintf("    exp: launches expression parser program\n");
+    // k_sys_TerminalPrintf("    derp: launches derp program\n");
     k_sys_TerminalPrintf("    disks: prints information about detected disks\n");
-    k_sys_TerminalPrintf("    fs_test: does a test disk read through the file system\n");
+    // k_sys_TerminalPrintf("    fs_test: does a test disk read through the file system\n");
 }
 
 extern void *k_kernel_end2;
@@ -74,7 +74,7 @@ uintptr_t k_sys_ShellMain(void *data)
 
     while(1)
     {
-        k_sys_TerminalPrintf("[(root) > %s ]: ", current_path);
+        k_sys_TerminalPrintf("[root > %s ]: ", current_path);
         k_sys_TerminalReadLine(keyboard_buffer, 512);
         // {
         if(!k_rt_StrCmp(keyboard_buffer, "help"))
@@ -89,45 +89,45 @@ uintptr_t k_sys_ShellMain(void *data)
         {
             k_sys_Crash();
         }
-        else if(!k_rt_StrCmp(keyboard_buffer, "syscall"))
-        {
-            uint32_t status = k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0xff, 0xb00b1e5, 0xaaaaaaaa, 0);
-            k_sys_TerminalPrintf("syscall returned with status %x\n", status);
-        }
-        else if(!k_rt_StrCmp(keyboard_buffer, "exp"))
-        {
-            // void *image_buffer = k_rt_Malloc(0xffff, 4);
-            // k_PIIX3_IDE_Read(140, 32);
-            // for(uint32_t x = 0; x < 0x1ffffff; x++);
-            // k_io_ReadStream(k_PIIX3_IDE_stream, 0, image_buffer, 0xffff);
-            // 
-            // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
-            // struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
-            // uintptr_t return_value;
-            // k_proc_WaitProcess(process, &return_value);
-            // k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
-            // k_rt_Free(image_buffer);
-            
-            void *image_buffer = k_rt_Malloc(0xffff, 4);
-            k_dsk_Read(k_PIIX3_IDE_disk, 170 * 512, 32 * 512, image_buffer);
-            // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
-            struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
-            uintptr_t return_value;
-            k_proc_WaitProcess(process, &return_value);
-            k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
-            k_rt_Free(image_buffer);
-        }
-        else if(!k_rt_StrCmp(keyboard_buffer, "derp"))
-        {
-            void *image_buffer = k_rt_Malloc(0xffff, 4);
-            k_dsk_Read(k_PIIX3_IDE_disk, 210 * 512, 32 * 512, image_buffer);
-            // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
-            struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
-            uintptr_t return_value;
-            k_proc_WaitProcess(process, &return_value);
-            k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
-            k_rt_Free(image_buffer);
-        }
+        // else if(!k_rt_StrCmp(keyboard_buffer, "syscall"))
+        // {
+        //     uint32_t status = k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0xff, 0xb00b1e5, 0xaaaaaaaa, 0);
+        //     k_sys_TerminalPrintf("syscall returned with status %x\n", status);
+        // }
+        // else if(!k_rt_StrCmp(keyboard_buffer, "exp"))
+        // {
+        //     // void *image_buffer = k_rt_Malloc(0xffff, 4);
+        //     // k_PIIX3_IDE_Read(140, 32);
+        //     // for(uint32_t x = 0; x < 0x1ffffff; x++);
+        //     // k_io_ReadStream(k_PIIX3_IDE_stream, 0, image_buffer, 0xffff);
+        //     // 
+        //     // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
+        //     // struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
+        //     // uintptr_t return_value;
+        //     // k_proc_WaitProcess(process, &return_value);
+        //     // k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
+        //     // k_rt_Free(image_buffer);
+        // 
+        //     void *image_buffer = k_rt_Malloc(0xffff, 4);
+        //     k_dsk_Read(k_PIIX3_IDE_disk, 170 * 512, 32 * 512, image_buffer);
+        //     // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
+        //     struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
+        //     uintptr_t return_value;
+        //     k_proc_WaitProcess(process, &return_value);
+        //     k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
+        //     k_rt_Free(image_buffer);
+        // }
+        // else if(!k_rt_StrCmp(keyboard_buffer, "derp"))
+        // {
+        //     void *image_buffer = k_rt_Malloc(0xffff, 4);
+        //     k_dsk_Read(k_PIIX3_IDE_disk, 210 * 512, 32 * 512, image_buffer);
+        //     // // struct k_proc_process_t *process = k_proc_LaunchProcess("./blah.elf", NULL);
+        //     struct k_proc_process_t *process = k_proc_CreateProcess(image_buffer, NULL, NULL);
+        //     uintptr_t return_value;
+        //     k_proc_WaitProcess(process, &return_value);
+        //     k_sys_TerminalPrintf("process %x returned with value %x\n", process, return_value);
+        //     k_rt_Free(image_buffer);
+        // }
         else if(!k_rt_StrCmp(keyboard_buffer, "disks"))
         {
             struct k_dsk_disk_t *disk = k_dsk_disks;
@@ -147,12 +147,14 @@ uintptr_t k_sys_ShellMain(void *data)
         else if(!k_rt_StrCmp(keyboard_buffer, "dir"))
         {
             struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "", cur_dir_node);
-            k_sys_TerminalPrintf("  Contents of folder \"%s\"\n", current_path);
+            k_sys_TerminalPrintf("  Contents of directory \"%s\"\n", current_path);
             for(uint32_t entry_index = 0; entry_index < dir_list->used_count; entry_index++)
             {
                 struct k_fs_pup_dirent_t *entry = dir_list->entries + entry_index;
                 k_sys_TerminalPrintf("      %s\n", entry->name);
             }
+            
+            k_sys_TerminalPrintf("\n");
             
             k_rt_Free(dir_list);
         }
@@ -173,8 +175,44 @@ uintptr_t k_sys_ShellMain(void *data)
             if(keyboard_buffer[index])
             {
                 struct k_fs_pup_link_t node = k_fs_PupFindNode(pup_volume, keyboard_buffer + index, cur_dir_node, NULL);
-                k_sys_TerminalPrintf("node %x\n", (uint32_t)node.link);
-                // k_sys_TerminalPrintf("%s\n", keyboard_buffer + index);
+                
+                if(node.link)
+                {
+                    cur_dir_node = node;
+                    uint32_t cur_path_length = k_rt_StrLen(current_path);
+                    
+                    if(!k_rt_StrCmp(keyboard_buffer + index, ".."))
+                    {
+                        for(int32_t index = cur_path_length - 1; index >= 0; index--)
+                        {
+                            if(current_path[index] == '/')
+                            {
+                                if(index > 0)
+                                {
+                                    current_path[index] = '\0';
+                                }
+                                else
+                                {
+                                    current_path[index + 1] = '\0';
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    else if(k_rt_StrCmp(keyboard_buffer + index, "."))
+                    {
+                        if(!current_path || current_path[cur_path_length - 1] != '/')
+                        {
+                            k_rt_StrCat(current_path, sizeof(current_path), "/");
+                        }
+                        
+                        k_rt_StrCat(current_path, sizeof(current_path), keyboard_buffer + index);
+                    }
+                }
+                else
+                {
+                    k_sys_TerminalPrintf("couldn't find the specified path!\n");
+                }
             }
             // k_sys_TerminalPrintf("cock\n");
             // struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "", cur_dir_node);

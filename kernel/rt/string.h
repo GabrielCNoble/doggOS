@@ -6,9 +6,11 @@
 
 int32_t k_rt_StrCmp(const char *str0, const char *str1);
 
-const char *k_rt_StrStr(const char *search_in, const char *search_for); 
+const char *k_rt_StrStr(const char *search_in, const char *search_for);
 
-int32_t k_rt_StrLen(const char *str);
+uint32_t k_rt_StrCat(char *buffer, uint32_t buffer_size, const char *str);
+
+uint32_t k_rt_StrLen(const char *str);
 
 enum result_t k_rt_AtoI(const char *str, int32_t *value);
 

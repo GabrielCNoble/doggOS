@@ -181,16 +181,17 @@ struct k_fs_pup_node_t *get_node(uint8_t *disk_buffer, struct k_fs_pup_link_t no
     }
     return node;
 }
-
+ 
 void add_node(uint8_t *disk_buffer, char *parent_path, char *node_name)
 {
     struct k_fs_pup_root_t *root = (struct k_fs_pup_root_t *)disk_buffer;
-    struct k_fs_pup_node_t *parent_node = find_node(disk_buffer, parent_path, NULL);
+    struct k_fs_pup_link_t parent_link = K_FS_PUP_NULL_LINK;
+    struct k_fs_pup_node_t *parent_node = find_node(disk_buffer, parent_path, NULL, &parent_link);
     // printf("parent node: %p, %d\n", parent_node, parent_node->type);
     if(parent_node && parent_node->type == K_FS_PUP_NODE_TYPE_DIR)
     {
         // printf("found parent %s (%p)\n", parent_path, parent_node);
-        struct k_fs_pup_node_t *child_node = find_node(disk_buffer, node_name, parent_node);
+        struct k_fs_pup_node_t *child_node = find_node(disk_buffer, node_name, parent_node, NULL);
         
         if(!child_node)
         {
@@ -217,6 +218,7 @@ void add_node(uint8_t *disk_buffer, char *parent_path, char *node_name)
                     
                     struct k_fs_pup_node_t *node = get_node(disk_buffer, node_link);
                     node->ranges[0] = alloc_blocks(disk_buffer, 1);
+                    node->parent = parent_link;
                     break;
                 }
             }
@@ -237,10 +239,11 @@ void free_node(uint8_t *disk_buffer, struct k_fs_pup_link_t link)
     // uint8_t *bitmask_block = disk_buffer + (root->bitmask_block_start + node_block_index)
 }
 
-struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_pup_node_t *start_node)
+struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_pup_node_t *start_node, struct k_fs_pup_link_t *link)
 {
     struct k_fs_pup_root_t *root = (struct k_fs_pup_root_t *)disk_buffer;
     struct k_fs_pup_node_t *node = NULL;
+    struct k_fs_pup_link_t node_link = K_FS_PUP_NULL_LINK;
     uint32_t path_cursor = 0;
     
     char path_fragment[512];
@@ -255,10 +258,12 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
     {
         path_cursor++;
         node = get_node(disk_buffer, root->root_node);
+        node_link = root->root_node;
     }
     else
     {
         node = start_node;
+        // node_link = start_node;
     }
         
     while(path[path_cursor] && node)
@@ -277,7 +282,8 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
         }
         
         path_fragment[path_fragment_cursor] = '\0';
-        struct k_fs_pup_node_t *next_node = NULL; 
+        struct k_fs_pup_node_t *next_node = NULL;
+        struct k_fs_pup_link_t next_node_link = K_FS_PUP_NULL_LINK;
         
         // printf("node type: %d\n", node->type);
         
@@ -306,6 +312,7 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
                     {
                         // printf("%s\n", entry->name);
                         next_node = get_node(disk_buffer, entry->node);
+                        next_node_link = entry->node;
                         // printf("%p - %s\n", next_node, entry->name);
                         break;
                     }
@@ -314,10 +321,14 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
         }
         
         node = next_node;
+        node_link = next_node_link;
         // printf("%p\n", node);
     }
     // }
-    
+    if(link)
+    {
+        *link = node_link;
+    }
     return node;
 }
 
@@ -524,6 +535,7 @@ int main(int argc, char *argv[])
         root->root_node = alloc_node(disk_buffer, K_FS_PUP_NODE_TYPE_DIR);
         struct k_fs_pup_node_t *root_node = get_node(disk_buffer, root->root_node);
         root_node->ranges[0] = alloc_blocks(disk_buffer, 1);
+        root_node->parent = root->root_node;
         
         // struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(disk_buffer + root_node->ranges[0].first_block * root->block_size);
         // printf("%d\n", entry_list->used_count);
@@ -564,8 +576,10 @@ int main(int argc, char *argv[])
         
         // node = find_node(disk_buffer, "/fokn___/bitchn______", NULL);
         // printf("node %p, type %d\n", node, node->type);
+        
+        // printf("%d\n", offsetof(struct k_fs_pup_node_t, ranges));  
     
-        add_node(disk_buffer, "/", "dir_a");
+        add_node(disk_buffer, "/", "dir_a");  
         add_node(disk_buffer, "/", "dir_b");
         add_node(disk_buffer, "/", "dir_c");
         add_node(disk_buffer, "/", "dir_d");

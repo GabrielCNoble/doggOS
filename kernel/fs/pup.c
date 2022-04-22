@@ -332,6 +332,42 @@ void k_fs_PupWrite(struct k_fs_vol_t *volume, uint32_t block_start, uint32_t blo
 =========================================================================================
 */
 
+void k_fs_PupNextPathComponent(struct k_fs_pup_path_t *path)
+{
+    // if(path && path->path && path->path[path->end])
+    // {
+    //     if(!path->start)
+    //     {
+    //         /* white spaces are only meaningless at the start of a path */
+    //         while(path->path[path->start] == ' ' && path->path[path->start] != '\0')
+    //         {
+    //             path->start++;
+    //         }
+    //     }
+    //     else
+    //     {
+    //         path->start = path->end;
+    //     }
+    // 
+    //     if(path->path[path->start] == '/')
+    //     {
+    //         path->start++;
+    // 
+    //         while(path->path[path->start] == '/' && path->path[path->start] != '\0')
+    //         {
+    //             path->start++;
+    //         }
+    //     }
+    // 
+    //     path->end = path->start;
+    // 
+    //     while(path->path[path->end] != '/' && path->path[path->end] != '\0')
+    //     {
+    //         path->end++;
+    //     }
+    // }
+}
+
 struct k_fs_pup_centry_t *k_fs_PupGetBlock(struct k_fs_vol_t *volume, struct k_fs_pup_cset_t *set, uint64_t block_address)
 {
     struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
@@ -359,7 +395,7 @@ struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *p
 {
     // struct k_fs_pup_node_t *cur_node;
     struct k_fs_pup_node_t *node = NULL;
-    struct k_fs_pup_link_t node_link = {};
+    struct k_fs_pup_link_t node_link = K_FS_PUP_NULL_LINK;
     struct k_fs_pup_volume_t *pup_volume = (struct k_fs_pup_volume_t *)volume->data;
     struct k_fs_pup_cset_t local_cache = {};
     uint32_t path_fragment_cursor = 0;
@@ -371,93 +407,109 @@ struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *p
         cache = &local_cache;
     }
     
-    if(!start_node.link && path[path_cursor] == '/')
+    while(path[path_cursor] == ' ' && path[path_cursor] != '\0')
+    {
+        path_cursor++;
+    }
+    
+    if(path[path_cursor] == '/')
     {
         path_cursor++;
         node = k_fs_PupGetNode(volume, pup_volume->root.root_node, cache);
         node_link = pup_volume->root.root_node;
     }
-    else
+    
+    
+    if(start_node.link)
     {
         node = k_fs_PupGetNode(volume, start_node, cache);
         node_link = start_node;
-    }
-        
-    while(path[path_cursor] && node)
-    {    
-        path_fragment_cursor = 0;
-        while(path[path_cursor] != '/' && path[path_cursor])
-        {
-            path_fragment[path_fragment_cursor] = path[path_cursor];
-            path_fragment_cursor++;
-            path_cursor++;
-        }
-        
-        if(path[path_cursor] == '/')
-        {
-            path_cursor++;
-        }
-        
-        path_fragment[path_fragment_cursor] = '\0';
-        
-        // k_sys_TerminalPrintf("%s\n", path_fragment);
-        struct k_fs_pup_node_t *next_node = NULL;
-        struct k_fs_pup_link_t next_node_link = {};
-        
-        // k_sys_TerminalPrintf("node type: %d\n", node->type);
-        
-        if(node->type == K_FS_PUP_NODE_TYPE_DIR)
-        {                
-            for(uint32_t range_index = 0; range_index < K_FS_PUP_MAX_RNODE_RANGES && !next_node; range_index++)
+            
+        while(path[path_cursor] && node)
+        {    
+            path_fragment_cursor = 0;
+            while(path[path_cursor] != '/' && path[path_cursor])
             {
-                struct k_fs_pup_range_t *range = node->ranges + range_index;
-                uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range->first_count);
-                
-                // k_sys_TerminalPrintf("%s\n", path_fragment);
-                
-                if(!first_block)
+                path_fragment[path_fragment_cursor] = path[path_cursor];
+                path_fragment_cursor++;
+                path_cursor++;
+            }
+            
+            if(path[path_cursor] == '/')
+            {
+                path_cursor++;
+            }
+            
+            path_fragment[path_fragment_cursor] = '\0';
+            // k_sys_TerminalPrintf("%d - %s\n", node->type, path_fragment);
+            
+            struct k_fs_pup_node_t *next_node = NULL;
+            struct k_fs_pup_link_t next_node_link = {};
+            
+            if(node->type == K_FS_PUP_NODE_TYPE_DIR)
+            {
+                if(!k_rt_StrCmp(path_fragment, "."))
                 {
-                    continue;
+                    next_node = node;
+                    next_node_link = node_link;
+                }                
+                else if(!k_rt_StrCmp(path_fragment, ".."))
+                {
+                    next_node_link = node->parent;
+                    next_node = k_fs_PupGetNode(volume, node->parent, cache);
                 }
-                
-                struct k_fs_pup_centry_t *block = k_fs_PupGetBlock(volume, cache, first_block);
-                uint32_t dir_entry_list_block = first_block % K_FS_PUP_BLOCKS_PER_ENTRY;
-                struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(block->buffer + dir_entry_list_block * pup_volume->root.block_size);
-                // k_sys_TerminalPrintf("%d\n", entry_list->used_count);
-                for(uint32_t entry_index = 0; entry_index < entry_list->used_count; entry_index++)
+                else
                 {
-                    struct k_fs_pup_dirent_t *entry = entry_list->entries + entry_index;
-                    // k_sys_TerminalPrintf("aa %s\n", entry->name);
-                    if(!entry->node.link)
+                    for(uint32_t range_index = 0; range_index < K_FS_PUP_MAX_RNODE_RANGES && !next_node; range_index++)
                     {
-                        break;
-                    }
-                    
-                    if(!k_rt_StrCmp(path_fragment, entry->name))
-                    {
-                        // k_sys_TerminalPrintf("%s\n", entry->name);
-                        next_node_link = entry->node;
-                        next_node = k_fs_PupGetNode(volume, next_node_link, cache);
-                        range_index = K_FS_PUP_MAX_RNODE_RANGES;
-                        break;
+                        struct k_fs_pup_range_t *range = node->ranges + range_index;
+                        uint32_t first_block = K_FS_PUP_RANGE_FIRST_BLOCK(range->first_count);
+                        
+                        if(!first_block)
+                        {
+                            continue;
+                        }
+                        
+                        struct k_fs_pup_centry_t *block = k_fs_PupGetBlock(volume, cache, first_block);
+                        uint32_t dir_entry_list_block = first_block % K_FS_PUP_BLOCKS_PER_ENTRY;
+                        struct k_fs_pup_dirlist_t *entry_list = (struct k_fs_pup_dirlist_t *)(block->buffer + dir_entry_list_block * pup_volume->root.block_size);
+                        // k_sys_TerminalPrintf("%d\n", entry_list->used_count);
+                        for(uint32_t entry_index = 0; entry_index < entry_list->used_count; entry_index++)
+                        {
+                            struct k_fs_pup_dirent_t *entry = entry_list->entries + entry_index;
+                            // k_sys_TerminalPrintf("aa %s\n", entry->name);
+                            if(!entry->node.link)
+                            {
+                                break;
+                            }
+                            
+                            if(!k_rt_StrCmp(path_fragment, entry->name))
+                            {
+                                // k_sys_TerminalPrintf("%s\n", entry->name);
+                                next_node_link = entry->node;
+                                next_node = k_fs_PupGetNode(volume, next_node_link, cache);
+                                range_index = K_FS_PUP_MAX_RNODE_RANGES;
+                                break;
+                            }
+                        }
                     }
                 }
             }
+            
+            node = next_node;
+            node_link = next_node_link;
         }
         
-        node = next_node;
-        node_link = next_node_link;
-    }
-    
-    if(cache == &local_cache)
-    {
-        struct k_fs_pup_centry_t *entry = cache->first_entry;
-        
-        while(entry)
+        if(cache == &local_cache)
         {
-            struct k_fs_pup_centry_t *next_entry = entry->next;
-            k_fs_PupFreeCacheEntry(volume, entry);
-            entry = next_entry;
+            struct k_fs_pup_centry_t *entry = cache->first_entry;
+            
+            while(entry)
+            {
+                struct k_fs_pup_centry_t *next_entry = entry->next;
+                k_fs_PupFreeCacheEntry(volume, entry);
+                entry = next_entry;
+            }
         }
     }
     
