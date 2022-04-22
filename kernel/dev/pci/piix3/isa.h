@@ -78,6 +78,8 @@
 
 uint32_t k_PIIX3_ISA_Init(uint8_t bus_index, uint8_t device_index, uint8_t function_index);
 
-void k_PIIX3_ISA_EndOfInterrupt();
+uint16_t k_PIIX3_ISA_ReadIRReg();
+
+void k_PIIX3_ISA_EndOfInterrupt(uint8_t irq_vector);
 
 #endif

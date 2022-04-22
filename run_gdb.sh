@@ -1,1 +1,1 @@
-qemu-system-i386 -machine q35 -hda doggOS.img -gdb tcp::26000 -S
+qemu-system-i386 -machine pc -drive file=doggOS.img,format=raw -m 512 -gdb tcp::26000 -S

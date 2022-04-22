@@ -136,11 +136,12 @@ uint32_t k_dsk_WriteStream(struct k_io_stream_t *stream)
 uintptr_t k_dsk_DiskThread(void *data)
 {
     struct k_dsk_disk_t *disk = (struct k_dsk_disk_t *)data;
-    
+    uint32_t index = 0;
     while(1)
     {
         struct k_dsk_cmd_t *cmd = disk->cmds;
-        
+        // k_sys_TerminalPrintf("%x\n", index);
+        // index++;
         if(!cmd)
         {
             k_proc_YieldThread();
@@ -157,6 +158,7 @@ uintptr_t k_dsk_DiskThread(void *data)
             switch(cmd->type)
             {
                 case K_DSK_CMD_TYPE_READ:
+                    // k_sys_TerminalPrintf("blah\n");
                     disk->read(cmd);
                 break;
                 

@@ -142,7 +142,7 @@ void k_int_Int32()
     // k_cpu_InB(0x60);
     // k_PIIX3_82C59_EndOfInterrupt();
     // k_sys_TerminalPrintf("cock\n");
-    k_PIIX3_ISA_EndOfInterrupt();
+    k_PIIX3_ISA_EndOfInterrupt(0);
 }
 
 

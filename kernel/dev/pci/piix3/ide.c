@@ -97,7 +97,7 @@ uint32_t k_PIIX3_IDE_Read(struct k_dsk_cmd_t *cmd)
     uint32_t lba = cmd->address >> 9;
     uint32_t size = cmd->size >> 9;
     
-    if(cmd->size % 0x200)
+    if(cmd->size & 0x1ff)
     {
         size++;
     }
@@ -127,8 +127,8 @@ uint32_t k_PIIX3_IDE_Identify(struct k_dsk_cmd_t *cmd)
 void k_PIIX3_IDE_Handler()
 {
     struct k_dsk_cmd_t *cmd = k_PIIX3_IDE_current_cmd;
-    
-    uint16_t temp_data[32];
+    // k_sys_TerminalPrintf("fuck\n");
+    // uint16_t temp_data[32];
     if(k_PIIX3_IDE_ReadStatus() & K_IDE_STATUS_FLAG_ERROR)
     {
         // uint8_t error = K_PIIX3_IDE_ReadError();
@@ -245,22 +245,44 @@ void k_PIIX3_IDE_Handler()
                     
                     // k_sys_TerminalPrintf("%d %d %d\n", cmd->size, copy_size, buffer_word_count);
                 }
-                else if(cmd->size == 1)
+                
+                if(cmd->size == 1)
                 {
                     /* the size of the buffer is not a round number of words, so copy the last byte here */
                     uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
                     ((uint8_t *)cmd->buffer)[cmd->address] = (uint8_t)data;
                     cmd->size--;
                 }
+                
+                if(cmd->address & 0x1ff)
+                {
+                    /* apparently the IDE controller expects us to read a whole sector...? Not
+                    doing so causes the kernel to hang on qemu. Works fine on bochs, though. The
+                    AT attachment spec says the host reads a sector of data during pio transfers, 
+                    but doesn't seem to assert it's absolutely required to read the whole sector
+                    buffer. */
+                    uint32_t word_count = (512 - (cmd->address & 0x1ff)) / sizeof(uint16_t);
+                    for(uint32_t word_index = 0; word_index < word_count; word_index++)
+                    {
+                        k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
+                    }
+                }
             break;
         }
+        
+        // k_sys_TerminalPrintf("blah\n");
+        
+        // k_sys_TerminalPrintf("read size: %d\n", cmd->size);
         
         if(!cmd->size)
         {
             /* let anything waiting for this command to know we're done */
             k_rt_SignalCondition(&cmd->condition);
+            // k_sys_TerminalPrintf("signal condition\n");
         }
     }
     
-    k_PIIX3_ISA_EndOfInterrupt();
+    // k_sys_TerminalPrintf("blah\n");
+    
+    k_PIIX3_ISA_EndOfInterrupt(14);
 }

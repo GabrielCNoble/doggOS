@@ -35,6 +35,48 @@ int32_t k_rt_StrCmp(const char *str0, const char *str1)
     return diff;
 }
 
+const char *k_rt_StrStr(const char *search_in, const char *search_for)
+{
+    // uint32_t index = 0;
+    const char *match = NULL;
+    
+    if(search_in && search_for)
+    {
+        uint32_t search_in_index = 0;
+        uint32_t search_for_index = 0;
+        
+        // uint32_t matching = 0;
+        
+        while(search_in[search_in_index])
+        {
+            if(search_in[search_in_index] == search_for[search_for_index])
+            {
+                match = search_in + search_in_index;
+                
+                while(search_in[search_in_index] && search_in[search_in_index] == search_for[search_for_index])
+                {
+                    search_in_index++;
+                    search_for_index++;
+                }
+                
+                if(!search_for[search_for_index])
+                {
+                    break;
+                }
+                
+                search_for_index = 0;
+                match = NULL;
+            }
+            else
+            {
+                search_in_index++;
+            }
+        }
+    }
+    
+    return match;
+}
+
 int32_t k_rt_StrLen(const char *str)
 {
     uint32_t cursor = 0;

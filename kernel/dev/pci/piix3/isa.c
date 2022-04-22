@@ -55,8 +55,26 @@ uint32_t k_PIIX3_ISA_Init(uint8_t bus_index, uint8_t device_index, uint8_t funct
     return 0;
 }
 
-void k_PIIX3_ISA_EndOfInterrupt()
+uint16_t k_PIIX3_ISA_ReadIRReg()
 {
-    k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL2_OCW2_REG);
-    k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL1_OCW2_REG);
+    
 }
+
+void k_PIIX3_ISA_EndOfInterrupt(uint8_t irq_vector)
+{
+    // k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL2_OCW2_REG);
+    // k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL1_OCW2_REG);
+    
+    k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL1_OCW2_REG);
+    
+    if(irq_vector > 7)
+    {    
+        k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL2_OCW2_REG);
+    }
+    // else
+    // {
+    //     k_cpu_OutB(0x20, K_PIIX3_82C59_CTRL1_OCW2_REG);
+    // }
+}
+
+

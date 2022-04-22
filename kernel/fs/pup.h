@@ -31,6 +31,8 @@ struct k_fs_pup_link_t
     uint64_t link;
 };
 
+#define K_FS_PUP_NULL_LINK ((struct k_fs_pup_link_t){0})
+
 struct k_fs_pup_root_t
 {
     char ident[K_FS_PUP_IDENT];
@@ -90,10 +92,13 @@ enum K_FS_PUP_NODE_TYPE
 
 struct k_fs_pup_node_t
 {    
-    uint8_t type;
-    uint8_t flags;
-    uint16_t align;
+    // uint8_t type;
+    // uint8_t flags;
+    // uint16_t align;
+    uint32_t type;
+    uint32_t flags;
     k_rt_spnl_t lock;
+    uint32_t align;
     
     union
     {
@@ -197,9 +202,11 @@ struct k_fs_pup_centry_t *k_fs_PupGetBlock(struct k_fs_vol_t *volume, struct k_f
 
 // void k_fs_PupReleaseBlock(struct k_fs_vol_t *volume, void *block);
 
-struct k_fs_pup_node_t *k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_node_t *start_node);
+struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_link_t start_node, struct k_fs_pup_cset_t *cache);
 
 struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_cset_t *cache);
+
+struct k_fs_pup_dirlist_t *k_fs_PupGetNodeDirList(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_link_t start_node);
 
 /*
 =========================================================================================

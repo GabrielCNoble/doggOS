@@ -178,7 +178,7 @@ void k_kb_KeyboardHandler()
         }
     }
     while((k_8042_ReadStatus() & K_8042_STATUS_OUT_BUFFER_FULL) && ch);
-    k_PIIX3_ISA_EndOfInterrupt();
+    k_PIIX3_ISA_EndOfInterrupt(1);
     // asm volatile ("hlt");
 }
 

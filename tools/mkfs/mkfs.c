@@ -565,32 +565,37 @@ int main(int argc, char *argv[])
         // node = find_node(disk_buffer, "/fokn___/bitchn______", NULL);
         // printf("node %p, type %d\n", node, node->type);
     
-        add_node(disk_buffer, "/", "a");
-        add_node(disk_buffer, "/", "b");
-        add_node(disk_buffer, "/", "c");
-        add_node(disk_buffer, "/", "d");
+        add_node(disk_buffer, "/", "dir_a");
+        add_node(disk_buffer, "/", "dir_b");
+        add_node(disk_buffer, "/", "dir_c");
+        add_node(disk_buffer, "/", "dir_d");
         // 
-        add_node(disk_buffer, "/a", "e");
-        add_node(disk_buffer, "/a", "f");
-        add_node(disk_buffer, "/a", "g");
+        add_node(disk_buffer, "/dir_a", "subdir_1");
+        add_node(disk_buffer, "/dir_a", "subdir_2");
+        add_node(disk_buffer, "/dir_a", "subdir_3");
         // 
-        add_node(disk_buffer, "/a/e", "h");
-        add_node(disk_buffer, "/a/e", "i");
+        add_node(disk_buffer, "/dir_a/subdir_1", "subsub_dir_lol");
+        add_node(disk_buffer, "/dir_a/subdir_1", "subsub_dir_uwu");
         // 
-        add_node(disk_buffer, "/a/e/f", "j"); 
-        add_node(disk_buffer, "/", "cock");
-        add_node(disk_buffer, "/cock", "ass");
-        add_node(disk_buffer, "/cock/ass", "shit0");
-        add_node(disk_buffer, "/cock/ass", "shit1");
-        add_node(disk_buffer, "/cock/ass", "shit2");
-        add_node(disk_buffer, "/cock/ass", "shit3");
-        add_node(disk_buffer, "/cock/ass", "shit4");
-        add_node(disk_buffer, "/cock/ass", "shit5");
-        add_node(disk_buffer, "/cock/ass", "shit6");
-        add_node(disk_buffer, "/cock/ass", "shit7");
-        add_node(disk_buffer, "/cock/ass", "shit8");
-        add_node(disk_buffer, "/cock/ass", "shit9");
-        add_node(disk_buffer, "/cock/ass", "shit10");
+        add_node(disk_buffer, "/dir_a/subdir_1/subsub_dir_lol", "aaaaaaa"); 
+        add_node(disk_buffer, "/dir_b/", "funny"); 
+        add_node(disk_buffer, "/dir_b/funny", "very_funny"); 
+        add_node(disk_buffer, "/dir_b/funny/very_funny", "hahahaha"); 
+        add_node(disk_buffer, "/dir_b/funny/very_funny/hahahaha", "HAHAHAHAHAHAHA");
+        add_node(disk_buffer, "/dir_b/funny/very_funny/hahahaha/HAHAHAHAHAHAHA", "nothing_to_see_here"); 
+        // add_node(disk_buffer, "/", "cock");
+        // add_node(disk_buffer, "/cock", "ass");
+        // add_node(disk_buffer, "/cock/ass", "shit0");
+        // add_node(disk_buffer, "/cock/ass", "shit1");
+        // add_node(disk_buffer, "/cock/ass", "shit2");
+        // add_node(disk_buffer, "/cock/ass", "shit3");
+        // add_node(disk_buffer, "/cock/ass", "shit4");
+        // add_node(disk_buffer, "/cock/ass", "shit5");
+        // add_node(disk_buffer, "/cock/ass", "shit6");
+        // add_node(disk_buffer, "/cock/ass", "shit7");
+        // add_node(disk_buffer, "/cock/ass", "shit8");
+        // add_node(disk_buffer, "/cock/ass", "shit9");
+        // add_node(disk_buffer, "/cock/ass", "shit10");
         
         // add_node(disk_buffer, "/", "a");
         // add_node(disk_buffer, "/a", "b");

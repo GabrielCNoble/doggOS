@@ -25,6 +25,8 @@ void k_proc_RunScheduler();
 
 uintptr_t k_proc_CleanupThread(void *data);
 
+uintptr_t k_proc_IdleThread(void *data);
+
 void k_proc_EnablePreemption();
 
 void k_proc_DisablePreemption();

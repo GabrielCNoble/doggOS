@@ -645,6 +645,8 @@ uintptr_t k_proc_CleanupThread(void *data)
 
     while(1)
     {
+        // k_PIIX3_ISA_EndOfInterrupt();
+        // k_sys_TerminalPrintf("blah\n");
         if(k_rt_TrySpinLock(&k_proc_core_state.thread_pool.spinlock))
         {
             uint32_t deleted_count = 0;
@@ -662,6 +664,16 @@ uintptr_t k_proc_CleanupThread(void *data)
     }
 
     return 0;
+}
+
+uintptr_t k_proc_IdleThread(void *data)
+{
+    (void)data;
+    
+    while(1)
+    {
+        
+    }
 }
 
 void k_proc_EnablePreemption()

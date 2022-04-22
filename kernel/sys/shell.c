@@ -4,6 +4,7 @@
 #include "../io.h"
 #include "../rt/alloc.h"
 #include "../rt/mem.h"
+#include "../rt/string.h"
 #include "../proc/proc.h"
 #include "../proc/defs.h"
 #include "../dsk/dsk.h"
@@ -55,6 +56,7 @@ void k_sys_Crash()
 uintptr_t k_sys_ShellMain(void *data)
 {
     char keyboard_buffer[512];
+    char current_path[512] = "/";
     k_sys_TerminalClear();
     k_sys_TerminalPrintf("Initializing root shell...\n");
     // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
@@ -66,15 +68,13 @@ uintptr_t k_sys_ShellMain(void *data)
     struct k_fs_part_t partition = {.first_block = 170, .disk = k_PIIX3_IDE_disk};
     struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
     
-    // uint8_t *buffer = k_rt_Malloc(8192, 4);
-    // k_fs_PupRead(pup_volume, 0, 1, buffer);
-
-    // k_sys_TerminalPrintf("%x %x\n", &k_share_start, &k_share_end);
-    // struct k_proc_process_t *process = k_proc_CreateProcess(&k_kernel_end2, 0x1000);
+    struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, current_path, K_FS_PUP_NULL_LINK, NULL);
+    const char *str_match;
+    
 
     while(1)
     {
-        k_sys_TerminalPrintf("[root]:");
+        k_sys_TerminalPrintf("[(root) > %s ]: ", current_path);
         k_sys_TerminalReadLine(keyboard_buffer, 512);
         // {
         if(!k_rt_StrCmp(keyboard_buffer, "help"))
@@ -137,19 +137,55 @@ uintptr_t k_sys_ShellMain(void *data)
                 disk = disk->next;
             }
         }
-        else if(!k_rt_StrCmp(keyboard_buffer, "fs_test"))
-        {    
-            // uint8_t *buffer = k_rt_Malloc(8192, 4);
-            // k_fs_PupRead(pup_volume, 0, 1, buffer);
-            // k_sys_TerminalPrintf("test for pup volume signature...\n");
-            // if(!k_rt_StrCmp(buffer, K_FS_PUP_MAGIC))
-            // {
-            //     k_sys_TerminalPrintf("valid pup volume!\n");
-            // }
-            // k_rt_Free(buffer);
+        // else if(!k_rt_StrCmp(keyboard_buffer, "fs_test"))
+        // {                
+        //     // struct k_fs_pup_link_t node = k_fs_PupFindNode(pup_volume, "/cock", K_FS_PUP_NULL_LINK);
+        //     // k_sys_TerminalPrintf("node at %x\n", (uint32_t)node.link);
+        //     struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "/", K_FS_PUP_NULL_LINK);
+        //     k_sys_TerminalPrintf("list size: %d\n", dir_list->used_count);
+        // }
+        else if(!k_rt_StrCmp(keyboard_buffer, "dir"))
+        {
+            struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "", cur_dir_node);
+            k_sys_TerminalPrintf("  Contents of folder \"%s\"\n", current_path);
+            for(uint32_t entry_index = 0; entry_index < dir_list->used_count; entry_index++)
+            {
+                struct k_fs_pup_dirent_t *entry = dir_list->entries + entry_index;
+                k_sys_TerminalPrintf("      %s\n", entry->name);
+            }
             
-            struct k_fs_pup_node_t *node = k_fs_PupFindNode(pup_volume, "/a", NULL);
-            k_sys_TerminalPrintf("node at %x\n", node);
+            k_rt_Free(dir_list);
+        }
+        else if(k_rt_StrStr(keyboard_buffer, "cd") == &keyboard_buffer[0])
+        {
+            uint32_t index = 0;
+            
+            while(keyboard_buffer[index] != ' ' && keyboard_buffer[index] != '\0')
+            {
+                index++;
+            }
+            
+            while(keyboard_buffer[index] == ' ' && keyboard_buffer[index] != '\0')
+            {
+                index++;
+            }
+            
+            if(keyboard_buffer[index])
+            {
+                struct k_fs_pup_link_t node = k_fs_PupFindNode(pup_volume, keyboard_buffer + index, cur_dir_node, NULL);
+                k_sys_TerminalPrintf("node %x\n", (uint32_t)node.link);
+                // k_sys_TerminalPrintf("%s\n", keyboard_buffer + index);
+            }
+            // k_sys_TerminalPrintf("cock\n");
+            // struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "", cur_dir_node);
+            // k_sys_TerminalPrintf("contents of folder \"%s\"\n", current_path);
+            // for(uint32_t entry_index = 0; entry_index < dir_list->used_count; entry_index++)
+            // {
+            //     struct k_fs_pup_dirent_t *entry = dir_list->entries + entry_index;
+            //     k_sys_TerminalPrintf("  %s\n", entry->name);
+            // }
+            // 
+            // k_rt_Free(dir_list);
         }
         else if(keyboard_buffer[0] == '\0')
         {
