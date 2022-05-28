@@ -35,6 +35,7 @@ void *k_mem_AllocVirtualRange(size_t size)
 
             if(free_range->size > request_size)
             {
+                /* make space at the used range portion of the list, to fit the newly allocate range */
                 for(uint32_t move_index = k_mem_virtual_ranges.range_count; move_index > used_index; move_index--)
                 {
                     k_mem_virtual_ranges.ranges[move_index] = k_mem_virtual_ranges.ranges[move_index - 1];
@@ -52,7 +53,7 @@ void *k_mem_AllocVirtualRange(size_t size)
             {
                 uint32_t range_start = free_range->size;
                 uint32_t range_size = free_range->size;
-
+                /* range used completely, so move all ranges back  */
                 for(uint32_t move_index = index; move_index < used_index; move_index++)
                 {
                     k_mem_virtual_ranges.ranges[move_index] = k_mem_virtual_ranges.ranges[move_index + 1];

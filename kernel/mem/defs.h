@@ -71,6 +71,9 @@ struct k_mem_vrange_t
     uint32_t size;
 };
 
+/* list of virtual ranges. This list is used for both free and used ranges.
+Free ranges live from offest 0 to offset free_count - 1; used ranges live
+from offset free_count to range_count - 1 */
 struct k_mem_vrlist_t
 {
     uint32_t free_count;

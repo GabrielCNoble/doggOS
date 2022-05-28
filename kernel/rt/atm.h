@@ -5,7 +5,7 @@
 
 typedef uint32_t k_rt_spnl_t;
 
-typedef uintptr_t k_rt_cond_t;
+typedef uint32_t k_rt_cond_t;
 
 
 /*

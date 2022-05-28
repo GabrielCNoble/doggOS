@@ -89,20 +89,26 @@ k_cpu_Rcr3:
 
 .global k_cpu_OutB
 k_cpu_OutB:
+    push eax
     mov al, cl
     out dx, al
+    pop eax
     ret
 
 .global k_cpu_OutW
 k_cpu_OutW:
+    push eax
     mov ax, cx
     out dx, ax
+    pop eax
     ret
 
 .global k_cpu_OutD
 k_cpu_OutD:
+    push eax
     mov eax, ecx
     out dx, eax
+    pop eax
     ret
 
 .global k_cpu_InB
@@ -116,10 +122,9 @@ k_cpu_InW:
     mov dx, cx
     in ax, dx
     ret 
+
 .global k_cpu_InSW
 k_cpu_InSW:
-    nop
-    nop
     push ebp
     mov ebp, esp
     push eax
@@ -168,3 +173,7 @@ k_cpu_GetCPR:
     and eax, 0x3
     ret
     
+.global k_cpu_MemFence
+k_cpu_MemFence:
+    mfence
+    ret

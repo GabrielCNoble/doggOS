@@ -35,24 +35,22 @@ enum K_FS_FILE_SYSTEMS
 
 struct k_fs_fsys_t
 {
-    // char                   name[8];
-    // uint32_t               index;
-    void                     (*mount_volume)(struct k_fs_vol_t *volume);
-    void                     (*unmount_volume)(struct k_fs_vol_t *volume);
-    struct k_fs_file_t      *(*create_file)(struct k_fs_vol_t *volume, char *path);
-    void                     (*destroy_file)(struct k_fs_vol_t *volume, char *path);
-    struct k_fs_file_t      *(*open_file)(struct k_fs_vol_t *volume, char *path);
-    void                     (*close_file)(struct k_fs_file_t *file);
-    uint32_t                 (*read_file)(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
-    uint32_t                 (*write_file)(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
-    uint32_t                 (*file_exists)(struct k_fs_vol_t *volume, char *path);
-    uint32_t                 (*file_size)(struct k_fs_vol_t *volume, char *path);
-    uint32_t                 (*format_volume)(struct k_fs_vol_t *volume);
+    void                        (*mount_volume)(struct k_fs_vol_t *volume);
+    uint32_t                    (*format_volume)(struct k_fs_vol_t *volume, void *args);
+    void                        (*unmount_volume)(struct k_fs_vol_t *volume);
+    struct k_fs_file_t *        (*create_file)(struct k_fs_vol_t *volume, char *path);
+    void                        (*destroy_file)(struct k_fs_vol_t *volume, char *path);
+    struct k_fs_file_t *        (*open_file)(struct k_fs_vol_t *volume, char *path);
+    void                        (*close_file)(struct k_fs_file_t *file);
+    uint32_t                    (*read_file)(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
+    uint32_t                    (*write_file)(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
+    uint32_t                    (*file_exists)(struct k_fs_vol_t *volume, char *path);
+    uint32_t                    (*file_size)(struct k_fs_vol_t *volume, char *path);
     
-    struct k_fs_dir_t       *(*open_dir)(struct k_fs_vol_t *volume, char *path);
-    void                     (*close_dir)(struct k_fs_dir_t *director);
-    struct k_fs_dir_entry_t *(*next_entry)(struct k_fs_dir_t *directory);
-    void                     (*rewind_dir)(struct k_fs_dir_t *directory);
+    struct k_fs_dir_t *         (*open_dir)(struct k_fs_vol_t *volume, char *path);
+    void                        (*close_dir)(struct k_fs_dir_t *director);
+    struct k_fs_dir_entry_t *   (*next_entry)(struct k_fs_dir_t *directory);
+    void                        (*rewind_dir)(struct k_fs_dir_t *directory);
     
 };
 
@@ -76,6 +74,7 @@ struct k_fs_mbr_part_t
     uint16_t sec_counth;
 };
 
+/* FIXME: this should probably be part of the disk interface. */
 struct k_fs_part_t
 {
     char                 name[24];

@@ -1,6 +1,7 @@
 #include "fs.h"
 #include "../mem/mem.h"
 #include "../rt/alloc.h"
+#include "../dsk/dsk.h"
 #include "pup.h"
 // #include "../../libdg/container/dg_slist.h"
 // #include "../../libdg/string/dg_string.h"
@@ -14,6 +15,7 @@
 struct k_fs_fsys_t k_fs_file_systems[K_FS_FILE_SYSTEM_LAST] = {
     [K_FS_FILE_SYSTEM_PUP] = {
         .mount_volume = k_fs_PupMountVolume,
+        .format_volume = k_fs_PupFormatVolume,
         .unmount_volume = k_fs_PupUnmountVolume
     }
 };
@@ -83,7 +85,6 @@ void k_fs_Init()
 
 struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
 {
-    // (void)partition;
     struct k_fs_vol_t *volume = k_rt_Malloc(sizeof(struct k_fs_vol_t), 4);
     
     volume->next = k_fs_volumes;
@@ -93,7 +94,6 @@ struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
     volume->partition.first_block = partition->first_block;
     volume->partition.block_count = partition->block_count;
     volume->file_system = &k_fs_file_systems[K_FS_FILE_SYSTEM_PUP];
-    
     volume->file_system->mount_volume(volume);
     
     return volume;
@@ -104,23 +104,66 @@ void k_fs_UnmountVolume(struct k_fs_vol_t *volume)
     volume->file_system->unmount_volume(volume);
 }
 
-void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys)
+void k_fs_FormatVolume(struct k_fs_vol_t *volume, void *args)
 {
-    (void)volume;
-    (void)fsys;
+    volume->file_system->unmount_volume(volume);
+    volume->file_system->format_volume(volume, args);
+    volume->file_system->mount_volume(volume);
 }
 
-void k_fs_ReadVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)
+struct k_fs_vol_t *k_fs_FormatPartition(struct k_fs_part_t *partition, uint32_t file_system, void *args)
 {
-    uint32_t read_count = block_count * block_size;
-    uint32_t read_start = volume->partition.first_block * volume->partition.disk->block_size;
-    read_start += first_block * block_size;
-    k_dsk_Read(volume->partition.disk, read_start, read_count, buffer); 
-}
-
-void k_fs_WriteVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)
-{
+    struct k_fs_vol_t *volume = k_rt_Malloc(sizeof(struct k_fs_vol_t), 4);
     
+    volume->next = k_fs_volumes;
+    k_fs_volumes = volume;
+
+    volume->partition.disk = partition->disk;
+    volume->partition.first_block = partition->first_block;
+    volume->partition.block_count = partition->block_count;
+    volume->file_system = &k_fs_file_systems[file_system];
+
+    volume->file_system->format_volume(volume, args);
+    volume->file_system->mount_volume(volume);
+
+    return volume;
+}
+
+void k_fs_ReadVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t offset, uint32_t size, void *buffer)
+{
+    // uint32_t read_count = block_count * block_size;
+    uint32_t read_start = volume->partition.first_block * volume->partition.disk->block_size;
+    read_start += first_block * block_size + offset;
+    k_dsk_Read(volume->partition.disk, read_start, size, buffer); 
+}
+
+void k_fs_ReadVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)
+{
+    k_fs_ReadVolumeBytes(volume, block_size, first_block, 0, block_size * block_count, buffer);
+}
+
+void k_fs_WriteVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t offset, uint32_t size, void *buffer)
+{
+    uint32_t write_start = volume->partition.first_block * volume->partition.disk->block_size;
+    write_start += first_block * block_size + offset;
+    k_dsk_Write(volume->partition.disk, write_start, size, buffer);
+}
+
+void k_fs_WriteVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)
+{
+    k_fs_WriteVolumeBytes(volume, block_size, first_block, 0, block_size * block_count, buffer);
+}
+
+void k_fs_ClearVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t offset, uint32_t size)
+{
+    uint32_t write_start = volume->partition.first_block * volume->partition.disk->block_size;
+    write_start += first_block * block_size + offset;
+    k_dsk_Clear(volume->partition.disk, write_start, size);
+}
+
+void k_fs_ClearVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count)
+{
+    k_fs_ClearVolumeBytes(volume, block_size, first_block, 0, block_size * block_count);
 }
 
 /*

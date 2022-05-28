@@ -34,6 +34,7 @@ enum K_DSK_CMD_TYPES
     // K_DSK_CMD_TYPE_TRANSFER_PART,
     K_DSK_CMD_TYPE_READ,
     K_DSK_CMD_TYPE_WRITE,
+    K_DSK_CMD_TYPE_CLEAR,
     K_DSK_CMD_TYPE_IDENTIFY,
     K_DSK_CMD_TYPE_LAST
 };
@@ -72,29 +73,48 @@ enum K_DSK_TYPES
     K_DSK_TYPE_DISK,
     K_DSK_TYPE_USB,
     K_DSK_TYPE_CDROM,
-    K_DSK_TYPE_BOOT
+    K_DSK_TYPE_BOOT,
+    K_DSK_TYPE_LAST
 };
 
 // typedef uint32_t (*read)(uint32_t address, void *data, uint32_t size);
 
-typedef uint32_t (*k_dsk_disk_func_t)(struct k_dsk_cmd_t *cmd);
+struct k_dsk_disk_t;
+
+typedef uint32_t (*k_dsk_disk_func_t)(struct k_dsk_disk_t *disk, struct k_dsk_cmd_t *cmd);
+
+struct k_dsk_disk_def_t
+{
+    k_dsk_disk_func_t read_func;
+    k_dsk_disk_func_t write_func;
+
+    uint32_t start_address;
+    uint32_t block_size;
+    uint32_t block_count;
+    uint32_t type;
+
+    void *data;
+};
 
 struct k_dsk_disk_t
 {
     struct k_dsk_disk_t *next;
     struct k_dsk_cmd_t *cmds;
     struct k_dsk_cmd_t *last_cmd;
+
+    /* disk specific data */
+    void *data;
     
-    uint32_t start_address;
+    uintptr_t start_address;
     uint32_t block_size;
     uint32_t block_count;
     uint32_t type;
     
     k_dsk_disk_func_t read;
     k_dsk_disk_func_t write;
+    k_dsk_disk_func_t clear;
     
     struct k_proc_thread_t *thread;
 };
-
 
 #endif

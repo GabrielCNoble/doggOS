@@ -56,7 +56,7 @@ void k_sys_Crash()
 uintptr_t k_sys_ShellMain(void *data)
 {
     char keyboard_buffer[512];
-    char current_path[512] = "/";
+    char current_path[512];
     k_sys_TerminalClear();
     k_sys_TerminalPrintf("Initializing root shell...\n");
     // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
@@ -65,12 +65,13 @@ uintptr_t k_sys_ShellMain(void *data)
     current_process->terminal = k_io_AllocStream();
     k_io_UnblockStream(current_process->terminal);
     
-    struct k_fs_part_t partition = {.first_block = 170, .disk = k_PIIX3_IDE_disk};
+    struct k_fs_part_t partition = {.first_block = 172, .disk = k_PIIX3_IDE_disk};
     struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
     
-    struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, current_path, K_FS_PUP_NULL_LINK, NULL);
-    const char *str_match;
-    
+    struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, "/", K_FS_PUP_NULL_LINK, NULL);
+    // k_sys_TerminalPrintf("root link: %x\n", (uint32_t) cur_dir_node.link);
+    k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
+    k_sys_TerminalClear();
 
     while(1)
     {
@@ -147,16 +148,25 @@ uintptr_t k_sys_ShellMain(void *data)
         else if(!k_rt_StrCmp(keyboard_buffer, "dir"))
         {
             struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "", cur_dir_node);
-            k_sys_TerminalPrintf("  Contents of directory \"%s\"\n", current_path);
-            for(uint32_t entry_index = 0; entry_index < dir_list->used_count; entry_index++)
+            k_sys_TerminalPrintf("  Contents of directory %s\n", current_path);
+            if(dir_list)
             {
-                struct k_fs_pup_dirent_t *entry = dir_list->entries + entry_index;
-                k_sys_TerminalPrintf("      %s\n", entry->name);
+                for(uint32_t entry_index = 0; entry_index < dir_list->used_count; entry_index++)
+                {
+                    struct k_fs_pup_dirent_t *entry = dir_list->entries + entry_index;
+                    
+                    if(!entry->node.link)
+                    {
+                        break;
+                    }
+                    
+                    k_sys_TerminalPrintf("      %s\n", entry->name);
+                }
+                
+                k_rt_Free(dir_list);
             }
             
             k_sys_TerminalPrintf("\n");
-            
-            k_rt_Free(dir_list);
         }
         else if(k_rt_StrStr(keyboard_buffer, "cd") == &keyboard_buffer[0])
         {
@@ -179,51 +189,18 @@ uintptr_t k_sys_ShellMain(void *data)
                 if(node.link)
                 {
                     cur_dir_node = node;
-                    uint32_t cur_path_length = k_rt_StrLen(current_path);
-                    
-                    if(!k_rt_StrCmp(keyboard_buffer + index, ".."))
-                    {
-                        for(int32_t index = cur_path_length - 1; index >= 0; index--)
-                        {
-                            if(current_path[index] == '/')
-                            {
-                                if(index > 0)
-                                {
-                                    current_path[index] = '\0';
-                                }
-                                else
-                                {
-                                    current_path[index + 1] = '\0';
-                                }
-                                break;
-                            }
-                        }
-                    }
-                    else if(k_rt_StrCmp(keyboard_buffer + index, "."))
-                    {
-                        if(!current_path || current_path[cur_path_length - 1] != '/')
-                        {
-                            k_rt_StrCat(current_path, sizeof(current_path), "/");
-                        }
-                        
-                        k_rt_StrCat(current_path, sizeof(current_path), keyboard_buffer + index);
-                    }
+                    k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
                 }
                 else
                 {
-                    k_sys_TerminalPrintf("couldn't find the specified path!\n");
+                    k_sys_TerminalPrintf("%s: no such file or directory\n", keyboard_buffer + index);
                 }
             }
-            // k_sys_TerminalPrintf("cock\n");
-            // struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(pup_volume, "", cur_dir_node);
-            // k_sys_TerminalPrintf("contents of folder \"%s\"\n", current_path);
-            // for(uint32_t entry_index = 0; entry_index < dir_list->used_count; entry_index++)
-            // {
-            //     struct k_fs_pup_dirent_t *entry = dir_list->entries + entry_index;
-            //     k_sys_TerminalPrintf("  %s\n", entry->name);
-            // }
-            // 
-            // k_rt_Free(dir_list);
+        }
+        else if(k_rt_StrStr(keyboard_buffer, "mkdir") == &keyboard_buffer[0])
+        {
+            struct k_fs_pup_link_t node = k_fs_PupAllocNode(pup_volume, K_FS_PUP_NODE_TYPE_DIR);
+            k_sys_TerminalPrintf("node: %x\n", (uint32_t)node.link);
         }
         else if(keyboard_buffer[0] == '\0')
         {

@@ -85,7 +85,7 @@ void k_int_Init();
 
 // extern void k_int_enable_interrupts();
 
-extern void k_int_Lidt(struct k_int_desc_t *table, uint32_t entry_count);
+extern void k_int_Lidt(struct k_irq_desc_t *table, uint32_t entry_count);
 
 void k_int_SetInterruptHandler(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl);
 

@@ -12,7 +12,7 @@ struct k_sys_syscall_args_t
     uint32_t args[K_SYS_SYSCALL_MAX_ARGS];
 };
 
-enum result_t
+typedef enum result_t
 {
     RESULT_OK = 0,
     
@@ -26,7 +26,6 @@ enum result_t
     RESULT_EMPTY_STREAM,
     RESULT_BLOCKED_STREAM,
     
-    // RESULT_NOT_ENOUGH_SPACE,
     RESULT_BAD_PARAM,
     RESULT_OUT_OF_RANGE,
     RESULT_OUT_OF_SPACE,
@@ -42,6 +41,6 @@ enum result_t
     RESULT_PHYSICAL_PAGE_EXCLUSIVE,
     RESULT_OUT_OF_PHYSICAL_MEM,
     RESULT_OUT_OF_VIRTUAL_MEM,
-};
+} result_t;
 
 #endif

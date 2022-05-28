@@ -82,6 +82,11 @@ stage2_start:
     /* inc ax
 _exact_div: */
     /* number of sectors */
+
+    /* FIXME: some bioses have a really small limit of how many sectors can 
+    be copied at a time (qemu bios doesn't seem to like values larger than 0x80,
+    bochs handles them okay). This load should be broken down in multiple smaller
+    loads to dodge this. */
     _copy_kernel_loop:
         mov word ptr [si + 2], ax
         /* offset */

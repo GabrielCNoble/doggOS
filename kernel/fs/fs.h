@@ -26,13 +26,23 @@ struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition);
 
 void k_fs_UnmountVolume(struct k_fs_vol_t *volume);
 
-void k_fs_FormatVolume(struct k_fs_vol_t *volume, struct k_fs_fsys_t *fsys);
+void k_fs_FormatVolume(struct k_fs_vol_t *volume, void *args);
+
+struct k_fs_vol_t *k_fs_FormatPartition(struct k_fs_part_t *partition, uint32_t file_system, void *args);
 
 void k_fs_FormatDisk(struct k_dsk_disk_t *disk, uint32_t part_table_type);
 
-void k_fs_ReadVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer);
+void k_fs_ReadVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t offset, uint32_t size, void *buffer); 
 
-void k_fs_WriteVolume(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer);
+void k_fs_ReadVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer);
+
+void k_fs_WriteVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t offset, uint32_t size, void *buffer);
+
+void k_fs_WriteVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer);
+
+void k_fs_ClearVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t offset, uint32_t size);
+
+void k_fs_ClearVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count);
 
 /*
 =========================================================================================

@@ -30,11 +30,11 @@ uint8_t k_PIIX3_IDE_ReadStatus();
 
 uint8_t K_PIIX3_IDE_ReadError();
 
-void k_PIIX3_IDE_ExecCmd(uint8_t cmd);
+void k_PIIX3_IDE_ExecCmd(uint32_t cmd);
 
 // void k_PIIX3_IDE_Read(uint32_t lba, uint32_t size);
 
-uint32_t k_PIIX3_IDE_Read(struct k_dsk_cmd_t *cmd);
+uint32_t k_PIIX3_IDE_Read(struct k_dsk_disk_t *disk, struct k_dsk_cmd_t *cmd);
 
 uint32_t k_PIIX3_IDE_Identify(struct k_dsk_cmd_t *cmd);
 

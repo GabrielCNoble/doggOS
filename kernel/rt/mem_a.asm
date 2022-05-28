@@ -5,9 +5,21 @@
 
 .global k_rt_CopyBytes
 k_rt_CopyBytes:
-    mov edi, dword ptr [esp + 4]
+    push ebp
+    mov ebp, esp
+
+    push eax
+    push ecx
+    push edi
+    push esi
+
+    mov edi, dword ptr [ebp + 8]
+    mov esi, dword ptr [ebp + 12]
+    mov eax, dword ptr [ebp + 16]
+
+    /* mov edi, dword ptr [esp + 4]
     mov esi, dword ptr [esp + 8]
-    mov eax, dword ptr [esp + 12]
+    mov eax, dword ptr [esp + 12] */
 
     cmp edi, 0
     jz k_rt_copybytes_gtfo
@@ -82,4 +94,14 @@ k_rt_CopyBytes:
         rep movsb
 
     k_rt_copybytes_gtfo:
+        pop esi
+        pop edi
+        pop ecx
+        pop eax
+        pop ebp
         ret
+
+
+.global k_rt_SetBytes
+k_rt_SetBytes:
+    ret

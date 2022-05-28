@@ -106,6 +106,13 @@ struct k_ide_device_t
     void        (*write_reg)(uint8_t reg, uint8_t value);
 };
 
+struct k_ide_cmd_state_t
+{
+    struct k_dsk_cmd_t *    cur_cmd;
+    uint16_t                skip_count;
+    uint16_t                align;
+};
+
 uint8_t k_IDE_ReadStatus(struct k_ide_device_t *device);
 
 void k_IDE_ExecCmd(struct k_ide_device_t *device, uint8_t cmd);

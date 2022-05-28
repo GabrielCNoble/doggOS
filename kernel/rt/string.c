@@ -77,6 +77,26 @@ const char *k_rt_StrStr(const char *search_in, const char *search_for)
     return match;
 }
 
+uint32_t k_rt_StrCpy(char *buffer, uint32_t buffer_size, const char *str)
+{
+    uint32_t length = 0;
+    
+    if(buffer_size)
+    {
+        length = k_rt_StrLen(str) + 1;
+        
+        if(length > buffer_size)
+        {
+            length = buffer_size;
+        }
+        
+        k_rt_CopyBytes(buffer, str, length - 1);
+        buffer[length - 1] = '\0';
+    }
+    
+    return length;
+}
+
 uint32_t k_rt_StrCat(char *buffer, uint32_t buffer_size, const char *str)
 {
     uint32_t length;

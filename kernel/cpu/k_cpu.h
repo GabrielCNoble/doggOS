@@ -48,4 +48,6 @@ extern void k_cpu_SwitchModes();
 
 extern uint32_t k_cpu_GetCPR();
 
+extern void k_cpu_MemFence();
+
 #endif

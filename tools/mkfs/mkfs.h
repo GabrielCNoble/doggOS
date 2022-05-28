@@ -21,4 +21,24 @@ struct k_fs_pup_node_t *find_node(uint8_t *disk_buffer, char *path, struct k_fs_
 
 void print_fs(uint8_t *disk_buffer);
 
+void parse_arg(char *cmd_str, uint32_t *cursor, char **arg_name, char **arg_value);
+
+int parse_cmd(char *cmd_str, uint32_t cmd_index);
+
+void create_image(uint32_t block_size, uint32_t block_count);
+
+void init_disk(void *disk_buffer, uint32_t disk_size);
+
+void clear_disk();
+
+void mount_image();
+
+void load_image(char *image_file);
+
+void save_image(char *image_file);
+
+void dir();
+
+void cd(char *path);
+
 #endif
