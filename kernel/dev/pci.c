@@ -1,9 +1,8 @@
 #include "pci.h"
-#include "../dev.h"
-#include "../../cpu/k_cpu.h"
-#include "../../sys/term.h"
-#include "../../mem/mem.h"
-#include "piix3/piix3.h"
+#include "../cpu/k_cpu.h"
+#include "../sys/term.h"
+#include "../mem/mem.h"
+#include "soc/piix3/piix3.h"
 #include <stddef.h>
 
 struct k_pci_config_reg_t k_pci_config_regs[] =
@@ -35,6 +34,13 @@ uint32_t k_pci_config_reg_masks[] =
     0xffffffff
 };
 
+/*
+    TODO: would be much better to not have this hardcoded here. One solution for this
+    would be something similar to the boot info data structure. A structure that contains
+    a list of pci devices supported. The chipset drivers then could be stored in a different
+    place. This struct could be passed to k_pci_Init.
+*/
+
 struct k_pci_device_info_t k_pci_devices[] = 
 {
     {
@@ -42,13 +48,6 @@ struct k_pci_device_info_t k_pci_devices[] =
         .vendor_id = 0x8086,
         .device_id = 0x7000,
         .init = k_PIIX3_Init,
-        // .funcs = (struct k_pci_func_info_t [])
-        // {
-        //     { .name = "PCI to ISA bridge",  .index = 0x00,                       .init = k_PIIX3_F0_Init },
-        //     { .name = "IDE interface",      .index = 0x01,                       .init = k_PIIX3_F1_Init },
-        //     { .name = "USB",                .index = 0x02,                       .init = k_PIIX3_F2_Init },
-        //     { .name = NULL,                 .index = K_PCI_MAX_DEVICE_FUNCTIONS, .init = NULL }
-        // }
     },
     {
         .vendor_id = K_PCI_INVALID_VENDOR_ID,
@@ -73,24 +72,6 @@ void k_pci_Init()
                 if(header.vendor_id == device_info->vendor_id && header.device_id == device_info->device_id)
                 {
                     device_info->init(0, device_index);
-                    // struct k_pci_func_info_t *func_info = device_info->funcs;
-
-                    // for(uint32_t function_index = 0; function_index < K_PCI_MAX_DEVICE_FUNCTIONS; function_index++)
-                    // {
-                    //     if(func_info->index == function_index)
-                    //     {
-                    //         struct k_pci_init_info_t init_info = {
-                    //             .device = device_info,
-                    //             .function = func_info,
-                    //             .header = &header
-                    //         }; 
-                    //         k_sys_TerminalPrintf("Device %x:%x, function %x (%s - %s)\n", device_info->vendor_id, device_info->device_id, func_info->index, device_info->name, func_info->name);
-                    // 
-                    //         // k_dev_RegisterDevice(func_info->init, &init_info);
-                    //         func_info++;
-                    //     }
-                    // }
-
                     break;
                 }
 

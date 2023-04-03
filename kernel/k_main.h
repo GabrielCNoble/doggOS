@@ -10,6 +10,8 @@
 // #include "dev/k_pci.h"
 // #include "int/int.h"
 
+uintptr_t k_MainThread(void *data);
+
 void k_main();
 
 #endif

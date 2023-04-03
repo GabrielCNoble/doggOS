@@ -1,7 +1,7 @@
 SRC := $(wildcard ./*.c) ./pup.c ./fs.c ./dsk.c ./ram.c
 
 OBJ := $(SRC:.c=.o)
-EXE := mkfs.out
+EXE := mkfs
 KERNEL_INC := "../../kernel"
 
 all: $(OBJ)

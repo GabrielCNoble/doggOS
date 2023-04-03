@@ -405,7 +405,7 @@ void k_proc_RunThread(struct k_proc_thread_t *thread)
     k_apic_StartTimer(0x1fff);
     if(thread->current_pmap != k_proc_page_map)
     {
-        asm volatile ("nop\n nop\n");
+        __asm__ volatile ("nop\n nop\n");
     }
 
     // k_sys_TerminalPrintf("run thread %x\n", thread);
@@ -448,7 +448,7 @@ void k_proc_RunThread(struct k_proc_thread_t *thread)
 void k_proc_SwitchToThread(struct k_proc_thread_t *thread)
 {
     k_proc_core_state.next_thread = thread;
-    asm volatile ("int 38");
+    __asm__ volatile ("int 38");
 }
 
 void k_proc_QueueReadyThread(struct k_proc_thread_t *thread)

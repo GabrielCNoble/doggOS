@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #include "../dsk/defs.h"
+#include "../dev/dsk.h"
 
 
 struct k_fs_vol_t;
@@ -77,10 +78,10 @@ struct k_fs_mbr_part_t
 /* FIXME: this should probably be part of the disk interface. */
 struct k_fs_part_t
 {
-    char                 name[24];
-    struct k_dsk_disk_t *disk;
-    uint32_t             first_block;
-    uint32_t             block_count;
+    char                        name[24];
+    struct k_dev_disk_t *       disk;
+    uint32_t                    first_block;
+    uint32_t                    block_count;
 };
 
 struct k_fs_vol_t

@@ -105,6 +105,50 @@ k_rt_Dec32Clamp:
     mov eax, ecx
     ret
 
+.global k_rt_AtomicOr32
+k_rt_AtomicOr32:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    mov ebx, dword ptr [ebp + 8]        /* location */
+    mov ecx, dword ptr [ebp + 12]       /* operand */
+    mov eax, dword ptr [ebx]
+    _atomic_or32_loop:
+        mov edx, eax
+        or edx, ecx
+        lock cmpxchg dword ptr [ebx], edx
+        jnz _atomic_or32_loop
+
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+
+.global k_rt_AtomicAnd32
+k_rt_AtomicAnd32:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    push edx
+    mov ebx, dword ptr [ebp + 8]        /* location */
+    mov ecx, dword ptr [ebp + 12]       /* operand */
+    mov eax, dword ptr [ebx]
+    _atomic_and32_loop:
+        mov edx, eax
+        and edx, ecx
+        lock cmpxchg dword ptr [ebx], edx
+        jnz _atomic_and32_loop
+
+    pop edx
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+
 .global k_rt_SpinLock
 k_rt_SpinLock:
     push ebp
@@ -119,7 +163,28 @@ k_rt_SpinLock:
         lea ebx, [eax + 1]
         lock cmpxchg dword ptr [ecx], ebx
         jnz _spinlock_loop
-    _spinlock_loop_exit:
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+
+.global k_rt_SpinLockCritical
+k_rt_SpinLockCritical:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    mov ecx, dword ptr [ebp + 8]        /* spinlock */
+    mov eax, dword ptr [ecx]
+    _spinlock_critical_loop:
+        sti
+        and eax, 0xfffffffe
+        lea ebx, [eax + 1]
+        cli
+        lock cmpxchg dword ptr [ecx], ebx
+        jnz _spinlock_critical_loop
     pop ecx
     pop ebx
     pop eax
@@ -169,6 +234,24 @@ k_rt_SpinUnlock:
     mov eax, dword ptr [ecx]
     and eax, 0xfffffffe
     xchg dword ptr [ecx], eax
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
+    ret
+
+.global k_rt_SpinUnlockCritical
+k_rt_SpinUnlockCritical:
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    push ecx
+    mov ecx, dword ptr [ebp + 8]        /* spinlock */
+    mov eax, dword ptr [ecx]
+    and eax, 0xfffffffe
+    xchg dword ptr [ecx], eax
+    sti
     pop ecx
     pop ebx
     pop eax

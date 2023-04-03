@@ -29,6 +29,12 @@ enum K_8042_CMDS
 
 };
 
+struct k_8042_funcs_t
+{
+    uint8_t (*ReadScancode)(struct k_dev_device_t *device);
+    uint8_t (*ReadStatus)(struct k_dev_device_t *device); 
+};
+
 // char k_8042_ReadChar();
 
 uint8_t k_8042_ReadScancode();

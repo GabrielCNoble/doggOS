@@ -2,7 +2,7 @@
 #define K_PCI_H
 
 #include <stdint.h>
-#include "../dev.h"
+#include "dev.h"
 
 #define K_PCI_CONFIG_ADDRESS 0x0cf8
 #define K_PCI_CONFIG_DATA 0x0cfc
@@ -260,9 +260,9 @@ struct k_pci_device_t
 
 struct k_pci_func_info_t
 {
-    char *name;
-    uint8_t index;
-    k_dev_init_func_t init;
+    char *              name;
+    uint8_t             index;
+    uint32_t          (*init_func)(uint8_t bus_index, uint8_t device_index);
 };
 
 struct k_pci_device_info_t

@@ -1,4 +1,4 @@
-GCC_FLAGS := -Wall -std=gnu99 -ffreestanding -lgcc -masm=intel
+GCC_FLAGS := -Wall -std=c17 -ffreestanding -lgcc -masm=intel
 GAS_FLAGS := -I "./"
 
 KERNEL_LDS := linker.ld

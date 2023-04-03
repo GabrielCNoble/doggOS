@@ -118,7 +118,7 @@ void *k_rt_QueuePop(struct k_rt_queue_t *queue)
 {
     void *item = NULL;
     // asm volatile ("cli\n hlt\n");
-    asm volatile ("nop\n nop\n");
+    __asm__ volatile ("nop\n nop\n");
     if(queue)
     {
         struct k_rt_queue_item_t *prev_head = queue->prev_head;

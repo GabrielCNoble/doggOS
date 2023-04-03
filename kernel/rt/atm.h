@@ -86,6 +86,10 @@ extern uint32_t k_rt_Dec32Clamp(uint32_t *location, uint32_t min, uint32_t *old)
 extern uint32_t k_rt_Add32(uint32_t *location, uint32_t value, uint32_t *old);
 
 
+
+extern uint32_t k_rt_AtomicOr32(uint32_t *location, uint32_t operand);
+
+extern uint32_t k_rt_AtomicAnd32(uint32_t *location, uint32_t operand);
 /*
 ====================
 k_rt_SpinLock:
@@ -94,6 +98,8 @@ k_rt_SpinLock:
 ====================
 */
 extern void k_rt_SpinLock(k_rt_spnl_t *lock);
+
+extern void k_rt_SpinLockCritical(k_rt_spnl_t *lock);
 
 /*
 ====================
@@ -116,6 +122,8 @@ k_rt_SpinUnlock:
 ====================
 */
 extern void k_rt_SpinUnlock(k_rt_spnl_t *lock);
+
+extern void k_rt_SpinUnlockCritical(k_rt_spnl_t *lock);
 
 
 

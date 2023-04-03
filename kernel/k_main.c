@@ -283,6 +283,11 @@ uintptr_t main_thread(void *data)
 
 extern void *k_kernel_end2;
 
+// uintptr_t k_MainThread(void *data)
+// {
+//     k_main();
+// }
+
 void k_main()
 {
     _Static_assert(sizeof(uintptr_t) == sizeof(uint32_t), "Size of uintptr_t doesn't match size of uint32_t");
@@ -308,7 +313,7 @@ void k_main()
     // k_cpu_Halt();
     struct k_proc_thread_t *shell_thread = k_proc_CreateKernelThread(k_sys_ShellMain, NULL);
     k_proc_RunScheduler();
-
+    
     return;
 }
 

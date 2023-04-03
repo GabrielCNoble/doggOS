@@ -1,33 +1,135 @@
 #include "dev.h"
 #include "../defs.h"
 #include "../mem/mem.h"
-#include "pci/pci.h"
-// #include "../k_term.h"
+#include "../rt/alloc.h"
+#include "../sys/term.h"
+#include "pci.h"
 #include "../cpu/k_cpu.h"
-// #include "drv/map.h"
+#include "../rt/string.h"
 #include <stddef.h>
-
-// uint8_t *k_device_mem = NULL;
-// uint32_t k_device_offset = 0;
+#include <stdalign.h>
 
 struct k_dev_device_t *k_dev_devices = NULL;
+struct k_dev_device_t *k_dev_last_device = NULL;
 uint32_t k_dev_device_count = 0;
 
 void k_dev_Init()
 {
     k_pci_Init();
-    // k_dev_devices = k_mem_alloc(sizeof(struct k_dev_device_t) * K_DEV_MAX_DEVICES, sizeof(struct k_dev_device_t));
-    // k_dev_enumerate_pci(0);
 }
 
-void k_dev_RegisterDevice(k_dev_init_func_t init_func, void *init_info)
+struct k_dev_device_t *k_dev_CreateDevice(struct k_dev_device_desc_t *device_desc)
 {
-    uint32_t return_code = init_func(init_info);
-    if(return_code == K_STATUS_OK)
+    struct k_dev_device_t *device = NULL;
+
+    if(device_desc != NULL && device_desc->device_size)
     {
-        // k_sys_TerminalPrintf("Device initialized succesfull!\n");
+        uint32_t device_size = (device_desc->device_size + sizeof(max_align_t) - 1) & (~(sizeof(max_align_t) - 1));    
+        struct k_dev_device_t *device = k_rt_Malloc(device_size, sizeof(max_align_t));
+        device->device_type = device_desc->device_type;
+        device->driver_func = device_desc->driver_func;
+        device->device_cond = 0;
+        device->device_status = K_DEV_DEVICE_STATUS_NOT_INITIALIZED;
+        k_rt_StrCpy(device->name, sizeof(device->name), device_desc->name);
+
+        if(!k_dev_devices)
+        {
+            k_dev_devices = device;
+        }
+        else
+        {
+            k_dev_last_device->next_device = device;
+            device->prev_device = k_dev_last_device;
+        }
+
+        k_dev_last_device = device;
+    }
+
+    return device;
+}
+
+void k_dev_StartDevices()
+{
+    struct k_dev_device_t *device = k_dev_devices;
+    k_sys_TerminalPrintf("Initializing devices...\n");
+    while(device != NULL)
+    {
+        k_dev_StartDevice(device);
+        k_dev_WaitDeviceInit(device);
+        k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
+        k_sys_TerminalPrintf("[%s] : ", device->name);
+
+        if(device->device_status != K_DEV_DEVICE_STATUS_READY)
+        {
+            k_sys_TerminalSetColor(K_SYS_TERM_COLOR_RED, K_SYS_TERM_COLOR_BLACK);
+            k_sys_TerminalPrintf("FAIL\n");
+        }
+        else
+        {
+            k_sys_TerminalSetColor(K_SYS_TERM_COLOR_GREEN, K_SYS_TERM_COLOR_BLACK);
+            k_sys_TerminalPrintf("READY\n");
+        }
+
+        device = device->next_device;
     }
 }
+
+void k_dev_StartDevice(struct k_dev_device_t *device)
+{
+    if(device != NULL && device->device_status == K_DEV_DEVICE_STATUS_NOT_INITIALIZED)
+    {
+        device->driver_thread = k_proc_CreateKernelThread(device->driver_func, device);
+    }
+}
+
+void k_dev_WaitDeviceInit(struct k_dev_device_t *device)
+{
+    if(device != NULL)
+    {
+        k_proc_WaitCondition(&device->device_cond);
+    }
+}
+
+void k_dev_ShutdownDevice(struct k_dev_device_t *device)
+{
+
+}
+
+void k_dev_DestroyDevice(struct k_dev_device_t *device)
+{
+    if(device && device->device_type != K_DEV_DEVICE_TYPE_LAST)
+    {
+        
+    }
+}
+
+void k_dev_DeviceInitFailed(struct k_dev_device_t *device)
+{
+    if(device != NULL)
+    {
+        device->device_status = K_DEV_DEVICE_STATUS_INIT_FAILED;
+        k_rt_SignalCondition(&device->device_cond);
+        k_proc_TerminateThread(0);
+    }
+}
+
+void k_dev_DeviceReady(struct k_dev_device_t *device)
+{
+    if(device != NULL)
+    {
+        device->device_status = K_DEV_DEVICE_STATUS_READY;
+        k_rt_SignalCondition(&device->device_cond);
+    }
+}
+
+// void k_dev_RegisterDevice(k_dev_init_func_t init_func, void *init_info)
+// {
+//     uint32_t return_code = init_func(init_info);
+//     if(return_code == K_STATUS_OK)
+//     {
+//         // k_sys_TerminalPrintf("Device initialized succesfull!\n");
+//     }
+// }
 
 // void k_dev_enumerate_pci(uint32_t bus)
 // {

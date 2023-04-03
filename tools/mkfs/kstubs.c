@@ -43,16 +43,36 @@ void k_rt_SpinLock(k_rt_spnl_t *lock)
     *lock = 1;
 }
 
+void k_rt_SpinLockCritical(k_rt_spnl_t *lock)
+{
+    k_rt_SpinLock(lock);
+}
+
 uint32_t k_rt_TrySpinLock(k_rt_spnl_t *lock)
 {
     *lock = 1;
     return 1;
 }
 
+void k_rt_SpinUnlock(k_rt_spnl_t *lock)
+{
+    *lock = 0;
+}
+
+void k_rt_SpinUnlockCritical(k_rt_spnl_t *lock)
+{
+    k_rt_SpinUnlock(lock);
+}
+
 uint32_t k_rt_CmpXchg(uintptr_t *location, uintptr_t cmp, uintptr_t new, uintptr_t *old)
 {
     if(*location == cmp)
     {
+        if(old != NULL)
+        {
+            *old = *location;
+        }
+
         *location = new;
         return 1;
     }
@@ -60,14 +80,39 @@ uint32_t k_rt_CmpXchg(uintptr_t *location, uintptr_t cmp, uintptr_t new, uintptr
     return 0;
 }
 
+uint32_t k_rt_CmpXchg32(uint32_t *location, uint32_t cmp, uint32_t new, uint32_t *old)
+{
+    if(*location == cmp)
+    {
+        if(old != NULL)
+        {
+            *old = *location;
+        }
+
+        *location = new;
+        return 1;
+    }
+
+    return 0;
+}
+
+uint32_t k_rt_AtomicOr32(uint32_t *location, uint32_t operand)
+{
+    uint32_t old = *location;
+    *location |= operand;
+    return old;
+}
+
+uint32_t k_rt_AtomicAnd32(uint32_t *location, uint32_t operand)
+{
+    uint32_t old = *location;
+    *location &= operand;
+    return old;
+}
+
 uint32_t k_rt_SpinWait(k_rt_spnl_t *lock)
 {
     return 1;
-}
-
-void k_rt_SpinUnlock(k_rt_spnl_t *lock)
-{
-    *lock = 0;
 }
 
 void k_rt_CopyBytes(void * restrict dst, const void * restrict src, size_t size)
@@ -125,6 +170,10 @@ void k_sys_TerminalPrintf(const char *fmt, ...)
     va_end(args);
 }
 
+void k_dev_DeviceReady(struct k_dev_device_t *device)
+{
+
+}
 // uint32_t k_dsk_Read(struct k_dsk_disk_t *disk, uint32_t start, uint32_t count, void *data)
 // {
 
