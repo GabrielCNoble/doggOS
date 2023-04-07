@@ -140,6 +140,11 @@ void k_fs_ReadVolumeBytes(struct k_fs_vol_t *volume, uint32_t block_size, uint32
     {
         k_dev_DiskRead(volume->partition.disk, read_start, size, buffer); 
     }
+    else
+    {
+        k_sys_TerminalPrintf("first block: %d, block count: %d, block size: %d\n", volume->partition.first_block, volume->partition.block_count, volume->partition.disk->block_size);
+        // k_sys_TerminalPrintf("trying to read past the end of disk! %d %d\n", read_start, disk_end);
+    }
 }
 
 void k_fs_ReadVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint32_t first_block, uint32_t block_count, void *buffer)

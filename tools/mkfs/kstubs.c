@@ -96,6 +96,22 @@ uint32_t k_rt_CmpXchg32(uint32_t *location, uint32_t cmp, uint32_t new, uint32_t
     return 0;
 }
 
+uint32_t k_rt_CmpXchg8(uint8_t *location, uint8_t cmp, uint8_t new, uint8_t *old)
+{
+    if(*location == cmp)
+    {
+        if(old != NULL)
+        {
+            *old = *location;
+        }
+
+        *location = new;
+        return 1;
+    }
+
+    return 0;
+}
+
 uint32_t k_rt_AtomicOr32(uint32_t *location, uint32_t operand)
 {
     uint32_t old = *location;
@@ -110,6 +126,11 @@ uint32_t k_rt_AtomicAnd32(uint32_t *location, uint32_t operand)
     return old;
 }
 
+void k_rt_SignalCondition(k_rt_cond_t *condition)
+{
+    *condition = 1;
+}
+
 uint32_t k_rt_SpinWait(k_rt_spnl_t *lock)
 {
     return 1;
@@ -118,6 +139,11 @@ uint32_t k_rt_SpinWait(k_rt_spnl_t *lock)
 void k_rt_CopyBytes(void * restrict dst, const void * restrict src, size_t size)
 {
     memcpy(dst, src, size);
+}
+
+void k_rt_SetBytes(void * restrict dst, size_t size, uint32_t value)
+{
+    memset(dst, value, size);
 }
 
 int32_t k_rt_StrCmp(const char *str0, const char *str1)
@@ -169,6 +195,13 @@ void k_sys_TerminalPrintf(const char *fmt, ...)
     vprintf(fmt, args);
     va_end(args);
 }
+
+void k_sys_RaiseException(uint32_t exception)
+{
+
+}
+
+
 
 void k_dev_DeviceReady(struct k_dev_device_t *device)
 {

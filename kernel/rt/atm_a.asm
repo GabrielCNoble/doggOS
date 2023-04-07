@@ -35,9 +35,32 @@ k_rt_CmpXchg32:
     setz al
     movzx eax, al
     cmp ebx, 0
-    je _skip_old_value
+    je k_rt_cmpxchg32_skip_old_value
     mov dword ptr [ebx], ecx
-    _skip_old_value:
+    k_rt_cmpxchg32_skip_old_value:
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+
+.global k_rt_CmpXchg8
+k_rt_CmpXchg8:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    mov ebx, dword ptr [ebp + 8]         /* location */
+    mov ecx, dword ptr [ebp + 16]        /* new value */
+    mov eax, dword ptr [ebp + 12]        /* cmp value */
+    lock cmpxchg byte ptr [ebx], cl
+    mov ebx, dword ptr [ebp + 20]        /* old value */
+    mov cl, al
+    setz al
+    movzx eax, al
+    cmp ebx, 0
+    je k_rt_cmpxchg8_skip_old_value
+    mov byte ptr [ebx], cl
+    k_rt_cmpxchg8_skip_old_value:
     pop ecx
     pop ebx
     pop ebp

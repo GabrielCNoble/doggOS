@@ -5,6 +5,6 @@
 #define K_VERSION_MINOR 0
 #define K_VERSION_PATCH 0
 
-#define K_VERSION_BUILD 3526
+#define K_VERSION_BUILD 3751
 
 #endif

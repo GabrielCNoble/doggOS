@@ -2,6 +2,7 @@
 #include "../k_main.h"
 #include <stddef.h>
 #include "../../version/version.h"
+#include "../dev/dsk.h"
 
 extern struct k_mem_vrlist_t k_mem_virtual_ranges;
 

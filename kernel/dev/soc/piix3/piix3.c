@@ -22,6 +22,19 @@
 // #include "../../../sys/term.h"
 
 
+/* IDE interface */
+// struct k_io_stream_t *k_PIIX3_IDE_stream;
+extern void *k_PIIX3_IDE_Handler_a;
+
+// uint32_t K_PIIX3_IDE_total_transferred;
+struct k_dsk_cmd_t *k_PIIX3_IDE_current_cmd;
+// struct k_dsk_disk_t *k_PIIX3_IDE_disk;
+/* TODO: this shouldn't be a global... */
+struct k_dev_disk_t *k_PIIX3_IDE_disk;
+struct k_ide_cmd_state_t k_PIIX3_IDE_cmd_state;
+// struct k_ide_device_t k_PIIX3_IDE_device;
+
+
 uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index)
 {    
     // k_PIIX3_ISA_Init(bus_index, device_index, K_PIIX3_PCI_TO_ISA_FUNCTION_INDEX);
@@ -34,7 +47,13 @@ uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index)
         .name        = "PIIX3 IDE Interface" 
     };
 
-    k_dev_CreateDevice(&disk_def);
+    k_PIIX3_IDE_disk = k_dev_CreateDevice(&disk_def);
+    // k_PIIX3_IDE_disk->type = K_DEV_DSK_TYPE_DISK;
+    // k_PIIX3_IDE_disk->block_size = 512;
+    // k_PIIX3_IDE_disk->
+    // k_cpu_DisableInterrupts();
+    // k_cpu_Halt();
+
 
 
 
@@ -53,19 +72,6 @@ uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index)
     return K_STATUS_OK;
 }
 
-
-
-/* IDE interface */
-// struct k_io_stream_t *k_PIIX3_IDE_stream;
-extern void *k_PIIX3_IDE_Handler_a;
-
-// uint32_t K_PIIX3_IDE_total_transferred;
-struct k_dsk_cmd_t *k_PIIX3_IDE_current_cmd;
-// struct k_dsk_disk_t *k_PIIX3_IDE_disk;
-/* TODO: this shouldn't be a global... */
-struct k_dev_disk_t *k_PIIX3_IDE_disk;
-struct k_ide_cmd_state_t k_PIIX3_IDE_cmd_state;
-// struct k_ide_device_t k_PIIX3_IDE_device;
 
 // uint32_t k_PIIX3_IDE_Init(uint8_t bus_index, uint8_t device_index, uint8_t function_index)
 // {
@@ -212,6 +218,8 @@ void k_PIIX3_IDE_Handler()
     // struct k_dsk_cmd_t *cmd = k_PIIX3_IDE_current_cmd;
     struct k_ide_cmd_state_t *cmd_state = (struct k_ide_cmd_state_t *)k_PIIX3_IDE_disk->data;
     struct k_dev_dsk_cmd_t *cmd = cmd_state->cur_cmd;
+
+    
     
     
     // uint16_t temp_data[32];
@@ -225,6 +233,7 @@ void k_PIIX3_IDE_Handler()
     else
     {        
         uint32_t available_bytes = k_PIIX3_IDE_disk->block_size;
+        // k_cpu_Halt();
         // k_sys_TerminalPrintf("available_bytes: %d\n", available_bytes); 
         switch(cmd->type)
         {
@@ -298,6 +307,7 @@ void k_PIIX3_IDE_Handler()
 
                     available_bytes -= word_count * sizeof(uint16_t);
                     
+                    
                     if(cmd_state->skip_count & 0x1)
                     {
                         /* address is not word aligned, so we'll read a word here and discard the first half */
@@ -345,7 +355,7 @@ void k_PIIX3_IDE_Handler()
                         /* Cool, fast(er) aligned copy */
                         uint16_t *buffer = (uint16_t *)((uint8_t *)cmd->buffer + cmd->address);
                         k_cpu_InSW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA, buffer, copy_size);
-                        cmd->address += copy_size * sizeof(uint16_t);
+                        cmd->address += copy_size * sizeof(uint16_t);                    
                     }
                     
                     available_bytes -= copy_size * sizeof(uint16_t);
@@ -387,6 +397,8 @@ void k_PIIX3_IDE_Handler()
 
 uintptr_t k_PIIX3_IDE_Thread(void *data)
 {
+    // k_cpu_DisableInterrupts();
+    // k_cpu_Halt();
     struct k_dev_disk_t *disk = (struct k_dev_disk_t *)data;
 
     struct k_dev_dsk_cmd_t id_cmd = {};
@@ -398,18 +410,16 @@ uintptr_t k_PIIX3_IDE_Thread(void *data)
 
     k_int_SetInterruptHandler(K_PIIX3_IDE_IRQ_VECTOR, (uintptr_t)&k_PIIX3_IDE_Handler_a, K_CPU_SEG_SEL(6, 3, 0), 3);
 
+
     struct k_dev_disk_t temp_disk = {
         .block_size = 512,
         .data = &k_PIIX3_IDE_cmd_state
     };
 
     k_PIIX3_IDE_disk = &temp_disk;
-
-    // k_cpu_EnableInterrupts();
+    
     k_PIIX3_IDE_Identify(&id_cmd);
     k_proc_WaitCondition(&id_cmd.condition);
-    // while(!id_cmd.condition);
-    // k_cpu_DisableInterrupts();
     
     uint32_t lba_sector_count = (((uint32_t)ide_info.lba_sector_count[0]) << 16) | ((uint32_t)ide_info.lba_sector_count[1]);
 
@@ -420,20 +430,12 @@ uintptr_t k_PIIX3_IDE_Thread(void *data)
     disk->write = NULL;
     disk->clear = NULL;
     disk->type = K_DEV_DSK_TYPE_DISK;
+    disk->data = &k_PIIX3_IDE_cmd_state;
 
-    // struct k_dev_disk_def_t disk_def = {
-    //     .block_size = ide_info.bytes_per_sector,
-    //     .block_count = lba_sector_count,
-    //     .start_address = 0,
-    //     .read = k_PIIX3_IDE_Read,
-    //     .write = NULL,
-    //     .clear = NULL,
-    //     .type = K_DEV_DSK_TYPE_DISK
-    // };
+    k_sys_TerminalPrintf("disk has %d blocks of %d bytes\n", disk->block_count, disk->block_size);
+    k_sys_TerminalPrintf("extra: %d\n", ide_info.valid_extra);
 
-    // disk->def = disk_def;
-    // k_PIIX3_IDE_disk = k_dsk_CreateDisk(&disk_def);
-    // k_PIIX3_IDE_disk->data = &k_PIIX3_IDE_cmd_state;
+    k_PIIX3_IDE_disk = disk;
 
     struct k_ide_cmd_state_t *cmd_state = (struct k_ide_cmd_state_t *)k_PIIX3_IDE_disk->data;
     cmd_state->cur_cmd = NULL;

@@ -20,6 +20,7 @@ char *k_sys_exception_codes[] =
     [K_EXCEPTION_INVALID_OPCODE] = "INVALID OPCODE EXCEPTION",
     [K_EXCEPTION_PAGE_FAULT] = "PAGE FAULT",
     [K_EXCEPTION_DIVISION_BY_ZERO] = "DIVIDE ERROR FAULT",
+    [K_EXCEPTION_FAILED_MEMORY_ALLOCATION] = "FAILED MEMORY ALLOCATION",
     [K_EXCEPTION_UNKNOWN] = "UNKNOWN EXCEPTION",
 };
 
@@ -136,6 +137,11 @@ void k_sys_Init()
 {
     k_int_SetInterruptHandler(K_SYS_SYSCALL_IRQ_VECTOR, (uintptr_t)&k_sys_SysCall_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);
     k_sys_TerminalInit();
+}
+
+void k_sys_RaiseException(uint32_t exception)
+{
+
 }
 
 void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)

@@ -32,7 +32,7 @@ extern void *k_share_start;
 extern void *k_share_end;
 
 // extern struct k_io_stream_t *k_PIIX3_IDE_stream;
-extern struct k_dsk_disk_t *k_PIIX3_IDE_disk;
+extern struct k_dev_disk_t *k_PIIX3_IDE_disk;
 extern struct k_dsk_disk_t *k_dsk_disks;
 
 void k_sys_Crash()
@@ -58,24 +58,38 @@ uintptr_t k_sys_ShellMain(void *data)
     char keyboard_buffer[512];
     char current_path[512];
 
-    k_sys_TerminalClear();
+    // k_sys_TerminalClear();
     k_dev_StartDevices();
+    
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
     k_sys_TerminalPrintf("Initializing root shell...\n");
     // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
+
+    // k_sys_TerminalPrintf("%d %d %d %d %d %d\n", offsetof(struct k_fs_pup_node_t, contents), 
+    //                                              offsetof(struct k_fs_pup_node_t, left),
+    //                                              offsetof(struct k_fs_pup_node_t, right),
+    //                                              offsetof(struct k_fs_pup_node_t, type),
+    //                                              offsetof(struct k_fs_pup_node_t, flags),
+    //                                              sizeof(struct k_fs_pup_node_t));
 
     struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
     current_process->terminal = k_io_AllocStream();
     k_io_UnblockStream(current_process->terminal);
 
-    k_sys_TerminalPrintf("blah...\n");
+    // k_sys_TerminalPrintf("blah...\n");
+
+    // char buffer[] = "abcdefgh";
+
+    // k_rt_SetBytes(buffer, 6, 'z');
+
+    // k_sys_TerminalPrintf("%s\n", buffer);
     
-    // struct k_fs_part_t partition = {.first_block = 172, .block_count = 1024, .disk = k_PIIX3_IDE_disk};
-    // struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
+    struct k_fs_part_t partition = {.first_block = 172, .block_count = 512, .disk = k_PIIX3_IDE_disk};
     
-    // struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, "/", K_FS_PUP_NULL_LINK, NULL);
+    struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
+    struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, "/", K_FS_PUP_NULL_LINK);
     // struct k_fs_pup_node_t *root_node = k_fs_PupGetNode(pup_volume, cur_dir_node, NULL);
-    // k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
+    k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
     
 
     while(1)
@@ -166,35 +180,31 @@ uintptr_t k_sys_ShellMain(void *data)
             
         //     k_sys_TerminalPrintf("\n");
         // }
-        // else if(k_rt_StrStr(keyboard_buffer, "cd") == &keyboard_buffer[0])
-        // {
-        //     uint32_t index = 0;
+        else if(k_rt_StrStr(keyboard_buffer, "cd") == &keyboard_buffer[0])
+        {
+            uint32_t index = 0;
             
-        //     while(keyboard_buffer[index] != ' ' && keyboard_buffer[index] != '\0')
-        //     {
-        //         index++;
-        //     }
+            while(keyboard_buffer[index] != ' ' && keyboard_buffer[index] != '\0')
+            {
+                index++;
+            }
+        
             
-        //     while(keyboard_buffer[index] == ' ' && keyboard_buffer[index] != '\0')
-        //     {
-        //         index++;
-        //     }
-            
-        //     if(keyboard_buffer[index])
-        //     {
-        //         struct k_fs_pup_link_t node = k_fs_PupFindNode(pup_volume, keyboard_buffer + index, cur_dir_node, NULL);
+            if(keyboard_buffer[index])
+            {
+                struct k_fs_pup_link_t node = k_fs_PupFindNode(pup_volume, keyboard_buffer + index, cur_dir_node);
                 
-        //         if(node.link)
-        //         {
-        //             cur_dir_node = node;
-        //             k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
-        //         }
-        //         else
-        //         {
-        //             k_sys_TerminalPrintf("%s: no such file or directory\n", keyboard_buffer + index);
-        //         }
-        //     }
-        // }
+                if(node.link)
+                {
+                    cur_dir_node = node;
+                    k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
+                }
+                else
+                {
+                    k_sys_TerminalPrintf("%s: no such file or directory\n", keyboard_buffer + index);
+                }
+            }
+        }
         // else if(k_rt_StrStr(keyboard_buffer, "mkdir") == &keyboard_buffer[0])
         // {
         //     struct k_fs_pup_link_t node = k_fs_PupAllocNode(pup_volume, K_FS_PUP_NODE_TYPE_DIR);

@@ -29,7 +29,7 @@ enum CMDS
     CMD_CD,
     CMD_DIR,
     CMD_SAVE,
-    // CMD_MKDIR,
+    CMD_MKDIR,
     CMD_QUIT,
     CMD_TREE,
     // CMD_HELP,
@@ -89,6 +89,9 @@ struct cmd_t cmds[] = {
     },
     [CMD_DIR] = {
         .name = "dir",
+    },
+    [CMD_MKDIR] = {
+        .name = "mkdir"
     },
     [CMD_QUIT] = {
         .name = "quit",
@@ -522,13 +525,16 @@ int parse_cmd(char *cmd_str, uint32_t cmd_index)
         return CMD_LAST;
     }
 
-    if(cmd_str[0] != '-')
+    if(!interactive)
     {
-        error("Unknown command [%s] at position %d", cmd_str, cmd_index);
-        return cur_cmd;
-    }
+        if(cmd_str[0] != '-')
+        {
+            error("Unknown command [%s] at position %d", cmd_str, cmd_index);
+            return cur_cmd;
+        }
 
-    cmd_str++;
+        cmd_str++;   
+    }
 
     for(uint32_t cmd_index = 0; cmd_index < CMD_LAST; cmd_index++)
     {
@@ -624,13 +630,69 @@ int parse_cmd(char *cmd_str, uint32_t cmd_index)
 
             parse_arg(cmd_str, &cursor, &arg_name, &arg_value);
 
-            if(!arg_name || !arg_value || strcmp(arg_name, "path"))
+            if(interactive)
             {
-                break;
-            }
+                if(arg_name == NULL)
+                {
+                    break;
+                }
 
-            path = arg_value;
+                if(arg_value == NULL)
+                {
+                    path = arg_name;
+                }
+                else
+                {
+                    path = arg_value;
+                }
+            }
+            else
+            {
+                if(!arg_name || !arg_value || strcmp(arg_name, "path"))
+                {
+                    break;
+                }
+
+                path = arg_value;
+            }
+            
             cd(path);
+        }
+        break;
+
+        case CMD_MKDIR:
+        {
+            char *path = NULL;
+
+            parse_arg(cmd_str, &cursor, &arg_name, &arg_value);
+
+            if(interactive)
+            {
+                if(arg_name == NULL)
+                {
+                    break;
+                }
+
+                if(arg_value == NULL)
+                {
+                    path = arg_name;
+                }
+                else
+                {
+                    path = arg_value;
+                }
+            }
+            else
+            {
+                if(!arg_name || !arg_value || strcmp(arg_name, "name"))
+                {
+                    break;
+                }
+
+                path = arg_value;
+            }
+            
+            mkdir(path);
         }
         break;
 
@@ -771,6 +833,7 @@ void save_image(char *image_file)
         return;
     }
 
+    k_fs_PupUnmountVolume(volume);
     fwrite((void *)ram_disk.start_address, ram_disk.block_size, ram_disk.block_count, file);
     fclose(file);
 }
@@ -779,9 +842,11 @@ void dir()
 {
     if(volume)
     {
-        // struct k_fs_pup_link_t node = k_fs_PupFindNode(volume, "/", K_FS_PUP_NULL_LINK, NULL);
+        struct k_fs_pup_link_t node = k_fs_PupFindNode(volume, "/", K_FS_PUP_NULL_LINK);
         // struct k_fs_pup_dirlist_t *dir_list = k_fs_PupGetNodeDirList(volume, "/", cur_dir);
         printf("contents of directory [%s]\n", cur_path);
+
+
 
         // if(dir_list)
         // {
@@ -802,8 +867,29 @@ void cd(char *path)
 {
     if(volume)
     {
-        cur_dir = k_fs_PupFindNode(volume, path, cur_dir, NULL);
-        k_fs_PupGetPathToNode(volume, cur_dir, cur_path, sizeof(cur_path));
+        struct k_fs_pup_link_t new_dir = k_fs_PupFindNode(volume, path, cur_dir);
+        if(new_dir.link != 0)
+        {
+            cur_dir = new_dir;
+            k_fs_PupGetPathToNode(volume, cur_dir, cur_path, sizeof(cur_path));
+        }
+        else
+        {
+            error("No directory named [%s]!", path);
+        }        
+    }
+    else
+    {
+        error("No file system mounted!");
+    }
+}
+
+void mkdir(char *path)
+{
+    if(volume)
+    {
+        struct k_fs_pup_link_t new_node = k_fs_PupAddNode(volume, cur_dir, "/", path, K_FS_PUP_NODE_TYPE_DIR);
+        printf("new node: %d\n", new_node.link);
     }
     else
     {
@@ -813,88 +899,95 @@ void cd(char *path)
 
 void tree(uint8_t *disk_buffer)
 {
-    if(volume)
-    {
-        struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
-        // struct k_fs_pup_centry_t *entry = k_fs_PupAllocCacheEntry(pup_volume);
-        struct k_fs_pup_centry_t *entry = k_fs_PupLoadEntry(volume, K_FS_PUP_NODE_BLOCK(pup_volume->root.root_node), 1, NULL);
-        struct k_fs_pup_node_t *root_node = k_fs_PupGetNode(volume, pup_volume->root.root_node, entry);
-        struct k_fs_pup_dirent_t dir_entry = {
-            .link = pup_volume->root.root_node,
-            .left = 0xff,
-            .right = 0xff,
-            .name = "root"
-        };
-
-        print_node_contents(NULL, &dir_entry, 0);
-
-        k_fs_PupReleaseEntry(entry);
-        // print_node(root_node, 0);
-    }
-    else
-    {
-        error("No file system mounted!");
-    }
-}
-
-void print_node_contents(struct k_fs_pup_content_t *content, struct k_fs_pup_dirent_t *entry, uint32_t depth)
-{
-    // if(entry->left & entry->right == 0xff)
+    // if(volume)
     // {
-    //     if(entry->link.link != 0)
-    //     {
-    //         // content = (struct k_fs_pup_content_t *)(disk_buffer + entry->link.link * K_FS_PUP_LOGICAL_BLOCK_SIZE);
-    //         // struct k_fs_pup_centry_t *content_entry = k_fs_PupGetBlock(volume, NULL, entry->link);
-    //         content = k_fs_PupGetBlock(volume, NULL, entry->link);
-    //         entry = &content->dir_entries[0];
-    //         print_node_contents(content, entry, depth);    
-    //     }
-    //     return;
+    //     struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
+    //     // struct k_fs_pup_centry_t *entry = k_fs_PupAllocCacheEntry(pup_volume);
+    //     struct k_fs_pup_centry_t *entry = k_fs_PupLoadEntry(volume, K_FS_PUP_NODE_BLOCK(pup_volume->root.root_node), 1, NULL);
+    //     struct k_fs_pup_node_t *root_node = k_fs_PupGetNode(volume, pup_volume->root.root_node, entry);
+    //     struct k_fs_pup_dirent_t dir_entry = {
+    //         .link = pup_volume->root.root_node,
+    //         .left = 0xff,
+    //         .right = 0xff,
+    //         .name = "root"
+    //     };
+
+    //     print_node_contents(NULL, &dir_entry, 0);
+
+    //     k_fs_PupReleaseEntry(entry);
+    //     // print_node(root_node, 0);
     // }
-
-    if(entry->left != 0xff)
-    {
-        print_node_contents(content, &content->dir_entries[entry->left], depth);
-    }
-
-    for(uint32_t depth_index = 0; depth_index < depth; depth_index++)
-    {
-        putchar(' ');
-    }
-    
-    putchar('|');
-    putchar('-');
-    
-    printf("%s\n", entry->name);
-    struct k_fs_pup_centry_t *node_entry = k_fs_PupLoadEntry(volume, K_FS_PUP_NODE_BLOCK(entry->link), 1, NULL);
-    struct k_fs_pup_node_t *node = k_fs_PupGetNode(volume, entry->link, node_entry);
-    print_node(node, depth + 1);
-    k_fs_PupReleaseEntry(node_entry);
-
-    if(entry->right != 0xff)
-    {
-        print_node_contents(content, &content->dir_entries[entry->right], depth);
-    }
+    // else
+    // {
+    //     error("No file system mounted!");
+    // }
 }
+
+// void print_node_contents(union k_fs_pup_content_t *content, struct k_fs_pup_dirent_t *entry, uint32_t depth)
+// {
+//     // // if(entry->left & entry->right == 0xff)
+//     // // {
+//     // //     if(entry->link.link != 0)
+//     // //     {
+//     // //         // content = (struct k_fs_pup_content_t *)(disk_buffer + entry->link.link * K_FS_PUP_LOGICAL_BLOCK_SIZE);
+//     // //         // struct k_fs_pup_centry_t *content_entry = k_fs_PupGetBlock(volume, NULL, entry->link);
+//     // //         content = k_fs_PupGetBlock(volume, NULL, entry->link);
+//     // //         entry = &content->dir_entries[0];
+//     // //         print_node_contents(content, entry, depth);    
+//     // //     }
+//     // //     return;
+//     // // }
+
+//     // if(entry->left != 0xff)
+//     // {
+//     //     print_node_contents(content, &content->dir_entries[entry->left], depth);
+//     // }
+
+//     // for(uint32_t depth_index = 0; depth_index < depth; depth_index++)
+//     // {
+//     //     putchar(' ');
+//     // }
+    
+//     // putchar('|');
+//     // putchar('-');
+    
+//     // printf("%s\n", entry->name);
+//     // struct k_fs_pup_centry_t *node_entry = k_fs_PupLoadEntry(volume, K_FS_PUP_NODE_BLOCK(entry->link), 1, NULL);
+//     // struct k_fs_pup_node_t *node = k_fs_PupGetNode(volume, entry->link, node_entry);
+//     // print_node(node, depth + 1);
+//     // k_fs_PupReleaseEntry(node_entry);
+
+//     // if(entry->right != 0xff)
+//     // {
+//     //     print_node_contents(content, &content->dir_entries[entry->right], depth);
+//     // }
+// }
 
 void print_node(struct k_fs_pup_node_t *node, uint32_t depth)
 {
-    if(node != NULL && node->type == K_FS_PUP_NODE_TYPE_DIR)
-    {
-        if(node->contents.link != 0)
-        {
-            struct k_fs_pup_centry_t *entry = k_fs_PupLoadEntry(volume, node->contents.link, 1, NULL);
-            struct k_fs_pup_content_t *content = k_fs_PupGetBlock(volume, entry, node->contents);
-            print_node_contents(content, &content->dir_entries[0], depth);
-            k_fs_PupReleaseEntry(entry);
-        }
-    }
+    // if(node != NULL && node->type == K_FS_PUP_NODE_TYPE_DIR)
+    // {
+    //     if(node->contents.link != 0)
+    //     {
+    //         struct k_fs_pup_centry_t *entry = k_fs_PupLoadEntry(volume, node->contents.link, 1, NULL);
+    //         struct k_fs_pup_content_t *content = k_fs_PupGetBlock(volume, entry, node->contents);
+    //         print_node_contents(content, &content->dir_entries[0], depth);
+    //         k_fs_PupReleaseEntry(entry);
+    //     }
+    // }
 }
 
 int main(int argc, char *argv[])
 {
     if(argc > 1)
     {
+        // k_sys_TerminalPrintf("%d %d %d %d %d %d\n", offsetof(struct k_fs_pup_node_t, contents), 
+        //                                          offsetof(struct k_fs_pup_node_t, left),
+        //                                          offsetof(struct k_fs_pup_node_t, right),
+        //                                          offsetof(struct k_fs_pup_node_t, type),
+        //                                          offsetof(struct k_fs_pup_node_t, flags),
+        //                                          sizeof(struct k_fs_pup_node_t));
+
         uint32_t cur_cmd = CMD_LAST;
         uint32_t cmd_index = 0;
         char *cmd_str_buffer = calloc(1, 0xffff);

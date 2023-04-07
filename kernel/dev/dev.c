@@ -3,6 +3,7 @@
 #include "../mem/mem.h"
 #include "../rt/alloc.h"
 #include "../sys/term.h"
+#include "dsk.h"
 #include "pci.h"
 #include "../cpu/k_cpu.h"
 #include "../rt/string.h"
@@ -25,7 +26,7 @@ struct k_dev_device_t *k_dev_CreateDevice(struct k_dev_device_desc_t *device_des
     if(device_desc != NULL && device_desc->device_size)
     {
         uint32_t device_size = (device_desc->device_size + sizeof(max_align_t) - 1) & (~(sizeof(max_align_t) - 1));    
-        struct k_dev_device_t *device = k_rt_Malloc(device_size, sizeof(max_align_t));
+        device = k_rt_Malloc(device_size, sizeof(max_align_t));
         device->device_type = device_desc->device_type;
         device->driver_func = device_desc->driver_func;
         device->device_cond = 0;
@@ -48,10 +49,13 @@ struct k_dev_device_t *k_dev_CreateDevice(struct k_dev_device_desc_t *device_des
     return device;
 }
 
+extern struct k_dev_disk_t *k_PIIX3_IDE_disk;
+
 void k_dev_StartDevices()
 {
     struct k_dev_device_t *device = k_dev_devices;
     k_sys_TerminalPrintf("Initializing devices...\n");
+    // k_cpu_DisableInterrupts();
     while(device != NULL)
     {
         k_dev_StartDevice(device);
@@ -71,7 +75,7 @@ void k_dev_StartDevices()
         }
 
         device = device->next_device;
-    }
+    }    
 }
 
 void k_dev_StartDevice(struct k_dev_device_t *device)

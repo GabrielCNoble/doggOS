@@ -59,6 +59,7 @@ void k_dev_EnqueueDiskCmd(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd
 
 uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint32_t start, uint32_t count, void *data)
 {
+    // k_sys_TerminalPrintf("%x %d\n", disk, disk->type);
     switch(disk->type)
     {
         case K_DEV_DSK_TYPE_RAM:
@@ -73,8 +74,7 @@ uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint32_t start, uint32_t coun
 
         case K_DEV_DSK_TYPE_DISK:
         {
-            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd();
-    
+            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd();   
             cmd->type = K_DEV_DSK_CMD_TYPE_READ;
             cmd->buffer = data;
             cmd->address = start;
@@ -168,9 +168,9 @@ uint32_t k_dev_DiskWriteStream(struct k_io_stream_t *stream)
 
 uintptr_t k_dev_DiskThread(void *data)
 {
+    struct k_dev_disk_t *disk = (struct k_dev_disk_t *)data;
     k_dev_DeviceReady((struct k_dev_device_t *)data);
 
-    struct k_dev_disk_t *disk = (struct k_dev_disk_t *)data;
     uint32_t index = 0;
     while(1)
     {
