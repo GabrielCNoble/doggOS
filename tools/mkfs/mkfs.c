@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <dirent.h>
 #include "mkfs.h"
 
 // #include "fs/defs.h"
@@ -30,6 +31,7 @@ enum CMDS
     CMD_DIR,
     CMD_SAVE,
     CMD_MKDIR,
+    CMD_MAKE_FROM,
     CMD_QUIT,
     CMD_TREE,
     // CMD_HELP,
@@ -92,6 +94,9 @@ struct cmd_t cmds[] = {
     },
     [CMD_MKDIR] = {
         .name = "mkdir"
+    },
+    [CMD_MAKE_FROM] = {
+        .name = "mkfrom"
     },
     [CMD_QUIT] = {
         .name = "quit",
@@ -696,6 +701,42 @@ int parse_cmd(char *cmd_str, uint32_t cmd_index)
         }
         break;
 
+        case CMD_MAKE_FROM:
+        {
+            char *path = NULL;
+
+            parse_arg(cmd_str, &cursor, &arg_name, &arg_value);
+
+            if(interactive)
+            {
+                if(arg_name == NULL)
+                {
+                    break;
+                }
+
+                if(arg_value == NULL)
+                {
+                    path = arg_name;
+                }
+                else
+                {
+                    path = arg_value;
+                }
+            }
+            else
+            {
+                if(!arg_name || !arg_value || strcmp(arg_name, "path"))
+                {
+                    break;
+                }
+
+                path = arg_value;
+            }
+            
+            mkfrom(path);
+        }
+        break;
+
         case CMD_TREE:
             tree();
         break;
@@ -895,6 +936,11 @@ void mkdir(char *path)
     {
         error("No file system mounted!");
     }
+}
+
+void mkfrom(char *path)
+{
+    
 }
 
 void tree(uint8_t *disk_buffer)

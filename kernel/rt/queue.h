@@ -24,11 +24,11 @@ union k_rt_queue_page_t
 
 struct k_rt_queue_t
 {
-    uint32_t alloc_count;
-    uint32_t free_count;
-    struct k_rt_queue_item_t *free_items;
-    struct k_rt_queue_item_t *prev_head;
-    struct k_rt_queue_item_t *tail;
+    uint32_t                    alloc_count;
+    uint32_t                    free_count;
+    struct k_rt_queue_item_t *  free_items;
+    struct k_rt_queue_item_t *  prev_head;
+    struct k_rt_queue_item_t *  tail;
 };
 
 struct k_rt_queue_t k_rt_QueueCreate();

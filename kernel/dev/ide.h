@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 // #include "../../dsk/defs.h"
-#include "../dsk.h"
-#include "../dev.h"
+#include "dsk.h"
+#include "dev.h"
 
 enum K_IDE_CMD_REGS
 {
@@ -102,28 +102,49 @@ struct k_ide_info_t
     uint16_t reserved[97];
 };
 
-// struct k_ide_device_t
-// {
-//     uint16_t    (*read_reg)(uint8_t reg);
-//     void        (*write_reg)(uint8_t reg, uint8_t value);
-// };
+/* forward declaration */
+struct k_dev_ide_disk_t;
 
-struct k_ide_state_t
+struct k_dev_ide_funcs_t
 {
-    uint16_t    (*ReadReg)(struct k_dev_device_t *device, uint8_t reg);
-    void        (*WriteReg)(struct k_dev_device_t *device, uint16_t value);
+    uint8_t     (*ReadReg8)(struct k_dev_ide_disk_t *device, uint8_t reg);
+    uint16_t    (*ReadReg16)(struct k_dev_ide_disk_t *device, uint8_t reg);
+    void        (*WriteReg8)(struct k_dev_ide_disk_t *device, uint8_t reg, uint8_t value);
+    void        (*WriteReg16)(struct k_dev_ide_disk_t *device, uint8_t reg, uint16_t value);
 };
 
-struct k_ide_cmd_state_t
+struct k_dev_dsk_ide_cmd_t
 {
-    struct k_dev_dsk_cmd_t *    cur_cmd;
+    struct k_dev_dsk_cmd_t      cmd;
+    /* used to signal a partial transfer is complete and a new command
+    needs to be issued */
+    k_rt_cond_t                 transfer_condition;
     uint16_t                    skip_count;
     uint16_t                    align;
+    uint16_t                    sector_count;
 };
 
-// uint8_t k_IDE_ReadStatus(struct k_dev_device_t *device);
+struct k_dev_ide_state_t
+{
+    struct k_dev_dsk_ide_cmd_t *    cmd;
+    struct k_dev_ide_funcs_t        funcs;
+};
 
-// void k_IDE_ExecCmd(struct k_dev_device_t *device, uint8_t cmd);
+struct k_dev_ide_disk_t
+{
+    struct k_dev_disk_t disk;
+    struct k_dev_dsk_ide_cmd_t *    cmd;
+    struct k_dev_ide_funcs_t        funcs;
+};
+
+uint8_t k_IDE_ReadStatus(struct k_dev_ide_disk_t *disk);
+
+uint8_t k_IDE_ReadError(struct k_dev_ide_disk_t *disk);
+
+void k_IDE_ExecCmd(struct k_dev_ide_disk_t *disk, uint32_t cmd);
+
+uint32_t k_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd);
+
 
 // void k_IDE_ReadCmd(struct k_dev_device_t *device, struct k_dsk_cmd_t *cmd);
 
@@ -131,6 +152,6 @@ struct k_ide_cmd_state_t
 
 // void k_IDE_IdentifyCmd(struct k_dev_device_t *device, struct k_dsk_cmd_t *cmd);
 
-void k_IDE_InterruptHandler();
+void k_IDE_InterruptHandler(struct k_dev_ide_disk_t *disk);
 
 #endif

@@ -1,10 +1,10 @@
 
 
 .equ k_proc_core_state_tss, 0
-.equ k_proc_core_state_delele_list, 4
-.equ k_proc_core_state_current_thread, 8
-.equ k_proc_core_state_next_thread, 12
-.equ k_proc_core_state_scheduler_thread, 16
+.equ k_proc_core_state_current_thread, 4
+.equ k_proc_core_state_next_thread, 8
+.equ k_proc_core_state_scheduler_thread, 12
+/* .equ k_proc_core_state_delele_list, 16 */
 
 .equ k_proc_thread_init_entry_point, 0
 .equ k_proc_thread_init_user_stack, 12

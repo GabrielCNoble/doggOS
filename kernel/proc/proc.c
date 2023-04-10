@@ -43,7 +43,7 @@ struct k_proc_thread_queue_t *k_proc_wait_queue;
 // struct k_proc_thread_t k_proc_scheduler_thread;
 
 
-struct k_rt_queue_t k_proc_ready_queue;
+// struct k_rt_queue_t k_proc_ready_queue;
 
 // k_rt_spnl_t k_proc_ready_queue_spinlock = 0;
 // struct k_proc_thread_t *k_proc_ready_queue = NULL;
@@ -57,7 +57,12 @@ struct k_rt_queue_t k_proc_ready_queue;
 // struct k_proc_thread_t *k_proc_io_wait_list = NULL;
 
 
-struct k_proc_thread_t *k_proc_cond_wait_list = NULL;
+struct k_proc_thread_t *k_proc_cond_wait_threads = NULL;
+struct k_proc_thread_t *k_proc_cond_wait_last_thread = NULL;
+k_rt_spnl_t             k_proc_cond_wait_lock = 0;
+struct k_proc_thread_t *k_proc_ready_threads = NULL;
+struct k_proc_thread_t *k_proc_last_ready_thread = NULL;
+k_rt_spnl_t             k_proc_ready_lock;
 
 
 /* each core will have on of those */
@@ -154,10 +159,13 @@ void k_proc_Init()
     k_apic_WriteReg(K_APIC_REG_DIV_CONFIG, k_apic_ReadReg(K_APIC_REG_DIV_CONFIG) & (~0xb));
     k_apic_WriteReg(K_APIC_REG_SPUR_INT_VEC, k_apic_ReadReg(K_APIC_REG_SPUR_INT_VEC) | 34);
 
-    k_proc_ready_queue = k_rt_QueueCreate();
+    // k_proc_ready_queue = k_rt_QueueCreate();
 
     struct k_proc_thread_t *cleanup_thread = k_proc_CreateKernelThread(k_proc_CleanupThread, NULL);
-    k_rt_QueuePop(&k_proc_ready_queue);
+    cleanup_thread->queue_next = NULL;
+    k_proc_ready_threads = NULL;
+    k_proc_last_ready_thread = NULL;
+    // k_rt_QueuePop(&k_proc_ready_queue);
 
     // while(thread)
     // {
@@ -187,6 +195,8 @@ void k_proc_Init()
     // cleanup_thread->queue_next = NULL;
 
     k_proc_core_state.cleanup_thread = cleanup_thread;
+    k_proc_core_state.delete_list = NULL;
+    k_proc_core_state.delete_list_lock = 0;
     /* this address has been identity mapped during initialization */
     // k_proc_shared_data = (struct k_proc_shared_data_t *)K_PROC_SHARED_DATA_ADDRESS;
     // k_proc_shared_data->kernel_pmap = k_proc_page_map;
@@ -553,21 +563,23 @@ void k_proc_FocusProcess(struct k_proc_process_t *process)
 
 void k_proc_RunScheduler()
 {
-    // uint32_t thread_index = 0;
     k_proc_core_state.current_thread = &k_proc_core_state.scheduler_thread;
     k_cpu_DisableInterrupts();
-    // asm volatile ("hlt\n");
-    // asm volatile ("nop\n");
     k_proc_YieldThread();
-
-    // struct k_proc_thread_t *queued_resume_threads = NULL;
 
     while(1)
     {
         struct k_proc_thread_t *waiting_thread = NULL;
         struct k_proc_thread_t *resume_thread = NULL;
         struct k_proc_thread_t *last_resume_thread = NULL;
-        k_rt_Xchg32((uint32_t *)&k_proc_cond_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
+        // k_rt_Xchg32((uint32_t *)&k_proc_cond_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
+
+        k_rt_SpinLock(&k_proc_cond_wait_lock);
+        waiting_thread = k_proc_cond_wait_threads;
+        k_proc_cond_wait_threads = NULL;
+        k_proc_cond_wait_last_thread = NULL;
+        k_rt_SpinUnlock(&k_proc_cond_wait_lock);
+
         while(waiting_thread)
         {
             struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
@@ -578,31 +590,12 @@ void k_proc_RunScheduler()
                 resume_thread = waiting_thread;
             }
             else
-            {
+            {   
                 k_proc_QueueWaitingThread(waiting_thread);
             }
 
             waiting_thread = next_thread;
         }
-
-        // k_rt_Xchg32((uint32_t *)&k_proc_io_wait_list, (uint32_t)NULL, (uint32_t *)&waiting_thread);
-        // while(waiting_thread)
-        // {
-        //     struct k_proc_thread_t *next_thread = waiting_thread->queue_next;
-        // 
-        //     // if(waiting_thread->wait_stream->read_offset != waiting_thread->wait_stream->write_offset)
-        //     if(*waiting_thread->wait_condition)
-        //     {
-        //         waiting_thread->queue_next = resume_thread;
-        //         resume_thread = waiting_thread;
-        //     }
-        //     else
-        //     {
-        //         k_proc_QueueIOBlockedThread(waiting_thread);
-        //     }
-        // 
-        //     waiting_thread = next_thread;
-        // }
 
         if(resume_thread)
         {
@@ -612,30 +605,21 @@ void k_proc_RunScheduler()
         }
 
         k_proc_RunThread(k_proc_core_state.cleanup_thread);
-
-        struct k_proc_thread_t *next_thread = k_rt_QueuePop(&k_proc_ready_queue);
-
-        // k_rt_SpinLock(&k_proc_ready_queue_spinlock);
-        // struct k_proc_thread_t *next_thread = k_proc_ready_queue;
-        // if(next_thread)
-        // {
-        //     k_proc_ready_queue = next_thread->queue_next;
-        //     if(!k_proc_ready_queue)
-        //     {
-        //         k_proc_ready_queue_last = NULL;
-        //     }
-        //     next_thread->queue_next = NULL;
-        // }
-        // k_rt_SpinUnlock(&k_proc_ready_queue_spinlock);
+        k_rt_SpinLock(&k_proc_ready_lock);
+        struct k_proc_thread_t *next_thread = k_proc_ready_threads;
 
         if(next_thread)
         {
+            k_proc_ready_threads = k_proc_ready_threads->queue_next;
+            next_thread->queue_next = NULL;
+            k_rt_SpinUnlock(&k_proc_ready_lock);
             k_proc_RunThread(next_thread);
         }
-        // else
-        // {
-        //     k_sys_TerminalPrintf("blah\n");
-        // }
+        else
+        {
+            k_proc_last_ready_thread = NULL;
+            k_rt_SpinUnlock(&k_proc_ready_lock);
+        }
     }
 }
 
@@ -645,13 +629,17 @@ uintptr_t k_proc_CleanupThread(void *data)
 
     while(1)
     {
-        // k_PIIX3_ISA_EndOfInterrupt();
-        // k_sys_TerminalPrintf("blah\n");
         if(k_rt_TrySpinLock(&k_proc_core_state.thread_pool.spinlock))
         {
             uint32_t deleted_count = 0;
-            struct k_proc_thread_t *deleted_thread;
-            k_rt_Xchg32((uint32_t *)&k_proc_core_state.delete_list, (uint32_t)NULL, (uint32_t *)&deleted_thread);
+            // struct k_proc_thread_t *deleted_thread;
+            // k_rt_Xchg32((uint32_t *)&k_proc_core_state.delete_list, (uint32_t)NULL, (uint32_t *)&deleted_thread);
+
+            k_rt_SpinLock(&k_proc_core_state.delete_list_lock);
+            struct k_proc_thread_t *deleted_thread = k_proc_core_state.delete_list;
+            k_proc_core_state.delete_list = NULL;
+            k_rt_SpinUnlock(&k_proc_core_state.delete_list_lock);
+            
             while(deleted_thread)
             {
                 struct k_proc_thread_t *next_thread = deleted_thread->queue_next;

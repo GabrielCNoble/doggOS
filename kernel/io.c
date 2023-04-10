@@ -3,6 +3,7 @@
 #include "rt/mem.h"
 #include "proc/proc.h"
 #include "proc/thread.h"
+#include "sys/term.h"
 
 struct k_io_stream_t *k_io_AllocStream(uint32_t flags)
 {

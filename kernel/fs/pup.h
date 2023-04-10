@@ -141,10 +141,12 @@ enum K_FS_PUP_NODE_TYPE
     uint8_t                 type;               \
     uint8_t                 flags;              \
 
+#define K_FS_PUP_NODE_NAME_MAX_LEN (256 - sizeof(struct {K_FS_PUP_NODE_FIELDS;}))
+
 struct k_fs_pup_node_t
 {    
     K_FS_PUP_NODE_FIELDS;
-    uint8_t     name[256 - sizeof(struct {K_FS_PUP_NODE_FIELDS;})];
+    uint8_t     name[K_FS_PUP_NODE_NAME_MAX_LEN];
 };
 
 /* node content block. This contains directory entries, in case of a directory node, or
@@ -198,10 +200,17 @@ union k_fs_pup_content_t
     uint8_t data[K_FS_PUP_LOGICAL_BLOCK_SIZE];
 };
 
+struct k_fs_pup_dirent_t
+{
+    struct k_fs_pup_link_t  node;
+    uint8_t                 name[K_FS_PUP_NODE_NAME_MAX_LEN];
+};
+
 struct k_fs_pup_dirlist_t
 {
     struct k_fs_pup_dirlist_t *     next;
-    struct k_fs_pup_link_t          entries[K_FS_PUP_DIR_CONTENT_ENTRY_COUNT];
+    uint32_t                        entry_count;
+    struct k_fs_pup_dirent_t        entries[K_FS_PUP_DIR_CONTENT_ENTRY_COUNT];
 };
 
 

@@ -147,6 +147,8 @@ void k_sys_RaiseException(uint32_t exception)
 void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)
 {
     k_cpu_DisableInterrupts();
+    // k_sys_TerminalPrintf("crash...\n");
+    // k_cpu_Halt();
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_LIGHT_GREY, K_SYS_TERM_COLOR_BLUE);
     k_sys_TerminalClear();
     k_sys_TerminalPrintf("\n\n\n\n\n\n                                 ");

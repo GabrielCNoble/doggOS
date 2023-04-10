@@ -3,6 +3,10 @@
 
 #include "../../pci.h"
 #include "../../dsk.h"
+#include "../../82C59.h"
+#include "../../82C37.h"
+#include "../../ide.h"
+#include "../../dev.h"
 
 
 #define K_PIIX3_PCI_TO_ISA_FUNCTION_INDEX 0
@@ -24,19 +28,23 @@ uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index);
 
 uintptr_t k_PIIX3_IDE_Thread(void *data);
 
-uint16_t k_PIIX3_IDE_ReadReg(uint8_t reg);
+uint8_t k_PIIX3_IDE_ReadReg8(struct k_dev_ide_disk_t *disk, uint8_t reg);
 
-void k_PIIX3_IDE_WriteReg(uint8_t reg, uint16_t value);
+uint16_t k_PIIX3_IDE_ReadReg16(struct k_dev_ide_disk_t *disk, uint8_t reg);
 
-uint8_t k_PIIX3_IDE_ReadStatus();
+void k_PIIX3_IDE_WriteReg8(struct k_dev_ide_disk_t *disk, uint8_t reg, uint8_t value);
 
-uint8_t K_PIIX3_IDE_ReadError();
+void k_PIIX3_IDE_WriteReg16(struct k_dev_ide_disk_t *disk, uint8_t reg, uint16_t value);
 
-void k_PIIX3_IDE_ExecCmd(uint32_t cmd);
+    // uint8_t k_PIIX3_IDE_ReadStatus();
+
+// uint8_t K_PIIX3_IDE_ReadError();
+
+// void k_PIIX3_IDE_ExecCmd(uint32_t cmd);
 
 // void k_PIIX3_IDE_Read(uint32_t lba, uint32_t size);
 
-uint32_t k_PIIX3_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd);
+// uint32_t k_PIIX3_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd);
 
 uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd);
 
@@ -120,6 +128,6 @@ void k_PIIX3_IDE_Handler();
 
 uint16_t k_PIIX3_ISA_ReadIRReg();
 
-void k_PIIX3_ISA_EndOfInterrupt(uint8_t irq_vector);
+void k_PIIX3_ISA_EndOfInterrupt(uint32_t irq_vector);
 
 #endif

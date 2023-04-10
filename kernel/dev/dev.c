@@ -2,6 +2,7 @@
 #include "../defs.h"
 #include "../mem/mem.h"
 #include "../rt/alloc.h"
+#include "../rt/mem.h"
 #include "../sys/term.h"
 #include "dsk.h"
 #include "pci.h"
@@ -27,6 +28,7 @@ struct k_dev_device_t *k_dev_CreateDevice(struct k_dev_device_desc_t *device_des
     {
         uint32_t device_size = (device_desc->device_size + sizeof(max_align_t) - 1) & (~(sizeof(max_align_t) - 1));    
         device = k_rt_Malloc(device_size, sizeof(max_align_t));
+        k_rt_SetBytes(device, device_size, 0);
         device->device_type = device_desc->device_type;
         device->driver_func = device_desc->driver_func;
         device->device_cond = 0;

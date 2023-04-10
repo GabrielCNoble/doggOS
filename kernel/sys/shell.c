@@ -20,6 +20,8 @@ void k_sys_Help()
     k_sys_TerminalPrintf("    help: runs this command\n");
     k_sys_TerminalPrintf("    clear: clears the screen\n");
     k_sys_TerminalPrintf("    crash: crashes the system\n");
+    k_sys_TerminalPrintf("    cd: changes directory\n");
+    k_sys_TerminalPrintf("    dir: lists contents of directory\n");
     // k_sys_TerminalPrintf("    syscall: executes test syscall\n");
     // k_sys_TerminalPrintf("    exp: launches expression parser program\n");
     // k_sys_TerminalPrintf("    derp: launches derp program\n");
@@ -50,27 +52,18 @@ void k_sys_Crash()
         k_sys_SysCall(K_SYS_SYSCALL_CRASH, 0, 0, 0, 0);
     }
 
-    k_sys_TerminalPrintf("Phew...\n");
+    k_sys_TerminalPrintf("Phew... (%s)\n", keyboard_buffer);
 }
 
 uintptr_t k_sys_ShellMain(void *data)
 {
     char keyboard_buffer[512];
     char current_path[512];
-
-    // k_sys_TerminalClear();
-    k_dev_StartDevices();
     
+    k_dev_StartDevices();    
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
     k_sys_TerminalPrintf("Initializing root shell...\n");
     // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
-
-    // k_sys_TerminalPrintf("%d %d %d %d %d %d\n", offsetof(struct k_fs_pup_node_t, contents), 
-    //                                              offsetof(struct k_fs_pup_node_t, left),
-    //                                              offsetof(struct k_fs_pup_node_t, right),
-    //                                              offsetof(struct k_fs_pup_node_t, type),
-    //                                              offsetof(struct k_fs_pup_node_t, flags),
-    //                                              sizeof(struct k_fs_pup_node_t));
 
     struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
     current_process->terminal = k_io_AllocStream();
@@ -83,19 +76,21 @@ uintptr_t k_sys_ShellMain(void *data)
     // k_rt_SetBytes(buffer, 6, 'z');
 
     // k_sys_TerminalPrintf("%s\n", buffer);
-    
-    struct k_fs_part_t partition = {.first_block = 172, .block_count = 512, .disk = k_PIIX3_IDE_disk};
+    struct k_fs_part_t partition = {.first_block = 172, .block_count = 8192, .disk = k_PIIX3_IDE_disk};
     
     struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
+    
+    // struct k_fs_pup_link_t cur_dir_node;    
     struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, "/", K_FS_PUP_NULL_LINK);
-    // struct k_fs_pup_node_t *root_node = k_fs_PupGetNode(pup_volume, cur_dir_node, NULL);
     k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
+    k_sys_TerminalClear();
     
 
     while(1)
     {
-        k_sys_TerminalPrintf("[root > %s ]: ", current_path);
-        k_sys_TerminalReadLine(keyboard_buffer, 512);
+        k_sys_TerminalPrintf("[root > %s ]: ", current_path);        
+        k_sys_TerminalReadLine(keyboard_buffer, 512);        
+
         // {
         if(!k_rt_StrCmp(keyboard_buffer, "help"))
         {
@@ -197,6 +192,7 @@ uintptr_t k_sys_ShellMain(void *data)
                 if(node.link)
                 {
                     cur_dir_node = node;
+                    // current_path[0] = '\0';
                     k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
                 }
                 else

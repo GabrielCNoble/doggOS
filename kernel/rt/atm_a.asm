@@ -202,10 +202,10 @@ k_rt_SpinLockCritical:
     mov ecx, dword ptr [ebp + 8]        /* spinlock */
     mov eax, dword ptr [ecx]
     _spinlock_critical_loop:
-        sti
+        /* sti */
         and eax, 0xfffffffe
         lea ebx, [eax + 1]
-        cli
+        /* cli */
         lock cmpxchg dword ptr [ecx], ebx
         jnz _spinlock_critical_loop
     pop ecx
@@ -227,6 +227,30 @@ k_rt_TrySpinLock:
     lock cmpxchg dword ptr [ecx], ebx
     setz al
     movzx eax, al
+    pop ecx
+    pop ebx
+    pop ebp
+    ret
+
+.global k_rt_TrySpinLockCritical
+k_rt_TrySpinLockCritical:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push ecx
+    mov ecx, dword ptr [ebp + 8]        /* spinlock */
+    mov eax, dword ptr [ecx]
+    and eax, 0xfffffffe
+    lea ebx, [eax + 1]
+    cli
+    lock cmpxchg dword ptr [ecx], ebx
+    setz al
+    movzx eax, al
+    test eax, eax
+    jz k_rt_try_spinlock_critical_lock_acquired
+        /* lock not acquired, reenable interrupts */
+        sti
+    k_rt_try_spinlock_critical_lock_acquired:
     pop ecx
     pop ebx
     pop ebp
@@ -274,7 +298,7 @@ k_rt_SpinUnlockCritical:
     mov eax, dword ptr [ecx]
     and eax, 0xfffffffe
     xchg dword ptr [ecx], eax
-    sti
+    /* sti */
     pop ecx
     pop ebx
     pop eax

@@ -1,4 +1,7 @@
 #include "dsk.h"
+#include "../rt/mem.h"
+#include "../sys/sys.h"
+#include "../sys/term.h"
 
 struct k_dev_disk_t *k_dev_disks = NULL;
 struct k_dev_disk_t *k_dev_last_disk = NULL;
@@ -20,24 +23,144 @@ struct k_dev_disk_t *k_dev_last_disk = NULL;
 //     }
 // }
 
-struct k_dev_dsk_cmd_t *k_dev_AllocDiskCmd()
+struct k_dev_dsk_cmd_t *k_dev_AllocDiskCmd(struct k_dev_disk_t *disk)
 {
-    struct k_dev_dsk_cmd_t *cmd = k_rt_Malloc(sizeof(struct k_dev_dsk_cmd_t), 4);
+    k_rt_SpinLockCritical(&disk->cmd_page_lock);
+
+    struct k_dev_dsk_cmd_page_t *cmd_page = disk->cur_cmd_page;
+
+    if(cmd_page->next_free == NULL)
+    {
+        while(cmd_page != NULL && cmd_page->next_free == NULL)
+        {
+            cmd_page = cmd_page->next;
+        }
+
+        if(cmd_page == NULL)
+        {
+            if(disk->freeable_cmd_pages != NULL)
+            {
+                cmd_page = disk->freeable_cmd_pages;
+                disk->freeable_cmd_pages = cmd_page->next;
+            }
+            else
+            {
+                cmd_page = k_rt_Malloc(sizeof(struct k_dev_dsk_cmd_page_t), 0);
+
+                if(cmd_page == NULL)
+                {
+                    k_sys_RaiseException(K_EXCEPTION_FAILED_MEMORY_ALLOCATION);
+                }
+            }
+
+            k_dev_InitDiskCmdPage(disk, cmd_page);
+        }
+
+        disk->cur_cmd_page = cmd_page;
+    }
+
+    struct k_dev_dsk_cmd_t *cmd = disk->cur_cmd_page->next_free;
+    disk->cur_cmd_page->next_free = cmd->next;
+    disk->cur_cmd_page->used_count++;
+
+    k_rt_SpinUnlockCritical(&disk->cmd_page_lock);
+    cmd->buffer = NULL;
+    cmd->condition = 0;
     cmd->next = NULL;
     cmd->address = 0;
-    cmd->size = 0;
-    cmd->buffer = NULL;
     cmd->type = K_DEV_DSK_CMD_TYPE_LAST;
-    cmd->condition = 0;
+    cmd->size = 0;
+    cmd->status = 0;
+
+    // k_rt_SetBytes(cmd, disk->cmd_size, 0);
+
     return cmd;
 }
 
-void k_dev_FreeDiskCmd(struct k_dev_dsk_cmd_t *cmd)
+void k_dev_FreeDiskCmd(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd)
 {
-    if(cmd)
+    if(disk != NULL && cmd != NULL)
     {
-        k_rt_Free(cmd);
+        k_rt_SpinLockCritical(&disk->cmd_page_lock);
+        struct k_dev_dsk_cmd_page_t *cmd_page = cmd->page;
+
+        cmd->next = cmd_page->next_free;
+        cmd_page->next_free = cmd;
+        cmd_page->used_count--;
+
+        if(cmd_page->used_count == 0 && disk->cmd_page_count > 1)
+        {
+            if(cmd_page == disk->cmd_pages)
+            {
+                disk->cmd_pages = cmd_page->next;
+                disk->cmd_pages->prev = NULL;
+            }
+            else
+            {
+                cmd_page->prev->next = cmd_page->next;
+            }
+
+            if(cmd_page == disk->last_cmd_page)
+            {
+                disk->last_cmd_page = cmd_page->prev;
+                disk->last_cmd_page->next = NULL;
+            }
+            else
+            {
+                cmd_page->next->prev = cmd_page->prev;
+            }
+
+            cmd_page->next = disk->freeable_cmd_pages;
+            disk->freeable_cmd_pages = cmd_page;
+            disk->cmd_page_count--;
+        }
+        else if(cmd_page->index < disk->cur_cmd_page->index)
+        {
+            disk->cur_cmd_page = cmd_page;
+        }
+
+        k_rt_SpinUnlockCritical(&disk->cmd_page_lock);
     }
+}
+
+void k_dev_InitDiskCmdPage(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_page_t *cmd_page)
+{
+    uintptr_t cmd_start = (uintptr_t)cmd_page->cmd_data;
+    uintptr_t aligned_cmd_start;
+    uintptr_t cmd_align = (uintptr_t)(disk->cmd_align - 1);
+    aligned_cmd_start = (cmd_start + cmd_align) & ~cmd_align;
+    uint32_t cmd_count = (sizeof(cmd_page->cmd_data) - (uint32_t)(aligned_cmd_start - cmd_start)) / (uint32_t)disk->cmd_size;
+
+    struct k_dev_dsk_cmd_t *cmd = NULL;
+    cmd_page->used_count = 0;
+    cmd_page->index = disk->cmd_page_index;
+    cmd_page->next_free = (struct k_dev_dsk_cmd_t *)aligned_cmd_start;
+    disk->cmd_page_index++;
+
+    for(uint32_t index = 0; index < cmd_count; index++)
+    {
+        cmd = (struct k_dev_dsk_cmd_t *)aligned_cmd_start;
+        aligned_cmd_start += disk->cmd_size;
+        struct k_dev_dsk_cmd_t *next_cmd = (struct k_dev_dsk_cmd_t *)aligned_cmd_start;
+        cmd->next = next_cmd;
+        cmd->page = cmd_page;
+        cmd->type = K_DEV_DSK_CMD_TYPE_LAST;
+        cmd->buffer = NULL;
+    }
+
+    cmd->next = NULL;
+
+    if(disk->cmd_pages == NULL)
+    {
+        disk->cmd_pages = cmd_page;
+    }
+    else
+    {
+        disk->last_cmd_page->next = cmd_page;
+        cmd_page->prev = disk->last_cmd_page;
+    }
+
+    disk->last_cmd_page = cmd_page;
 }
 
 void k_dev_EnqueueDiskCmd(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd)
@@ -57,9 +180,8 @@ void k_dev_EnqueueDiskCmd(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd
     }
 }
 
-uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint32_t start, uint32_t count, void *data)
+uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint64_t start, uint64_t count, void *data)
 {
-    // k_sys_TerminalPrintf("%x %d\n", disk, disk->type);
     switch(disk->type)
     {
         case K_DEV_DSK_TYPE_RAM:
@@ -74,15 +196,14 @@ uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint32_t start, uint32_t coun
 
         case K_DEV_DSK_TYPE_DISK:
         {
-            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd();   
+            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd(disk);   
             cmd->type = K_DEV_DSK_CMD_TYPE_READ;
             cmd->buffer = data;
             cmd->address = start;
             cmd->size = count;
-            
             k_dev_EnqueueDiskCmd(disk, cmd);
             k_proc_WaitCondition(&cmd->condition);
-            k_dev_FreeDiskCmd(cmd);
+            k_dev_FreeDiskCmd(disk, cmd);
         }
         break;
     }
@@ -90,7 +211,7 @@ uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint32_t start, uint32_t coun
     return 0;
 }
 
-uint32_t k_dev_DiskWrite(struct k_dev_disk_t *disk, uint32_t start, uint32_t count, void *data)
+uint32_t k_dev_DiskWrite(struct k_dev_disk_t *disk, uint64_t start, uint64_t count, void *data)
 {
     switch(disk->type)
     {
@@ -106,7 +227,7 @@ uint32_t k_dev_DiskWrite(struct k_dev_disk_t *disk, uint32_t start, uint32_t cou
 
         case K_DEV_DSK_TYPE_DISK:
         {
-            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd();
+            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd(disk);
     
             cmd->type = K_DEV_DSK_CMD_TYPE_WRITE;
             cmd->buffer = data;
@@ -115,7 +236,7 @@ uint32_t k_dev_DiskWrite(struct k_dev_disk_t *disk, uint32_t start, uint32_t cou
             
             k_dev_EnqueueDiskCmd(disk, cmd);
             k_proc_WaitCondition(&cmd->condition);
-            k_dev_FreeDiskCmd(cmd);
+            k_dev_FreeDiskCmd(disk, cmd);
         }
         break;
     }
@@ -123,7 +244,7 @@ uint32_t k_dev_DiskWrite(struct k_dev_disk_t *disk, uint32_t start, uint32_t cou
     return 0;
 }
 
-uint32_t k_dev_DiskClear(struct k_dev_disk_t *disk, uint32_t start, uint32_t count)
+uint32_t k_dev_DiskClear(struct k_dev_disk_t *disk, uint64_t start, uint64_t count)
 {
     switch(disk->type)
     {
@@ -139,7 +260,7 @@ uint32_t k_dev_DiskClear(struct k_dev_disk_t *disk, uint32_t start, uint32_t cou
 
         case K_DEV_DSK_TYPE_DISK:
         {
-            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd();
+            struct k_dev_dsk_cmd_t *cmd = k_dev_AllocDiskCmd(disk);
     
             cmd->type = K_DEV_DSK_CMD_TYPE_CLEAR;
             cmd->buffer = NULL;
@@ -148,7 +269,7 @@ uint32_t k_dev_DiskClear(struct k_dev_disk_t *disk, uint32_t start, uint32_t cou
             
             k_dev_EnqueueDiskCmd(disk, cmd);
             k_proc_WaitCondition(&cmd->condition);
-            k_dev_FreeDiskCmd(cmd);
+            k_dev_FreeDiskCmd(disk, cmd);
         }
         break;
     }
@@ -171,6 +292,9 @@ uintptr_t k_dev_DiskThread(void *data)
     struct k_dev_disk_t *disk = (struct k_dev_disk_t *)data;
     k_dev_DeviceReady((struct k_dev_device_t *)data);
 
+    // k_cpu_DisableInterrupts();
+    // k_cpu_Halt();        
+
     uint32_t index = 0;
     while(1)
     {
@@ -178,7 +302,9 @@ uintptr_t k_dev_DiskThread(void *data)
 
         if(!cmd)
         {
+            
             k_proc_YieldThread();
+            
         }
         else
         {
@@ -192,7 +318,11 @@ uintptr_t k_dev_DiskThread(void *data)
             switch(cmd->type)
             {
                 case K_DEV_DSK_CMD_TYPE_READ:
+                    // k_sys_TerminalPrintf("read some shit...\n");
+                    
                     disk->read(disk, cmd);
+                    
+                    // k_sys_TerminalPrintf("done reading some shit...\n");
                 break;
 
                 case K_DEV_DSK_CMD_TYPE_CLEAR:
@@ -203,6 +333,8 @@ uintptr_t k_dev_DiskThread(void *data)
                     disk->write(disk, cmd);
                 break;
             }
+
+            // k_proc_WaitCondition(&cmd->condition);
         }
     }
-}
+} 

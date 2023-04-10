@@ -10,10 +10,10 @@ KERNEL_EXE := kernel.elf
 KERNEL_BIN := $(KERNEL_EXE:.elf=.bin)
 
 all: $(KERNEL_OBJ)
-	i686-elf-ld -T $(KERNEL_LDS) --oformat binary -o $(KERNEL_BIN) -nostdlib $(KERNEL_OBJ)
+	i686-elf-ld -T $(KERNEL_LDS) -L"../cross/lib/gcc/i686-elf/13.0.1/" -lgcc --oformat binary -o $(KERNEL_BIN) -nostdlib $(KERNEL_OBJ)
 
 %.o: %.c
-	i686-elf-gcc -c -Wall -Wextra $< -o $@ $(GCC_FLAGS)
+	i686-elf-gcc -c -Wall -Wextra $< -o $@ $(GCC_FLAGS) -lgcc
 
 %.o: %.asm
 	i686-elf-as $< -o $@ $(GAS_FLAGS)

@@ -18,7 +18,7 @@ uint32_t k_sys_TestSysCall(struct k_sys_syscall_args_t *args)
 
 uint32_t k_sys_CrashSysCall(struct k_sys_syscall_args_t *args)
 {
-    uintptr_t *crash = (uint32_t *)0x1234567;
+    uintptr_t *crash = NULL;
     *crash = 0xb00b1e5;
 }
 

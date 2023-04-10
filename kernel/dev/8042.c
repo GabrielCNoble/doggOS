@@ -1,5 +1,5 @@
 #include "8042.h"
-#include "../../cpu/k_cpu.h"
+#include "../cpu/k_cpu.h"
 
 uint8_t k_8042_ReadScancode()
 {

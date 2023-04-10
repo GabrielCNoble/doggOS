@@ -585,16 +585,17 @@ struct k_proc_core_state_t
 {
     /* core tss */
     struct k_cpu_tss_t *tss;                    // 0
-    /* core thread delete list */
-    struct k_proc_thread_t *delete_list;        // 4
     /* currently running thread */
-    struct k_proc_thread_t *current_thread;     // 8
+    struct k_proc_thread_t *current_thread;     // 4
     /* thread the core will switch to */
-    struct k_proc_thread_t *next_thread;        // 12
+    struct k_proc_thread_t *next_thread;        // 8
     /* scheduler thread state */
-    struct k_proc_thread_t scheduler_thread;    // 16
+    struct k_proc_thread_t scheduler_thread;    // 12
     struct k_proc_thread_t *cleanup_thread;
     struct k_proc_thread_pool_t thread_pool;
+    /* core thread delete list */
+    struct k_proc_thread_t *delete_list;        // 4
+    k_rt_spnl_t             delete_list_lock;
 };
 
 struct k_proc_shared_data_t

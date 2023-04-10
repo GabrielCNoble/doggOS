@@ -104,6 +104,15 @@ void k_rt_QueuePush(struct k_rt_queue_t *queue, void *element)
             }
         }
         while(!k_rt_CmpXchg((uintptr_t *)&tail->next, (uintptr_t)NULL, (uintptr_t)item, NULL));
+        __asm__ volatile
+        (
+            "nop\n"
+            "nop\n"
+            "nop\n"
+            "nop\n"
+            "nop\n"
+            "nop\n"
+        );
         k_rt_CmpXchg((uintptr_t *)&queue->tail, (uintptr_t)old_tail, (uintptr_t)item, NULL);
     }
 }

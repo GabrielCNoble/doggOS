@@ -3,7 +3,7 @@
 #include "rt/atm.h"
 #include "int/irq.h"
 #include "cpu/k_cpu.h"
-#include "dev/drv/8042.h"
+#include "dev/8042.h"
 #include "proc/proc.h"
 #include "dev/pci/piix3/isa.h"
 #include "io.h"
@@ -171,7 +171,6 @@ void k_kb_KeyboardHandler()
                     {
                         k_io_WriteStreamData(current_process->terminal, &ch, sizeof(char));
                         k_io_SignalStream(current_process->terminal);
-                        // k_rt_SignalCondition(&current_process->terminal->condition);
                     }
                 }
             break;

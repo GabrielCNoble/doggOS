@@ -13,7 +13,13 @@
 // extern struct k_proc_thread_t *k_proc_thread_wait_list;
 // extern struct k_proc_thread_t *k_proc_io_wait_list;
 // extern struct k_proc_thread_t *k_proc_suspended_threads;
-extern struct k_proc_thread_t *k_proc_cond_wait_list;
+extern struct k_proc_thread_t * k_proc_cond_wait_threads;
+extern struct k_proc_thread_t * k_proc_cond_wait_last_thread;
+extern k_rt_spnl_t              k_proc_cond_wait_lock;
+
+extern struct k_proc_thread_t * k_proc_ready_threads;
+extern struct k_proc_thread_t * k_proc_last_ready_thread;
+extern k_rt_spnl_t              k_proc_ready_lock;
 
 // extern k_rt_spnl_t k_proc_ready_queue_spinlock;
 // extern struct k_proc_thread_t *k_proc_ready_queue;
@@ -48,10 +54,11 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
         return NULL;
     }
 
-    do
+    // do
     {
-        thread = thread_pool->threads;
+        k_rt_SpinLock(&thread_pool->spinlock);
 
+        thread = thread_pool->threads;
         if(!thread)
         {
             union k_proc_thread_page_t *thread_page = k_rt_Malloc(4096, 4096);
@@ -64,18 +71,23 @@ struct k_proc_thread_t *k_proc_CreateThread(struct k_proc_thread_init_t *init)
 
             struct k_proc_thread_t *last_thread = &thread_page->threads[K_PROC_THREAD_PAGE_THREAD_COUNT - 1];
             last_thread->queue_next = NULL;
-
-            k_rt_SpinLock(&thread_pool->spinlock);
             thread_page->next = thread_pool->pages;
             thread_pool->pages = thread_page;
             thread_pool->threads = &thread_page->threads[0];
-            k_rt_SpinUnlock(&thread_pool->spinlock);
-
             thread = thread_pool->threads;
-
         }
+
+        thread_pool->threads = thread->queue_next;
+
+        k_rt_SpinUnlock(&thread_pool->spinlock);
     }
-    while(!k_rt_CmpXchg32(&thread_pool->threads, thread, thread->queue_next, &old));
+    // while(!k_rt_CmpXchg32(&thread_pool->threads, thread, thread->queue_next, &old));
+    __asm__ volatile
+    (
+        "nop\n"
+        "nop\n"
+        "nop\n"
+    );
 
     // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
     // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
@@ -295,6 +307,12 @@ void k_proc_DestroyThread(struct k_proc_thread_t *thread)
             thread->queue_next = thread_pool->threads;
         }
         while(!k_rt_CmpXchg32((uint32_t *)&thread_pool->threads, (uint32_t)thread->queue_next, (uint32_t)thread, (uint32_t *)&old_head));
+        __asm__ volatile
+        (
+            "nop\n"
+            "nop\n"
+            "nop\n"
+        );
         // k_printf("free %x               \n", thread);
     }
 
@@ -358,11 +376,10 @@ uint32_t k_proc_WaitThread(struct k_proc_thread_t *thread, uintptr_t *value)
 uint32_t k_proc_WaitCondition(k_rt_cond_t *condition)
 {
     struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
-    
     if(condition && !(*condition))
     {
         current_thread->wait_condition = condition;
-        current_thread->state = K_PROC_THREAD_STATE_COND_WAIT;
+        current_thread->state = K_PROC_THREAD_STATE_COND_WAIT;        
         k_proc_YieldThread();
     }
     
@@ -371,6 +388,8 @@ uint32_t k_proc_WaitCondition(k_rt_cond_t *condition)
 
 void k_proc_YieldThread()
 {
+    // __asm__ volatile("cli\n hlt\n");
+    __asm__ volatile("nop\n nop\n");
     k_proc_SwitchToThread(NULL);
 }
 
@@ -455,19 +474,27 @@ void k_proc_QueueReadyThread(struct k_proc_thread_t *thread)
 {
     if(K_PROC_THREAD_VALID(thread))
     {
-        // struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
-        // struct k_proc_thread_t *ready_thread = thread;
-        // struct k_proc_thread_t *last_thread = NULL;
-        // k_sys_TerminalPrintf("queue thread %x\n", thread);
+        k_rt_SpinLock(&k_proc_ready_lock);
         while(thread)
         {
             struct k_proc_thread_t *next_thread = thread->queue_next;
             thread->state = K_PROC_THREAD_STATE_READY;
-            k_rt_QueuePush(&k_proc_ready_queue, thread);
+
+            if(k_proc_ready_threads == NULL)
+            {
+                k_proc_ready_threads = thread;
+            }
+            else
+            {
+                k_proc_last_ready_thread->queue_next = thread;
+            }
+
+            k_proc_last_ready_thread = thread;
+            thread->queue_next = NULL;
             thread = next_thread;
-            // last_thread = ready_thread;
-            // ready_thread = ready_thread->queue_next;
         }
+        k_rt_SpinUnlock(&k_proc_ready_lock);
+
         // k_rt_SpinLock(&k_proc_ready_queue_spinlock);
         // // while(!k_atm_TrySpinLock(&k_proc_ready_queue_spinlock))
         // // {
@@ -491,13 +518,29 @@ void k_proc_QueueWaitingThread(struct k_proc_thread_t *thread)
 {
     if(K_PROC_THREAD_VALID(thread) && thread != k_proc_core_state.cleanup_thread)
     {
-        // thread->state = K_PROC_THREAD_STATE_WAITING;
-        struct k_proc_thread_t *old_head;
-        do
+        // thread->state = K_PROC_THREAD_STATE_COND_WAIT;
+        k_rt_SpinLock(&k_proc_cond_wait_lock);
+
+        if(k_proc_cond_wait_threads == NULL)
         {
-            thread->queue_next = k_proc_cond_wait_list;
+            k_proc_cond_wait_threads = thread;
         }
-        while(!k_rt_CmpXchg((uintptr_t *)&k_proc_cond_wait_list, (uintptr_t)thread->queue_next, (uintptr_t)thread, (uintptr_t *)&old_head));
+        else
+        {
+            k_proc_cond_wait_last_thread->queue_next = thread;
+        }
+
+        k_proc_cond_wait_last_thread = thread;
+        thread->queue_next = NULL;
+
+        k_rt_SpinUnlock(&k_proc_cond_wait_lock);
+        
+        // struct k_proc_thread_t *old_head;
+        // do
+        // {
+        //     thread->queue_next = k_proc_cond_wait_list;
+        // }
+        // while(!k_rt_CmpXchg((uintptr_t *)&k_proc_cond_wait_list, (uintptr_t)thread->queue_next, (uintptr_t)thread, (uintptr_t *)&old_head));
     }
 }
 
@@ -519,12 +562,23 @@ void k_proc_QueueDetachedThread(struct k_proc_thread_t *thread)
 {
     if(K_PROC_THREAD_VALID(thread) && thread->state == K_PROC_THREAD_STATE_DETACHED && thread != k_proc_core_state.cleanup_thread)
     {
-        struct k_proc_thread_t **delete_list = &k_proc_core_state.delete_list;
-        struct k_proc_thread_t *old_head;
-        do
-        {
-            thread->queue_next = k_proc_core_state.delete_list;
-        }
-        while(!k_rt_CmpXchg((uintptr_t *)delete_list, (uintptr_t )thread->queue_next, (uintptr_t )thread, (uintptr_t *)&old_head));
+        k_rt_SpinLock(&k_proc_core_state.delete_list_lock);
+        thread->queue_next = k_proc_core_state.delete_list;
+        k_proc_core_state.delete_list = thread;
+        k_rt_SpinUnlock(&k_proc_core_state.delete_list_lock);
+        
+        // struct k_proc_thread_t **delete_list = &k_proc_core_state.delete_list;
+        // struct k_proc_thread_t *old_head;
+        // do
+        // {
+        //     thread->queue_next = k_proc_core_state.delete_list;
+        // }
+        // while(!k_rt_CmpXchg((uintptr_t *)delete_list, (uintptr_t )thread->queue_next, (uintptr_t )thread, (uintptr_t *)&old_head));
+        // __asm__ volatile
+        // (
+        //     "nop\n"
+        //     "nop\n"
+        //     "nop\n"
+        // );
     }
 }

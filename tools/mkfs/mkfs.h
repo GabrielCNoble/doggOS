@@ -41,6 +41,8 @@ void cd(char *path);
 
 void mkdir(char *path);
 
+void mkfrom(char *path);
+
 void tree();
 
 void print_node_contents(union k_fs_pup_content_t *content, struct k_fs_pup_dirent_t *entry, uint32_t depth);

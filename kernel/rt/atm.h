@@ -112,6 +112,8 @@ k_rt_TrySpinLock:
 */
 extern uint32_t k_rt_TrySpinLock(k_rt_spnl_t *lock);
 
+extern uint32_t k_rt_TrySpinLockCritical(k_rt_spnl_t *lock);
+
 extern uint32_t k_rt_SpinWait(k_rt_spnl_t *lock);
 
 /*
