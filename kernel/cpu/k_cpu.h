@@ -30,13 +30,15 @@ extern fastcall void k_cpu_OutB(uint8_t value, uint16_t port);
 
 extern fastcall void k_cpu_OutW(uint16_t value, uint16_t port);
 
+extern fastcall void k_cpu_OutSW(uint32_t count, uint16_t port, uint16_t *buffer);
+
 extern fastcall void k_cpu_OutD(uint32_t value, uint16_t port);
 
 extern fastcall uint8_t k_cpu_InB(uint16_t port); 
 
 extern fastcall uint16_t k_cpu_InW(uint16_t port);
 
-extern void k_cpu_InSW(uint16_t port, uint16_t *buffer, uint32_t count);
+extern fastcall k_cpu_InSW(uint32_t count, uint16_t port, uint16_t *buffer);
 
 extern fastcall uint32_t k_cpu_InD(uint16_t port);
 

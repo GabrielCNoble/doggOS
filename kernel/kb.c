@@ -5,7 +5,7 @@
 #include "cpu/k_cpu.h"
 #include "dev/8042.h"
 #include "proc/proc.h"
-#include "dev/pci/piix3/isa.h"
+// #include "dev/pci/piix3/isa.h"
 #include "io.h"
 
 char k_kb_scancode_lut[256] =

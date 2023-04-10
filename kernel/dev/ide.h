@@ -6,6 +6,8 @@
 #include "dsk.h"
 #include "dev.h"
 
+#define K_DEV_IDE_MAX_SECTORS_PER_CMD 256
+
 enum K_IDE_CMD_REGS
 {
     K_IDE_CMD_REG_DATA          = 0x00,
@@ -109,8 +111,10 @@ struct k_dev_ide_funcs_t
 {
     uint8_t     (*ReadReg8)(struct k_dev_ide_disk_t *device, uint8_t reg);
     uint16_t    (*ReadReg16)(struct k_dev_ide_disk_t *device, uint8_t reg);
+    void        (*ReadReg16S)(struct k_dev_ide_disk_t *device, uint8_t reg, uint32_t count, void *buffer);
     void        (*WriteReg8)(struct k_dev_ide_disk_t *device, uint8_t reg, uint8_t value);
     void        (*WriteReg16)(struct k_dev_ide_disk_t *device, uint8_t reg, uint16_t value);
+    void        (*WriteReg16S)(struct k_dev_ide_disk_t *device, uint8_t reg, uint32_t count, void *buffer);
 };
 
 struct k_dev_dsk_ide_cmd_t

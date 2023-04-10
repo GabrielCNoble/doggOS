@@ -103,6 +103,17 @@ k_cpu_OutW:
     pop eax
     ret
 
+.global k_cpu_OutSW
+k_cpu_OutSW:
+    push ebp
+    mov ebp, esp
+    push esi
+    mov esi, dword ptr [ebp + 8]
+    rep outsw
+    pop esi
+    pop ebp
+    ret
+
 .global k_cpu_OutD
 k_cpu_OutD:
     push eax
@@ -127,19 +138,8 @@ k_cpu_InW:
 k_cpu_InSW:
     push ebp
     mov ebp, esp
-    push eax
-    push ecx
-    push edx
-    
-    mov dx, word ptr [ebp + 8]
-    mov edi, dword ptr [ebp + 12]
-    mov ecx, dword ptr [ebp + 16]  
-    
+    mov edi, dword ptr [ebp + 8]  
     rep insw
-    
-    pop edx
-    pop ecx
-    pop eax
     pop ebp
     ret
 

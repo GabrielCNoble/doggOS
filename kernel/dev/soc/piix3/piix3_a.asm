@@ -9,7 +9,7 @@ k_PIIX3_IDE_Handler_a:
     sub esp, 4
     mov eax, k_PIIX3_IDE_disk
     mov dword ptr [esp], eax
-    call k_PIIX3_IDE_Handler
+    call k_IDE_InterruptHandler
     mov eax, 14
     mov dword ptr [esp], eax
     call k_PIIX3_ISA_EndOfInterrupt

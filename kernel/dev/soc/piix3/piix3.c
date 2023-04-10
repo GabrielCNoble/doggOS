@@ -8,10 +8,7 @@
 #include "../../../sys/term.h"
 #include "../../../defs.h"
 // #include "../../dsk.h"
-#include "../../82C59.h"
-#include "../../82C37.h"
-#include "../../ide.h"
-#include "../../dev.h"
+
 // #include "ide.h"
 // #include "isa.h"
 // #include "82C59.h"
@@ -58,8 +55,10 @@ uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index)
 
     k_PIIX3_IDE_disk->funcs.ReadReg8 = k_PIIX3_IDE_ReadReg8;
     k_PIIX3_IDE_disk->funcs.ReadReg16 = k_PIIX3_IDE_ReadReg16;
+    k_PIIX3_IDE_disk->funcs.ReadReg16S = k_PIIX3_IDE_ReadReg16S;
     k_PIIX3_IDE_disk->funcs.WriteReg8 = k_PIIX3_IDE_WriteReg8;
     k_PIIX3_IDE_disk->funcs.WriteReg16 = k_PIIX3_IDE_WriteReg16;
+    k_PIIX3_IDE_disk->funcs.WriteReg16S = k_PIIX3_IDE_WriteReg16S;
 
     k_PIIX3_IDE_disk->disk.read = k_IDE_Read;
     k_PIIX3_IDE_disk->disk.write = NULL;
@@ -164,6 +163,12 @@ uint16_t k_PIIX3_IDE_ReadReg16(struct k_dev_ide_disk_t *disk, uint8_t reg)
     return k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + reg);
 }
 
+void k_PIIX3_IDE_ReadReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_t count, void *buffer)
+{
+    (void)disk;
+    k_cpu_InSW(count, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + reg, buffer);
+}
+
 void k_PIIX3_IDE_WriteReg8(struct k_dev_ide_disk_t *disk, uint8_t reg, uint8_t value)
 {
     (void)disk;
@@ -174,6 +179,12 @@ void k_PIIX3_IDE_WriteReg16(struct k_dev_ide_disk_t *disk, uint8_t reg, uint16_t
 {
     (void)disk;
     k_cpu_OutW(value, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + reg);
+}
+
+void k_PIIX3_IDE_WriteReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_t count, void *buffer)
+{
+    (void)disk;
+    // k_cpu_OutSW(count, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + reg);
 }
 
 // uint8_t k_PIIX3_IDE_ReadStatus()
@@ -299,207 +310,213 @@ uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd)
     return 0;
 }
 
-void k_PIIX3_IDE_Handler(struct k_dev_disk_t *disk)
-{
-    struct k_dev_ide_disk_t *ide_disk = (struct k_dev_ide_disk_t *)disk;
-    struct k_dev_dsk_ide_cmd_t *ide_cmd = ide_disk->cmd;
-    // k_sys_TerminalPrintf("a\n");
+// void k_PIIX3_IDE_Handler(struct k_dev_disk_t *disk)
+// {
+//     struct k_dev_ide_disk_t *ide_disk = (struct k_dev_ide_disk_t *)disk;
+//     struct k_dev_dsk_ide_cmd_t *ide_cmd = ide_disk->cmd;
+//     // k_sys_TerminalPrintf("a\n");
     
-    // uint16_t temp_data[32];
-    if(k_IDE_ReadStatus(ide_disk) & K_IDE_STATUS_FLAG_ERROR)
-    {
-        // uint8_t error = K_PIIX3_IDE_ReadError();
+//     // uint16_t temp_data[32];
+//     if(k_IDE_ReadStatus(ide_disk) & K_IDE_STATUS_FLAG_ERROR)
+//     {
+//         // uint8_t error = K_PIIX3_IDE_ReadError();
         
-        k_sys_TerminalPrintf("disk io error: %x\n", (uint32_t)k_IDE_ReadError(ide_disk));
-        k_rt_SignalCondition(&ide_cmd->cmd.condition);
-    }
-    else
-    {        
-        uint32_t available_bytes = ide_disk->disk.block_size;
-        // k_cpu_Halt();
-        // k_sys_TerminalPrintf("available_bytes: %d\n", available_bytes); 
-        switch(ide_cmd->cmd.type)
-        {
-            case K_DEV_DSK_CMD_TYPE_WRITE:
-                // if(cmd->address)
-                // {
-                //     /* address is not sector aligned, so we'll just throw out the data we don't need */
-                //     uint32_t word_count = (cmd->address & 0x1ff) / sizeof(uint16_t);
-                //     for(uint32_t index = 0; index < word_count; index++)
-                //     {
-                //         // k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
-                //         k_cpu_OutW(0, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
-                //     }
-                //     cmd->address -= word_count * sizeof(uint16_t);
-                // 
-                //     if(cmd->address & 0x1)
-                //     {
-                //         /* address is not word aligned, so we'll read a word here and discard half of it */
-                //         // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
-                //         uint16_t data = ((uint8_t *)cmd->buffer)[0];
-                //         data <<= 8;
-                //         k_cpu_OutW(data, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
-                //         // ((uint8_t *)cmd->buffer)[0] = (uint8_t)(data >> 8);
-                //         cmd->address--;
-                //         cmd->size--;
-                //     }
-                // }
-                // 
-                // if(cmd->size > 1)
-                // {
-                //     /* bulk of the copy  */
-                //     uint32_t copy_size = 512 / sizeof(uint16_t);
-                //     uint32_t buffer_word_count = cmd->size / sizeof(uint16_t);
-                // 
-                //     if(copy_size > buffer_word_count)
-                //     {
-                //         copy_size = buffer_word_count;
-                //     }
-                // 
-                //     copy_size /= sizeof(temp_data) / sizeof(temp_data[0]);
-                //     for(uint32_t index = 0; index < copy_size; index++)
-                //     {
-                //         // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
-                //         k_cpu_InSW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG, temp_data, sizeof(temp_data) / sizeof(temp_data[0]));
-                //         k_rt_CopyBytes((uint8_t *)cmd->buffer + cmd->address, temp_data, sizeof(temp_data));
-                //         cmd->address += sizeof(temp_data);
-                //         cmd->size -= sizeof(temp_data);
-                //     }
-                // }
-                // else if(cmd->size == 1)
-                // {
-                //     /* the size of the buffer is not a round number of words, so copy the last byte here */
-                //     uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
-                //     ((uint8_t *)cmd->buffer)[cmd->address] = (uint8_t)data;
-                //     cmd->size--;
-                // }
-            break;
+//         k_sys_TerminalPrintf("disk io error: %x\n", (uint32_t)k_IDE_ReadError(ide_disk));
+//         k_rt_SignalCondition(&ide_cmd->cmd.condition);
+//     }
+//     else
+//     {        
+//         uint32_t available_bytes = ide_disk->disk.block_size;
+//         // k_cpu_Halt();
+//         // k_sys_TerminalPrintf("available_bytes: %d\n", available_bytes); 
+//         switch(ide_cmd->cmd.type)
+//         {
+//             case K_DEV_DSK_CMD_TYPE_WRITE:
+//                 // if(cmd->address)
+//                 // {
+//                 //     /* address is not sector aligned, so we'll just throw out the data we don't need */
+//                 //     uint32_t word_count = (cmd->address & 0x1ff) / sizeof(uint16_t);
+//                 //     for(uint32_t index = 0; index < word_count; index++)
+//                 //     {
+//                 //         // k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
+//                 //         k_cpu_OutW(0, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
+//                 //     }
+//                 //     cmd->address -= word_count * sizeof(uint16_t);
+//                 // 
+//                 //     if(cmd->address & 0x1)
+//                 //     {
+//                 //         /* address is not word aligned, so we'll read a word here and discard half of it */
+//                 //         // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
+//                 //         uint16_t data = ((uint8_t *)cmd->buffer)[0];
+//                 //         data <<= 8;
+//                 //         k_cpu_OutW(data, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
+//                 //         // ((uint8_t *)cmd->buffer)[0] = (uint8_t)(data >> 8);
+//                 //         cmd->address--;
+//                 //         cmd->size--;
+//                 //     }
+//                 // }
+//                 // 
+//                 // if(cmd->size > 1)
+//                 // {
+//                 //     /* bulk of the copy  */
+//                 //     uint32_t copy_size = 512 / sizeof(uint16_t);
+//                 //     uint32_t buffer_word_count = cmd->size / sizeof(uint16_t);
+//                 // 
+//                 //     if(copy_size > buffer_word_count)
+//                 //     {
+//                 //         copy_size = buffer_word_count;
+//                 //     }
+//                 // 
+//                 //     copy_size /= sizeof(temp_data) / sizeof(temp_data[0]);
+//                 //     for(uint32_t index = 0; index < copy_size; index++)
+//                 //     {
+//                 //         // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
+//                 //         k_cpu_InSW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG, temp_data, sizeof(temp_data) / sizeof(temp_data[0]));
+//                 //         k_rt_CopyBytes((uint8_t *)cmd->buffer + cmd->address, temp_data, sizeof(temp_data));
+//                 //         cmd->address += sizeof(temp_data);
+//                 //         cmd->size -= sizeof(temp_data);
+//                 //     }
+//                 // }
+//                 // else if(cmd->size == 1)
+//                 // {
+//                 //     /* the size of the buffer is not a round number of words, so copy the last byte here */
+//                 //     uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_PIIX3_IDE_DATA_REG);
+//                 //     ((uint8_t *)cmd->buffer)[cmd->address] = (uint8_t)data;
+//                 //     cmd->size--;
+//                 // }
+//             break;
             
-            case K_DEV_DSK_CMD_TYPE_READ:
-            case K_DEV_DSK_CMD_TYPE_IDENTIFY:
-                // uint32_t bytes_left = cmd->size - cmd->address;
-                // k_sys_TerminalPrintf("0\n");
-                if(ide_cmd->skip_count)
-                {
-                    /* copy is not sector aligned, so we'll just throw out the data we don't need */
-                    uint32_t word_count = ide_cmd->skip_count / sizeof(uint16_t);
-                    for(uint32_t index = 0; index < word_count; index++)
-                    {
-                        k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
-                    }
+//             case K_DEV_DSK_CMD_TYPE_READ:
+//             case K_DEV_DSK_CMD_TYPE_IDENTIFY:
+//                 // uint32_t bytes_left = cmd->size - cmd->address;
+//                 // k_sys_TerminalPrintf("0\n");
+//                 if(ide_cmd->skip_count)
+//                 {
+//                     /* copy is not sector aligned, so we'll just throw out the data we don't need */
+//                     uint32_t word_count = ide_cmd->skip_count / sizeof(uint16_t);
+//                     for(uint32_t index = 0; index < word_count; index++)
+//                     {
+//                         // k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
+//                         ide_disk->funcs.ReadReg16(ide_disk, K_IDE_CMD_REG_DATA);
+//                     }
 
-                    available_bytes -= word_count * sizeof(uint16_t);
+//                     available_bytes -= word_count * sizeof(uint16_t);
                     
                     
-                    if(ide_cmd->skip_count & 0x1)
-                    {
-                        /* address is not word aligned, so we'll read a word here and discard the first half */
-                        uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
-                        /* address is pointing at the second byte of a word */
-                        ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)(data >> 8);
-                        ide_cmd->cmd.address++;
-                        available_bytes -= 2;
-                    }
+//                     if(ide_cmd->skip_count & 0x1)
+//                     {
+//                         /* address is not word aligned, so we'll read a word here and discard the first half */
+//                         // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
+//                         uint16_t data = ide_disk->funcs.ReadReg16(ide_disk, K_IDE_CMD_REG_DATA);
+//                         /* address is pointing at the second byte of a word */
+//                         ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)(data >> 8);
+//                         ide_cmd->cmd.address++;
+//                         available_bytes -= 2;
+//                     }
 
-                    ide_cmd->skip_count = 0;
+//                     ide_cmd->skip_count = 0;
 
-                    // k_sys_TerminalPrintf("1\n");
+//                     // k_sys_TerminalPrintf("1\n");
 
-                    if(!available_bytes)
-                    {
-                        /* we actually read a whole sector from the sector buffer, so get out */
-                        break;
-                    }
-                }
+//                     if(!available_bytes)
+//                     {
+//                         /* we actually read a whole sector from the sector buffer, so get out */
+//                         break;
+//                     }
+//                 }
                 
-                if(available_bytes > 1)
-                {
-                    /* bulk of the copy  */
-                    uint32_t copy_size = available_bytes / sizeof(uint16_t);
-                    uint32_t buffer_word_count = ide_cmd->cmd.size >> 1;
-                    // uint32_t buffer_word_count = cmd->size / sizeof(uint16_t);
+//                 if(available_bytes > 1)
+//                 {
+//                     /* bulk of the copy  */
+//                     uint32_t copy_size = available_bytes / sizeof(uint16_t);
+//                     uint32_t buffer_word_count = ide_cmd->cmd.size >> 1;
+//                     // uint32_t buffer_word_count = cmd->size / sizeof(uint16_t);
                     
-                    if(copy_size > buffer_word_count)
-                    {
-                        copy_size = buffer_word_count;
-                    }
+//                     if(copy_size > buffer_word_count)
+//                     {
+//                         copy_size = buffer_word_count;
+//                     }
 
-                    if(ide_cmd->cmd.address & 1)
-                    {
-                        /* Well, shit, unaligned copy */
-                        for(uint32_t word_index = 0; word_index < copy_size; word_index++)
-                        {
-                            uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
-                            ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)data;
-                            ide_cmd->cmd.address++;
-                            ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)(data >> 8);
-                            ide_cmd->cmd.address++;
-                        }
-                    }
-                    else
-                    {
-                        /* Cool, fast(er) aligned copy */
-                        uint16_t *buffer = (uint16_t *)((uint8_t *)ide_cmd->cmd.buffer + ide_cmd->cmd.address);
-                        k_cpu_InSW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA, buffer, copy_size);
-                        ide_cmd->cmd.address += copy_size * sizeof(uint16_t);                    
-                    }
+//                     if(ide_cmd->cmd.address & 1)
+//                     {
+//                         /* Well, shit, unaligned copy */
+//                         for(uint32_t word_index = 0; word_index < copy_size; word_index++)
+//                         {
+//                             // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
+//                             uint16_t data = ide_disk->funcs.ReadReg16(ide_disk, K_IDE_CMD_REG_DATA);
+//                             ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)data;
+//                             ide_cmd->cmd.address++;
+//                             ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)(data >> 8);
+//                             ide_cmd->cmd.address++;
+//                         }
+//                     }
+//                     else
+//                     {
+//                         /* Cool, fast(er) aligned copy */
+//                         uint16_t *buffer = (uint16_t *)((uint8_t *)ide_cmd->cmd.buffer + ide_cmd->cmd.address);
+//                         // k_cpu_InSW(copy_size, K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA, buffer);
+//                         ide_disk->funcs.ReadReg16S(ide_disk, K_IDE_CMD_REG_DATA, copy_size, buffer);
+//                         ide_cmd->cmd.address += copy_size * sizeof(uint16_t);                    
+//                     }
                     
-                    available_bytes -= copy_size * sizeof(uint16_t);
+//                     available_bytes -= copy_size * sizeof(uint16_t);
 
-                    // k_sys_TerminalPrintf("2\n");
-                    // cmd->size -= copy_size * sizeof(uint16_t);
-                }
+//                     // k_sys_TerminalPrintf("2\n");
+//                     // cmd->size -= copy_size * sizeof(uint16_t);
+//                 }
                 
-                if(available_bytes == 1)
-                {
-                    /* the size of the buffer is not a round number of words, so copy the last byte here */
-                    uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
-                    ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)data;
-                    ide_cmd->cmd.address++;
+//                 if(available_bytes == 1)
+//                 {
+//                     /* the size of the buffer is not a round number of words, so copy the last byte here */
+//                     // uint16_t data = k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
+//                     uint16_t data = ide_disk->funcs.ReadReg16(ide_disk, K_IDE_CMD_REG_DATA);
+//                     ((uint8_t *)ide_cmd->cmd.buffer)[ide_cmd->cmd.address] = (uint8_t)data;
+//                     ide_cmd->cmd.address++;
 
-                    // k_sys_TerminalPrintf("3\n");
-                }
-                else
-                {
-                    /* apparently the IDE controller expects us to read a whole sector...? Not
-                    doing so causes the kernel to hang on qemu. Works fine on bochs, though. The
-                    AT attachment spec says the host reads a sector of data during pio transfers, 
-                    but doesn't seem to assert it's absolutely required to read the whole sector
-                    buffer. */
-                    uint32_t word_count = available_bytes / sizeof(uint16_t);
-                    // k_sys_TerminalPrintf("word count: %d\n", word_count);
-                    for(uint32_t word_index = 0; word_index < word_count; word_index++)
-                    {
-                        k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
-                    }
-                }
-            break;
-        }
+//                     // k_sys_TerminalPrintf("3\n");
+//                 }
+//                 else
+//                 {
+//                     /* apparently the IDE controller expects us to read a whole sector...? Not
+//                     doing so causes the kernel to hang on qemu. Works fine on bochs, though. The
+//                     AT attachment spec says the host reads a sector of data during pio transfers, 
+//                     but doesn't seem to assert it's absolutely required to read the whole sector
+//                     buffer. */
+//                     uint32_t word_count = available_bytes / sizeof(uint16_t);
+//                     // k_sys_TerminalPrintf("word count: %d\n", word_count);
+//                     for(uint32_t word_index = 0; word_index < word_count; word_index++)
+//                     {
+//                         // k_cpu_InW(K_PIIX3_PRIMARY_IDE_CMD_BLOCK + K_IDE_CMD_REG_DATA);
+//                         ide_disk->funcs.ReadReg16(ide_disk, K_IDE_CMD_REG_DATA);
+//                     }
+//                 }
+//             break;
+//         }
 
         
 
-        ide_cmd->sector_count--;
+//         ide_cmd->sector_count--;
         
-        if(ide_cmd->cmd.address == ide_cmd->cmd.size)
-        {
-            /* let anything waiting for this command to know we're done */
-            // k_sys_TerminalPrintf("done...\n");
-            k_rt_SignalCondition(&ide_cmd->cmd.condition);
-        }
+//         if(ide_cmd->cmd.address == ide_cmd->cmd.size)
+//         {
+//             /* let anything waiting for this command to know we're done */
+//             // k_sys_TerminalPrintf("done...\n");
+//             k_rt_SignalCondition(&ide_cmd->cmd.condition);
+//         }
 
-        if(ide_cmd->sector_count == 0)
-        {
-            k_rt_SignalCondition(&ide_cmd->transfer_condition);
-        }
-    }
+//         if(ide_cmd->sector_count == 0)
+//         {
+//             k_rt_SignalCondition(&ide_cmd->transfer_condition);
+//         }
+//     }
     
-    // k_PIIX3_ISA_EndOfInterrupt(14);
+//     // k_PIIX3_ISA_EndOfInterrupt(14);
 
-    // if(ide_cmd->cmd.type == K_DEV_DSK_CMD_TYPE_READ)
-    // {
-    //     k_sys_TerminalPrintf("sector count: %d\n", (uint32_t)ide_cmd->sector_count);
-    // }
-}
+//     // if(ide_cmd->cmd.type == K_DEV_DSK_CMD_TYPE_READ)
+//     // {
+//     //     k_sys_TerminalPrintf("sector count: %d\n", (uint32_t)ide_cmd->sector_count);
+//     // }
+// }
 
 uintptr_t k_PIIX3_IDE_Thread(void *data)
 {

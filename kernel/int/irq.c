@@ -2,7 +2,7 @@
 #include "../sys/sys.h"
 #include "../sys/term.h"
 #include "../cpu/k_cpu.h"
-#include "../dev/pci/piix3/isa.h"
+// #include "../dev/pci/piix3/isa.h"
 #include "../k_rng.h"
 #include "apic.h"
 

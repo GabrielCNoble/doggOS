@@ -9,7 +9,7 @@
 #include "../proc/defs.h"
 #include "../dsk/dsk.h"
 #include "../fs/fs.h"
-#include "../dev/pci/piix3/ide.h"
+// #include "../dev/pci/piix3/ide.h"
 #include "../fs/pup.h"
 // #include "../proc/elf.h"
 #include <stddef.h>

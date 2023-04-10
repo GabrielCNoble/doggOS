@@ -32,9 +32,13 @@ uint8_t k_PIIX3_IDE_ReadReg8(struct k_dev_ide_disk_t *disk, uint8_t reg);
 
 uint16_t k_PIIX3_IDE_ReadReg16(struct k_dev_ide_disk_t *disk, uint8_t reg);
 
+void k_PIIX3_IDE_ReadReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_t count, void *buffer);
+
 void k_PIIX3_IDE_WriteReg8(struct k_dev_ide_disk_t *disk, uint8_t reg, uint8_t value);
 
 void k_PIIX3_IDE_WriteReg16(struct k_dev_ide_disk_t *disk, uint8_t reg, uint16_t value);
+
+void k_PIIX3_IDE_WriteReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_t count, void *buffer);
 
     // uint8_t k_PIIX3_IDE_ReadStatus();
 
@@ -48,7 +52,7 @@ void k_PIIX3_IDE_WriteReg16(struct k_dev_ide_disk_t *disk, uint8_t reg, uint16_t
 
 uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd);
 
-void k_PIIX3_IDE_Handler();
+// void k_PIIX3_IDE_Handler();
 
 
 
