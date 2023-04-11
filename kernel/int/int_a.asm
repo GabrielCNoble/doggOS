@@ -6,8 +6,12 @@
 
 .global k_int_Lidt
 k_int_Lidt:
-    mov eax, dword ptr [esp + 4]
-    mov ebx, dword ptr [esp + 8]
+    push ebp
+    mov ebp, esp
+    push eax
+    push ebx
+    mov eax, dword ptr [ebp + 8]
+    mov ebx, dword ptr [ebp + 12]
     sub esp, 6
     shl ebx, 3
     dec ebx
@@ -15,5 +19,8 @@ k_int_Lidt:
     mov dword ptr [esp + 2], eax
     lidt [esp]
     add esp, 6
+    pop ebx
+    pop eax
+    pop ebp
     ret
 

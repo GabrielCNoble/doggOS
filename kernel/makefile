@@ -1,4 +1,4 @@
-GCC_FLAGS := -Wall -std=c17 -ffreestanding -lgcc -masm=intel
+GCC_FLAGS := -Wall -std=c17 -ffreestanding -lgcc -masm=intel -fno-delete-null-pointer-checks
 GAS_FLAGS := -I "./"
 
 KERNEL_LDS := linker.ld

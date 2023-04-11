@@ -252,8 +252,6 @@ void k_mem_SortFreePhysicalPages()
 uintptr_t k_mem_AllocPhysicalPage(uint32_t flags)
 {
     uintptr_t page_address = K_MEM_NULL_PAGE;
-    // k_cpu_Halt();
-    __asm__ volatile ("nop\n");
     k_rt_SpinLock(&k_mem_physical_ranges_spinlock);
     for(uint32_t range_index = 0; range_index < k_mem_physical_ranges.range_count; range_index++)
     {

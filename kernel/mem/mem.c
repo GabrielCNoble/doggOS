@@ -374,14 +374,12 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     uint32_t flags = K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE;
     struct k_mem_pentry_t *pdir = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
     struct k_mem_pentry_t *ptable = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
-
     
     for(uint32_t index = 0; index < 1024; index++)
     {
         pdir[index].entry = 0;
         ptable[index].entry = 0;
     }
-    
 
     pdir[K_MEM_PMAP_PDIR_INDEX].entry = ((uintptr_t)ptable) | flags;
     ptable[K_MEM_PMAP_PDIR_INDEX].entry = ((uintptr_t)pdir) | flags;
@@ -417,17 +415,8 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     k_cpu_EnablePaging();
 
     
-
     // k_mem_MapLinearAddress(0xa0000, 0xa0000, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
     k_mem_virtual_ranges.range_count = k_mem_virtual_ranges.free_count;
-    // asm volatile
-    // (
-    //     "nop\n"
-    //     "nop\n"
-    //     "nop\n"
-    //     "nop\n"
-    //     "nop\n"
-    // );
     // struct k_mem_prange_t *range = k_mem_physical_ranges.ranges + k_mem_physical_ranges.range_count - 1;
     // uintptr_t page = range->free_pages[range->free_count - 1];
     // k_printf("%d\n", range->page_count); 

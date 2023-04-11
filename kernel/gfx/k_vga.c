@@ -38,6 +38,14 @@ void k_gfx_InitVga()
 {
     k_gfx_vga_width = 80;
     k_gfx_vga_height = 25;
+    __asm__ volatile
+    (
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+    );
     k_gfx_SetVgaMemMap(K_GFX_VGA_MEM_MAP0);
     k_mem_MapLinearAddress((uint32_t)k_gfx_vga_cur_mem_map, (uint32_t)k_gfx_vga_cur_mem_map, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);
     
@@ -54,6 +62,16 @@ void k_gfx_InitVga()
     // k_gfx_WriteVgaGfxReg(K_GFX_VGA_GFX_REG_MISC, reg_value);
 
     // k_gfx_FillSquare(0, 0, 0, 0);
+    __asm__ volatile
+    (
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+    );
     k_gfx_SetVgaGfxMode(K_GFX_VGA_GFX_MODE_ALPHANUMERIC);
 }
 
@@ -213,6 +231,12 @@ void k_gfx_ToggleVgaCursor(uint32_t enable)
 void k_gfx_SetVgaGfxMode(uint32_t mode)
 {
     // (void)mode;
+    __asm__ volatile
+    (
+        "nop\n"
+        "nop\n"
+        "nop\n"
+    );
     uint8_t misc_value = k_gfx_ReadVgaGfxReg(K_GFX_VGA_GFX_REG_MISC);
     uint8_t map_mask_value = 0;
 
@@ -227,7 +251,23 @@ void k_gfx_SetVgaGfxMode(uint32_t mode)
         map_mask_value = 0x03;
     }
 
+    __asm__ volatile
+    (
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+    );
+
     k_gfx_WriteVgaGfxReg(K_GFX_VGA_GFX_REG_MISC, misc_value);
+    __asm__ volatile
+    (
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+    );
     k_gfx_WriteVgaSeqReg(K_GFX_VGA_SEQ_REG_MAP_MASK, map_mask_value);
 }
 

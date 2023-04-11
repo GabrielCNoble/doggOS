@@ -150,6 +150,8 @@ void k_proc_Init()
     k_proc_core_state.tss->ss0 = K_CPU_SEG_SEL(K_PROC_R0_DATA_SEG, 0, 0);
     k_proc_shared_data->gdt[K_PROC_TSS_SEG] = K_CPU_SEG_DESC((uint32_t)k_proc_core_state.tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
     k_cpu_Lgdt(k_proc_shared_data->gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
+    // k_cpu_Halt();
+    __asm__ volatile ("nop\n");
     k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
 
     k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_IRQ_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(2, 0, 0), 3);

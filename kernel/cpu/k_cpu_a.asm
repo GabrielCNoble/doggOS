@@ -16,19 +16,23 @@ k_cpu_DisableInterrupts:
 
 .global k_cpu_EnablePaging
 k_cpu_EnablePaging:
+    push eax
     mov eax, cr4
     or eax, 0x00000010
     mov cr4, eax
     mov eax, cr0
     or eax, 0x80000000
     mov cr0, eax
+    pop eax
     ret
 
 .global k_cpu_DisablePaging
 k_cpu_DisablePaging:
+    push eax
     mov eax, cr0
     and eax, 0x7fffffff
     mov cr0, eax
+    pop eax
     ret
 
 .global k_cpu_IsPagingEnabled
@@ -39,8 +43,10 @@ k_cpu_IsPagingEnabled:
 
 .global k_cpu_InvalidateTLB
 k_cpu_InvalidateTLB:
-    mov eax, dword ptr [esp + 4]
+    push eax
+    mov eax, dword ptr [esp + 8]
     invlpg dword ptr [eax]
+    pop eax
     ret
 
 .global k_cpu_Halt
@@ -50,9 +56,16 @@ k_cpu_Halt:
 
 .global k_cpu_Lgdt
 k_cpu_Lgdt:
-    mov eax, dword ptr [esp + 4]
-    mov ebx, dword ptr [esp + 8]
-    mov ecx, dword ptr [esp + 12]
+    push ebp
+    mov ebp, esp
+
+    push eax
+    push ebx
+    push ecx
+
+    mov eax, dword ptr [ebp + 8]
+    mov ebx, dword ptr [ebp + 12]
+    mov ecx, dword ptr [ebp + 16]
     sub esp, 6
     shl ebx, 3
     dec ebx
@@ -68,18 +81,27 @@ k_cpu_Lgdt:
     _change_cs:
     pop ecx
     pop ecx
+
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 .global k_cpu_Ltr
 k_cpu_Ltr:
-    mov eax, dword ptr [esp + 4]
+    push eax
+    mov eax, dword ptr [esp + 8]
     ltr ax
+    pop eax
     ret
 
 .global k_cpu_Lcr3
 k_cpu_Lcr3:
-    mov eax, dword ptr [esp + 4]
+    push eax
+    mov eax, dword ptr [esp + 8]
     mov cr3, eax
+    pop eax
     ret
 
 .global k_cpu_Rcr3
@@ -138,8 +160,10 @@ k_cpu_InW:
 k_cpu_InSW:
     push ebp
     mov ebp, esp
+    push edi
     mov edi, dword ptr [ebp + 8]  
     rep insw
+    pop edi
     pop ebp
     ret
 
