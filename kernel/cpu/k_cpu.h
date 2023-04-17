@@ -2,7 +2,8 @@
 #define K_CPU_H
 
 #include "../defs.h"
-#include "k_defs.h"
+#include "defs.h"
+#include "../irq/irq.h"
 
 extern void k_cpu_EnableInterrupts();
 
@@ -19,6 +20,8 @@ extern void k_cpu_InvalidateTLB(uint32_t address);
 extern void k_cpu_Halt();
 
 extern void k_cpu_Lgdt(struct k_cpu_seg_desc_t *gdt, uint32_t seg_count, uint32_t next_cs);
+
+extern void k_int_Lidt(struct k_irq_desc_t *table, uint32_t entry_count);
 
 extern void k_cpu_Ltr(uint32_t selector);
 

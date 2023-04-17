@@ -3,10 +3,10 @@
 
 uint8_t k_8042_ReadScancode()
 {
-    return k_cpu_InB(K_8042_DATA_PORT);
+    return k_cpu_InB(K_DEV_PS2_DATA_PORT);
 }
 
 uint8_t k_8042_ReadStatus()
 {
-    return k_cpu_InB(K_8042_STATUS_CMD_PORT);
+    return k_cpu_InB(K_DEV_PS2_STATUS_CMD_PORT);
 }

@@ -1,6 +1,5 @@
 #include "k_init.h"
 #include "../k_main.h"
-#include <stddef.h>
 #include "../../version/version.h"
 #include "../dev/dsk.h"
 
@@ -16,8 +15,6 @@ void stdcall k_Init(struct k_init_data_t *init_data)
     k_proc_Init();
     k_rng_Seed(3);
     k_dev_Init();
-    k_kb_Init();
-    k_mouse_Init();
     k_cpu_EnableInterrupts();
     k_main();
 }

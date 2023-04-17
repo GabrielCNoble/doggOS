@@ -1,5 +1,5 @@
 #include "k_timer.h"
-#include "../int/apic.h"
+#include "../irq/apic.h"
 
 void k_timer_Init()
 {

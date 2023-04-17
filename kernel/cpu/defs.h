@@ -226,6 +226,6 @@ struct k_cpu_tss_t
     uint32_t ssp;       // 104
 };
 
-// #define K_CPU_INTERRUPT(interrupt) asm volatile ("int "#(interrupt)) 
+
 
 #endif

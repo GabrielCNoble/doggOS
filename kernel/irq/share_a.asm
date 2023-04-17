@@ -75,53 +75,32 @@ k_int14_a:
     hlt
     iret
 
-.global k_intn_a
-k_intn_a:
-    call k_int_Intn
-    iret
 
-.global k_int32_a
-k_int32_a:
-    pusha
-    call k_int_Int32
-    popa
-    iret
+.macro k_irq_jmp_table_entry from to
+    .balign 16
+    call k_proc_ExitThreadContext
+    mov eax, \from
+    jmp k_irq_DispatchIRQ_a
+    .if \to-\from
+        k_irq_jmp_table_entry "(\from+1)",\to
+    .endif
+.endm
 
-.global k_int33_a
-k_int33_a:
-    pusha
-    call k_int_Int33
-    popa
-    iret
+.balign 16
+.global k_irq_IrqJumpTable_a
+k_irq_IrqJumpTable_a:
+    k_irq_jmp_table_entry 32,64
+    k_irq_jmp_table_entry 65,96
+    k_irq_jmp_table_entry 97,128
+    k_irq_jmp_table_entry 129,160
+    k_irq_jmp_table_entry 161,192
+    k_irq_jmp_table_entry 193,224
+    k_irq_jmp_table_entry 225,256
 
-.global k_int34_a
-k_int34_a:
-    pusha
-    call k_int_Int34
-    call k_apic_EndOfInterrupt
-    popa
-    iret
-
-.global k_int35_a
-k_int35_a:
-    pusha
-    call k_int_Int35
-    call k_apic_EndOfInterrupt
-    popa
-    iret
-
-.global k_int36_a
-k_int36_a:
-    pusha
-    call k_int_Int36
-    call k_apic_EndOfInterrupt
-    popa
-    iret
-
-.global k_int69_a
-k_int69_a:
-    pusha
-    call k_int_Int69
-    call k_apic_EndOfInterrupt
-    popa
+.global k_irq_DispatchIRQ_a
+k_irq_DispatchIRQ_a:
+    push eax
+    call k_irq_DispatchIRQ
+    pop eax
+    call k_proc_EnterThreadContext
     iret

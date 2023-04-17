@@ -308,7 +308,6 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     // uintptr_t *p = page_headers + ((header_pair_count - 1) * header_pair_size);
     // *p = 5;
-
     if(page_headers)
     {
         for(uint32_t range_index = 0; range_index < range_count; range_index++)
@@ -374,6 +373,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     uint32_t flags = K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE;
     struct k_mem_pentry_t *pdir = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
     struct k_mem_pentry_t *ptable = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
+
     
     for(uint32_t index = 0; index < 1024; index++)
     {
@@ -383,8 +383,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     pdir[K_MEM_PMAP_PDIR_INDEX].entry = ((uintptr_t)ptable) | flags;
     ptable[K_MEM_PMAP_PDIR_INDEX].entry = ((uintptr_t)pdir) | flags;
-    ptable[K_MEM_PMAP_PTABLE_INDEX].entry = ((uintptr_t)ptable) | flags;
-    
+    ptable[K_MEM_PMAP_PTABLE_INDEX].entry = ((uintptr_t)ptable) | flags;    
 
     // pdir[0].entry = ((uintptr_t)low_mem_ptable) | flags;
     // ptable[0].entry = ((uintptr_t)low_mem_ptable) | flags;
@@ -413,6 +412,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     k_cpu_Lcr3((uint32_t)pdir);
     k_cpu_EnablePaging();
+
 
     
     // k_mem_MapLinearAddress(0xa0000, 0xa0000, K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS);

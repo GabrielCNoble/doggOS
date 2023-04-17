@@ -147,6 +147,8 @@ uint8_t k_IDE_ReadError(struct k_dev_ide_disk_t *disk);
 
 void k_IDE_ExecCmd(struct k_dev_ide_disk_t *disk, uint32_t cmd);
 
+uint32_t k_IDE_Identify(struct k_dev_ide_disk_t *disk);
+
 uint32_t k_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd);
 
 

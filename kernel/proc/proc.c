@@ -3,8 +3,8 @@
 #include "proc.h"
 #include "thread.h"
 #include "../sys/term.h"
-#include "../int/apic.h"
-#include "../int/irq.h"
+#include "../irq/apic.h"
+#include "../irq/irq.h"
 #include "../k_rng.h"
 #include "../mem/mem.h"
 #include "../mem/pmap.h"
@@ -105,7 +105,7 @@ extern void *k_shared_start;
 extern void *k_shared_end;
 extern void *k_kernel_end2;
 
-extern struct k_irq_desc_t k_int_idt[K_IRQ_HANDLER_LAST];
+extern struct k_irq_desc_t k_irq_idt[K_IRQ_HANDLER_LAST];
 
 void k_proc_Init()
 {
@@ -150,13 +150,10 @@ void k_proc_Init()
     k_proc_core_state.tss->ss0 = K_CPU_SEG_SEL(K_PROC_R0_DATA_SEG, 0, 0);
     k_proc_shared_data->gdt[K_PROC_TSS_SEG] = K_CPU_SEG_DESC((uint32_t)k_proc_core_state.tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
     k_cpu_Lgdt(k_proc_shared_data->gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
-    // k_cpu_Halt();
-    __asm__ volatile ("nop\n");
-    k_cpu_Ltr(K_CPU_SEG_SEL(5, 3, 0));
+    k_cpu_Ltr(K_CPU_SEG_SEL(K_PROC_TSS_SEG, 3, 0));
 
-    k_int_SetInterruptHandler(K_PROC_PREEMPT_THREAD_IRQ_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(2, 0, 0), 3);
-    k_int_SetInterruptHandler(K_PROC_START_USER_THREAD_VECTOR, (uintptr_t)&k_proc_StartUserThread_a, K_CPU_SEG_SEL(2, 0, 0), 0);
-    // k_int_SetInterruptHandler(K_PROC_SYSCALL_VECTOR, (uintptr_t)&k_sys_SysCall, K_CPU_SEG_SEL(2, 0, 0), 3);
+    k_irq_SetIDTEntry(K_PROC_PREEMPT_THREAD_IRQ_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);
+    k_irq_SetIDTEntry(K_PROC_START_USER_THREAD_IRQ_VECTOR, (uintptr_t)&k_proc_StartUserThread_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 0);
     k_apic_WriteReg(K_APIC_REG_LVT_TIMER, (k_apic_ReadReg(K_APIC_REG_LVT_TIMER) | (K_PROC_PREEMPT_THREAD_IRQ_VECTOR & 0xff) ) & (0xfff8ffff));
     k_apic_WriteReg(K_APIC_REG_DIV_CONFIG, k_apic_ReadReg(K_APIC_REG_DIV_CONFIG) & (~0xb));
     k_apic_WriteReg(K_APIC_REG_SPUR_INT_VEC, k_apic_ReadReg(K_APIC_REG_SPUR_INT_VEC) | 34);
@@ -389,8 +386,8 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
                 k_proc_MapProcessAddress(&mem_init, K_PROC_SHARED_DATA_ADDRESS, K_PROC_SHARED_DATA_ADDRESS);
                 // k_proc_MapProcessAddress(&mem_init, &k_proc_gdt, &k_proc_gdt);
 
-                uintptr_t idt_start = (uintptr_t)&k_int_idt;
-                uintptr_t idt_end = idt_start + sizeof(k_int_idt);
+                uintptr_t idt_start = (uintptr_t)&k_irq_idt;
+                uintptr_t idt_end = idt_start + sizeof(k_irq_idt);
                 // k_sys_TerminalPrintf("%x %x\n", idt_start, idt_end);
                 while(idt_start <= idt_end)
                 {
@@ -459,7 +456,7 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
 
 struct k_proc_process_t *k_proc_LaunchProcess(const char *path, const char **args)
 {
-    return k_proc_CreateProcess(&k_kernel_end2, path, args);
+    // return k_proc_CreateProcess(&k_kernel_end2, path, args);
 }
 
 uint32_t k_proc_WaitProcess(struct k_proc_process_t *process, uintptr_t *return_value)

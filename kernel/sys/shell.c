@@ -60,7 +60,7 @@ uintptr_t k_sys_ShellMain(void *data)
     char keyboard_buffer[512];
     char current_path[512];
     
-    k_dev_StartDevices();    
+    // k_dev_StartDevices();    
     k_sys_TerminalSetColor(K_SYS_TERM_COLOR_WHITE, K_SYS_TERM_COLOR_BLACK);
     k_sys_TerminalPrintf("Initializing root shell...\n");
     // k_sys_SysCall(K_SYS_SYSCALL_TEST_CALL, 0, 1, 2);
@@ -76,14 +76,14 @@ uintptr_t k_sys_ShellMain(void *data)
     // k_rt_SetBytes(buffer, 6, 'z');
 
     // k_sys_TerminalPrintf("%s\n", buffer);
-    struct k_fs_part_t partition = {.first_block = 172, .block_count = 8192, .disk = k_PIIX3_IDE_disk};
+    struct k_fs_part_t partition = {.first_block = 188, .block_count = 8192, .disk = k_PIIX3_IDE_disk};
     
     struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
     
     // struct k_fs_pup_link_t cur_dir_node;    
     struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, "/", K_FS_PUP_NULL_LINK);
     k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
-    k_sys_TerminalClear();
+    // k_sys_TerminalClear();
     
 
     while(1)

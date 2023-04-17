@@ -63,6 +63,8 @@ enum K_IRQ_HANDLERS
     K_IRQ_HANDLER_LAST = 256
 };
 
+typedef (k_irq_handler_t)(uint32_t irq_vector);
+
 enum K_IRQ_PF_FLAGS
 {
     K_IRQ_PF_FLAG_NON_PAGED = 1,
@@ -81,15 +83,9 @@ enum K_IRQ_INT_ERROR_CODE_FLAGS
 
 void k_int_Init();
 
-// extern void k_int_disable_interrupts();
+void k_irq_SetIDTEntry(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl);
 
-// extern void k_int_enable_interrupts();
-
-extern void k_int_Lidt(struct k_irq_desc_t *table, uint32_t entry_count);
-
-void k_int_SetInterruptHandler(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl);
-
-// extern void k_int_IntN(uint8_t interrupt);
+void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_t *handler);
 
 void k_int_Int0(uint32_t eip, uint16_t cs);
 
@@ -127,6 +123,7 @@ void k_int_Int36();
 
 void k_int_Int69();
 
+void k_irq_DispatchIRQ(uint32_t vector);
 
 
 #endif

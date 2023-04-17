@@ -56,7 +56,7 @@ extern struct k_dev_disk_t *k_PIIX3_IDE_disk;
 void k_dev_StartDevices()
 {
     struct k_dev_device_t *device = k_dev_devices;
-    k_sys_TerminalPrintf("Initializing devices...\n");
+    // k_sys_TerminalPrintf("Initializing devices...\n");
     // k_cpu_DisableInterrupts();
     while(device != NULL)
     {
@@ -82,7 +82,7 @@ void k_dev_StartDevices()
 
 void k_dev_StartDevice(struct k_dev_device_t *device)
 {
-    if(device != NULL && device->device_status == K_DEV_DEVICE_STATUS_NOT_INITIALIZED)
+    if(device != NULL && device->device_status == K_DEV_DEVICE_STATUS_NOT_INITIALIZED && device->driver_func != NULL)
     {
         device->driver_thread = k_proc_CreateKernelThread(device->driver_func, device);
     }

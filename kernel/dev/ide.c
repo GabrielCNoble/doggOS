@@ -12,8 +12,41 @@ uint8_t k_IDE_ReadError(struct k_dev_ide_disk_t *disk)
 
 void k_IDE_ExecCmd(struct k_dev_ide_disk_t *disk, uint32_t cmd)
 {
-    while(k_IDE_ReadStatus(disk) & K_IDE_STATUS_FLAG_BSY);
+    while(!(k_IDE_ReadStatus(disk) & K_IDE_STATUS_FLAG_DRDY));
     disk->funcs.WriteReg8(disk, K_IDE_CMD_REG_CMD, cmd);
+}
+
+uint32_t k_IDE_Identify(struct k_dev_ide_disk_t *disk)
+{
+    struct k_dev_dsk_ide_cmd_t id_cmd = {};
+    struct k_ide_info_t ide_info = {};
+    id_cmd.cmd.type = K_DEV_DSK_CMD_TYPE_IDENTIFY;
+    id_cmd.cmd.buffer = &ide_info;
+    id_cmd.cmd.size = sizeof(struct k_ide_info_t);
+    id_cmd.cmd.address = 0;
+    id_cmd.skip_count = 0;
+    id_cmd.sector_count = 1;
+
+    disk->cmd = &id_cmd;
+    /* necessary so the interrupt handler works properly. This is is fine
+    because the identify command doesn't really rely on the block size. */
+    disk->disk.block_size = 512;
+    
+    // k_PIIX3_IDE_Identify((struct k_dev_dsk_cmd_t *)&id_cmd);
+    k_cpu_EnableInterrupts();
+    k_IDE_ExecCmd(disk, K_IDE_CMD_ID_DRIVE);
+    // k_proc_WaitCondition(&id_cmd.cmd.condition);
+    while(!id_cmd.cmd.condition);
+    k_cpu_DisableInterrupts();
+    // 
+    
+    uint32_t lba_sector_count = (((uint32_t)ide_info.lba_sector_count[0]) << 16) | ((uint32_t)ide_info.lba_sector_count[1]);
+
+    disk->disk.block_size = ide_info.bytes_per_sector;
+    disk->disk.block_count = lba_sector_count;
+    disk->disk.start_address = 0;
+
+    return 0;
 }
 
 uint32_t k_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd)

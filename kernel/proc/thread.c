@@ -2,7 +2,7 @@
 #include "proc.h"
 #include "../rt/atm.h"
 // #include "../cont/k_objlist.h"
-#include "../int/apic.h"
+#include "../irq/apic.h"
 #include "../rt/mem.h"
 #include "../rt/alloc.h"
 #include "../rt/queue.h"
@@ -378,9 +378,16 @@ uint32_t k_proc_WaitCondition(k_rt_cond_t *condition)
     struct k_proc_thread_t *current_thread = k_proc_GetCurrentThread();
     if(condition && !(*condition))
     {
-        current_thread->wait_condition = condition;
-        current_thread->state = K_PROC_THREAD_STATE_COND_WAIT;        
-        k_proc_YieldThread();
+        if(current_thread != NULL)
+        {
+            current_thread->wait_condition = condition;
+            current_thread->state = K_PROC_THREAD_STATE_COND_WAIT;        
+            k_proc_YieldThread();
+        }
+        else
+        {
+            while(!(*condition));
+        }
     }
     
     return 0;

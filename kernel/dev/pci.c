@@ -3,6 +3,7 @@
 #include "../sys/term.h"
 #include "../mem/mem.h"
 #include "soc/piix3/piix3.h"
+#include "soc/440fx/440fx.h"
 #include <stddef.h>
 
 struct k_pci_config_reg_t k_pci_config_regs[] =
@@ -44,10 +45,16 @@ uint32_t k_pci_config_reg_masks[] =
 struct k_pci_device_info_t k_pci_devices[] = 
 {
     {
-        .name = "PIIX3",
-        .vendor_id = 0x8086,
-        .device_id = 0x7000,
-        .init = k_PIIX3_Init,
+        .name           = "PIIX3",
+        .vendor_id      = 0x8086,
+        .device_id      = 0x7000,
+        .init           = k_PIIX3_Init,
+    },
+    {
+        .name           = "440FX",
+        .vendor_id      = 0x8086,
+        .device_id      = 0x1237,
+        .init           = k_440FX_Init,
     },
     {
         .vendor_id = K_PCI_INVALID_VENDOR_ID,
@@ -57,7 +64,7 @@ struct k_pci_device_info_t k_pci_devices[] =
 void k_pci_Init()
 {
     k_sys_TerminalPrintf("Scanning PCI bus...\n");
-    k_sys_TerminalSetColor(K_SYS_TERM_COLOR_GREEN, K_SYS_TERM_COLOR_BLACK);
+    // k_sys_TerminalSetColor(K_SYS_TERM_COLOR_GREEN, K_SYS_TERM_COLOR_BLACK);
     for(uint32_t device_index = 0; device_index < K_PCI_MAX_BUS_DEVICES; device_index++)
     {
         union k_pci_header_t header = {};
@@ -71,7 +78,8 @@ void k_pci_Init()
             {
                 if(header.vendor_id == device_info->vendor_id && header.device_id == device_info->device_id)
                 {
-                    device_info->init(0, device_index);
+                    k_sys_TerminalPrintf("  Found [%s] (0x%x : 0x%x)\n", device_info->name, device_info->vendor_id, device_info->device_id);
+                    device_info->init(0, device_index, &header);
                     break;
                 }
 
@@ -81,9 +89,9 @@ void k_pci_Init()
     }
 }
 
-void k_pci_SetupDevice(union k_pci_header_t *header, uint8_t bus, uint8_t device, uint8_t function)
+uint32_t k_pci_SetupDevice(union k_pci_header_t *header, struct k_pci_device_info_t *info, uint8_t bus, uint8_t device)
 {
-
+    // if(info->init(bus, device, header) == )
 }
 
 uint32_t k_pci_ReadHeader(uint8_t bus, uint8_t device, uint8_t function, union k_pci_header_t *header)

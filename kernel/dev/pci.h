@@ -270,7 +270,7 @@ struct k_pci_device_info_t
     char *name;
     uint16_t vendor_id;
     uint16_t device_id;
-    uint32_t (*init)(uint8_t bus_index, uint8_t device_index);
+    uint32_t (*init)(uint8_t bus_index, uint8_t device_index, union k_pci_header_t *header);
     struct k_pci_func_info_t *funcs;
 };
 
@@ -284,7 +284,7 @@ struct k_pci_init_info_t
 
 void k_pci_Init();
 
-void k_pci_SetupDevice(union k_pci_header_t *header, uint8_t bus, uint8_t device, uint8_t function);
+uint32_t k_pci_SetupDevice(union k_pci_header_t *header, struct k_pci_device_info_t *info, uint8_t bus, uint8_t device);
 
 uint32_t k_pci_ReadHeader(uint8_t bus, uint8_t device, uint8_t function, union k_pci_header_t *header);
 

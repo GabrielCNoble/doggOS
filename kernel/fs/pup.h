@@ -149,6 +149,21 @@ struct k_fs_pup_node_t
     uint8_t     name[K_FS_PUP_NODE_NAME_MAX_LEN];
 };
 
+struct k_fs_pup_node_lock_t
+{
+    struct k_fs_pup_node_lock_t *       left;
+    struct k_fs_pup_node_lock_t *       right;
+    struct k_fs_pup_node_lock_t *       children;
+    struct k_fs_pup_link_t              node;
+    uint32_t                            read_count;
+};
+
+
+struct k_fs_pup_node_lock_page_t
+{
+    
+};
+
 /* node content block. This contains directory entries, in case of a directory node, or
 data entries, in case of a file node. */
 
@@ -326,6 +341,9 @@ struct k_fs_pup_vol_t
     last entry in a set's entry linked list is the least recently accessed entry */
     uint32_t                        lru_bitmask;
 
+
+    k_rt_spnl_t                     node_lock_info_lock;
+
     /* how much virtual memory is dedicated to this cache. It'll keep growing
     until hitting the max memory allowed for a disk cache. No entry evicion will
     happen as long as the cache is smaller than this. */
@@ -358,7 +376,7 @@ struct k_fs_pup_vol_t
     of bytes, and some additional bit twiddling per byte. Something similar
     to the kernel allocator could be used for this when the volume is mounted,
     and the bitmask representation would be used only on disk. */
-    uint8_t                  *      block_bitmask;
+    uint8_t *                       block_bitmask;
 };
 
 enum K_FS_PUP_PATH_TYPE
@@ -485,6 +503,8 @@ struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *p
 struct k_fs_pup_link_t k_fs_PupAddNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t start_node, const char *path, const char *name, uint32_t type);
 
 void k_fs_PupRemoveNode(struct k_fs_vol_t *volume, const char *path);
+
+void k_fs_PupLockNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node);
 
 void k_fs_PupInitContents(union k_fs_pup_content_t *contents, struct k_fs_pup_link_t node, uint32_t type);
 

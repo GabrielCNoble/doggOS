@@ -3,6 +3,7 @@
 
 #include "../../pci.h"
 #include "../../dsk.h"
+#include "../../ps2.h"
 #include "../../82C59.h"
 #include "../../82C37.h"
 #include "../../ide.h"
@@ -12,13 +13,11 @@
 #define K_PIIX3_PCI_TO_ISA_FUNCTION_INDEX 0
 #define K_PIIX3_IDE_INTERFACE_FUNCTION_INDEX 1
 
-uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index);
-
-
+uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index, union k_pci_header_t *header);
 
 
 #define K_PIIX3_IDE_CH0_PCI_IDETIM_REG 0x40
-#define K_PIIX3_IDE_IRQ_VECTOR 46
+#define K_PIIX3_IDE_IRQ_VECTOR 14
 
 #define K_PIIX3_PRIMARY_IDE_CMD_BLOCK 0x1f0
 
@@ -40,6 +39,8 @@ void k_PIIX3_IDE_WriteReg16(struct k_dev_ide_disk_t *disk, uint8_t reg, uint16_t
 
 void k_PIIX3_IDE_WriteReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_t count, void *buffer);
 
+void k_PIIX3_IDE_IRQHandler(uint32_t irq_vector);
+
     // uint8_t k_PIIX3_IDE_ReadStatus();
 
 // uint8_t K_PIIX3_IDE_ReadError();
@@ -50,15 +51,33 @@ void k_PIIX3_IDE_WriteReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_
 
 // uint32_t k_PIIX3_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd);
 
-uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd);
+// uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd);
 
 // void k_PIIX3_IDE_Handler();
+
+/* PS2 controller */
+
+#define K_PIIX3_PS2_KEYBOARD_IRQ_VECTOR 1
+#define K_PIIX3_PS2_MOUSE_IRQ_VECTOR 12
+
+uint8_t k_PIIX3_PS2_ReadData(struct k_dev_ps2_device_t *device);
+
+void k_PIIX3_PS2_WriteData(struct k_dev_ps2_device_t *device, uint8_t value);
+
+uint8_t k_PIIX3_PS2_ReadCmd(struct k_dev_ps2_device_t *device);
+
+void k_PIIX3_PS2_WriteCmd(struct k_dev_ps2_device_t *device, uint8_t value);
+
+void k_PIIX3_PS2_Keyboard_IRQHandler(uint32_t irq_vector);
 
 
 
 /* ISA bus */
 
 /* 82C59 interrupt controllers */
+
+#define K_PIIX3_82C59_IRQ_BASE       128
+
 #define K_PIIX3_82C59_CTRL1_ICW1_REG 0x20
 #define K_PIIX3_82C59_CTRL1_ICW2_REG 0x21
 
@@ -130,8 +149,13 @@ uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd);
 #define K_PIIX3_82C37_CH03_CLEAR_MASK_CMD_REG 0x0e
 #define K_PIIX3_82C37_CH47_CLEAR_MASK_CMD_REG 0xdc
 
+
+// #define K_PIIX3_KEYBOARD_IRQ_VECTOR 1
+
 uint16_t k_PIIX3_ISA_ReadIRReg();
 
 void k_PIIX3_ISA_EndOfInterrupt(uint32_t irq_vector);
+
+void k_PIIX3_ISA_Timer1_IRQHandler(uint32_t irq_vector);
 
 #endif
