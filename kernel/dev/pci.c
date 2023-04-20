@@ -85,6 +85,11 @@ void k_pci_Init()
 
                 device_info++;
             }
+
+            if(device_info->vendor_id == K_PCI_INVALID_VENDOR_ID)
+            {
+                k_sys_TerminalPrintf("  Unknown PCI device (0x%x : 0x%x)\n", header.vendor_id, header.device_id);
+            }
         }
     }
 }

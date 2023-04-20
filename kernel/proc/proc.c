@@ -164,41 +164,10 @@ void k_proc_Init()
     cleanup_thread->queue_next = NULL;
     k_proc_ready_threads = NULL;
     k_proc_last_ready_thread = NULL;
-    // k_rt_QueuePop(&k_proc_ready_queue);
-
-    // while(thread)
-    // {
-    //     if(thread == cleanup_thread)
-    //     {
-    //         break;
-    //     }
-
-    //     prev_thread = thread;
-    //     thread = thread->queue_next;
-    // }
-
-    // if(!prev_thread)
-    // {
-    //     k_proc_ready_queue = k_proc_ready_queue->queue_next;
-    // }
-    // else
-    // {
-    //     prev_thread->queue_next = cleanup_thread->queue_next;
-    // }
-
-    // if(cleanup_thread == k_proc_ready_queue_last)
-    // {
-    //     k_proc_ready_queue_last = prev_thread;
-    // }
-
-    // cleanup_thread->queue_next = NULL;
 
     k_proc_core_state.cleanup_thread = cleanup_thread;
     k_proc_core_state.delete_list = NULL;
     k_proc_core_state.delete_list_lock = 0;
-    /* this address has been identity mapped during initialization */
-    // k_proc_shared_data = (struct k_proc_shared_data_t *)K_PROC_SHARED_DATA_ADDRESS;
-    // k_proc_shared_data->kernel_pmap = k_proc_page_map;
 }
 
 struct k_proc_process_mem_init_t
@@ -216,8 +185,6 @@ void k_proc_MapProcessAddress(struct k_proc_process_mem_init_t *mem_init, uintpt
 {
     uint32_t pdir_index = K_MEM_PDIR_INDEX(linear_address);
     uint32_t entry_flags = K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_USER_MODE_ACCESS | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_USED;
-    // asm volatile ("cli\n hlt\n");
-    // asm volatile ("nop\n nop\n");
     if(!mem_init->page_dir[pdir_index].entry)
     {
         mem_init->page_dir[pdir_index].entry = k_mem_AllocPhysicalPage(0) | entry_flags;
@@ -287,11 +254,6 @@ struct k_proc_process_t *k_proc_CreateProcess(void *image, const char *path, con
     if(image)
     {
         struct k_proc_elfh_t *elf_header = (struct k_proc_elfh_t *)image;
-        
-        // for(uint32_t index = 0; index < K_PROC_ELF_IDENT; index++)
-        // {
-        //     k_sys_TerminalPrintf("%x ", elf_header->ident[index]);
-        // }
 
         if(elf_header->ident[K_PROC_ELF_MAGIC0_INDEX] == K_PROC_ELF_MAGIC0 &&
            elf_header->ident[K_PROC_ELF_MAGIC1_INDEX] == K_PROC_ELF_MAGIC1 &&

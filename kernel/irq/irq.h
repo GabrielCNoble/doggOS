@@ -63,7 +63,13 @@ enum K_IRQ_HANDLERS
     K_IRQ_HANDLER_LAST = 256
 };
 
-typedef (k_irq_handler_t)(uint32_t irq_vector);
+typedef void (k_irq_handler_func_t)(uint32_t irq_vector, void *data);
+
+struct k_irq_handler_t
+{
+    k_irq_handler_func_t *  handler;
+    void *                  data;
+};
 
 enum K_IRQ_PF_FLAGS
 {
@@ -85,7 +91,7 @@ void k_int_Init();
 
 void k_irq_SetIDTEntry(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uint32_t gate_pl);
 
-void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_t *handler);
+void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_func_t *handler, void *data);
 
 void k_int_Int0(uint32_t eip, uint16_t cs);
 

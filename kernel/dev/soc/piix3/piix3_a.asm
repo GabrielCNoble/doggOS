@@ -34,9 +34,10 @@ k_PIIX3_PS2_KeyboardHandler_a:
     iret
 */
 
-.global k_PIIX3_PS2_MouseHandler_a
+/* .global k_PIIX3_PS2_MouseHandler_a
 k_PIIX3_PS2_MouseHandler_a:
     call k_proc_ExitThreadContext
     call k_PS2_MouseInterruptHandler
     call k_proc_EnterThreadContext
     iret
+*/

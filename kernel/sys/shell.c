@@ -34,8 +34,9 @@ extern void *k_share_start;
 extern void *k_share_end;
 
 // extern struct k_io_stream_t *k_PIIX3_IDE_stream;
-extern struct k_dev_disk_t *k_PIIX3_IDE_disk;
-extern struct k_dsk_disk_t *k_dsk_disks;
+// extern struct k_dev_disk_t *k_PIIX3_IDE_disk;
+// extern struct k_dsk_disk_t *k_dsk_disks;
+extern struct k_dev_device_t *k_dev_devices;
 
 void k_sys_Crash()
 {
@@ -76,7 +77,18 @@ uintptr_t k_sys_ShellMain(void *data)
     // k_rt_SetBytes(buffer, 6, 'z');
 
     // k_sys_TerminalPrintf("%s\n", buffer);
-    struct k_fs_part_t partition = {.first_block = 188, .block_count = 8192, .disk = k_PIIX3_IDE_disk};
+
+    struct k_dev_device_t *device = k_dev_devices;
+    while(device)
+    {
+        if(device->device_type == K_DEV_DEVICE_TYPE_DISK)
+        {
+            break;
+        }
+        device = device->next_device;
+    }
+
+    struct k_fs_part_t partition = {.first_block = 188, .block_count = 8192, .disk = (struct k_dev_disk_t *)device};
     
     struct k_fs_vol_t *pup_volume = k_fs_MountVolume(&partition);
     

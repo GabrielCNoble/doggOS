@@ -9,6 +9,7 @@
 *.pup
 *.out
 .vscode
+cross
 makefile.new
 bochsrc
 libc

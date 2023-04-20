@@ -31,7 +31,7 @@ extern void *k_proc_StartUserThread_a;
 extern void *k_sys_SysCall_a;
 
 struct k_irq_desc_t     k_irq_idt[K_IRQ_HANDLER_LAST];
-k_irq_handler_t *       k_irq_handler_table[K_IRQ_HANDLER_LAST];
+struct k_irq_handler_t  k_irq_handler_table[K_IRQ_HANDLER_LAST];
 
 void k_int_Init()
 {
@@ -51,7 +51,8 @@ void k_int_Init()
     {
         uintptr_t offset = ((uintptr_t)&k_irq_IrqJumpTable_a) + (index - 32) * 16;
         k_irq_idt[index] = K_IRQ_DESCRIPTOR(offset, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
-        k_irq_handler_table[index] = NULL;
+        k_irq_handler_table[index].handler = NULL;
+        k_irq_handler_table[index].data = NULL;
     }
     
     k_cpu_Lidt(k_irq_idt, K_IRQ_HANDLER_LAST);
@@ -62,7 +63,7 @@ void k_irq_SetIDTEntry(uint32_t vector, uintptr_t handler, uint32_t seg_sel, uin
     k_irq_idt[vector] = K_IRQ_DESCRIPTOR(handler, seg_sel, gate_pl, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
 }
 
-void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_t *handler)
+void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_func_t *handler, void *data)
 {
     if(vector >= 32 && vector < K_IRQ_HANDLER_LAST)
     {   
@@ -72,7 +73,8 @@ void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_t *handler)
         if(k_irq_idt[vector].dw0 == desc.dw0 && k_irq_idt[vector].dw1 == desc.dw1)
         {
             /* entries directly put in the idt take priority over other installed irq handlers */
-            k_irq_handler_table[vector] = handler;
+            k_irq_handler_table[vector].handler = handler;
+            k_irq_handler_table[vector].data = data;
         }
         else
         {
@@ -250,8 +252,10 @@ void k_int_HaltAndCatchFire2()
 
 void k_irq_DispatchIRQ(uint32_t vector)
 {
-    if(k_irq_handler_table[vector] != NULL)
+    struct k_irq_handler_t *handler = k_irq_handler_table + vector;
+    if(handler->handler != NULL)
     {
-        k_irq_handler_table[vector](vector);
+        
+        handler->handler(vector, handler->data);
     }
 }

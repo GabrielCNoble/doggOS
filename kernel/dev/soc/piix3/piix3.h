@@ -23,8 +23,6 @@ uint32_t k_PIIX3_Init(uint8_t bus_index, uint8_t device_index, union k_pci_heade
 
 /* IDE interface */
 
-// uint32_t k_PIIX3_IDE_Init(uint8_t bus_index, uint8_t device_index, uint8_t function_index);
-
 uintptr_t k_PIIX3_IDE_Thread(void *data);
 
 uint8_t k_PIIX3_IDE_ReadReg8(struct k_dev_ide_disk_t *disk, uint8_t reg);
@@ -39,26 +37,12 @@ void k_PIIX3_IDE_WriteReg16(struct k_dev_ide_disk_t *disk, uint8_t reg, uint16_t
 
 void k_PIIX3_IDE_WriteReg16S(struct k_dev_ide_disk_t *disk, uint8_t reg, uint32_t count, void *buffer);
 
-void k_PIIX3_IDE_IRQHandler(uint32_t irq_vector);
-
-    // uint8_t k_PIIX3_IDE_ReadStatus();
-
-// uint8_t K_PIIX3_IDE_ReadError();
-
-// void k_PIIX3_IDE_ExecCmd(uint32_t cmd);
-
-// void k_PIIX3_IDE_Read(uint32_t lba, uint32_t size);
-
-// uint32_t k_PIIX3_IDE_Read(struct k_dev_disk_t *disk, struct k_dev_dsk_cmd_t *cmd);
-
-// uint32_t k_PIIX3_IDE_Identify(struct k_dev_dsk_cmd_t *cmd);
-
-// void k_PIIX3_IDE_Handler();
+void k_PIIX3_IDE_IRQHandler(uint32_t irq_vector, void *data);
 
 /* PS2 controller */
 
-#define K_PIIX3_PS2_KEYBOARD_IRQ_VECTOR 1
-#define K_PIIX3_PS2_MOUSE_IRQ_VECTOR 12
+// #define K_PIIX3_PS2_KEYBOARD_IRQ_VECTOR 1
+// #define K_PIIX3_PS2_MOUSE_IRQ_VECTOR 12
 
 uint8_t k_PIIX3_PS2_ReadData(struct k_dev_ps2_device_t *device);
 
@@ -68,7 +52,9 @@ uint8_t k_PIIX3_PS2_ReadCmd(struct k_dev_ps2_device_t *device);
 
 void k_PIIX3_PS2_WriteCmd(struct k_dev_ps2_device_t *device, uint8_t value);
 
-void k_PIIX3_PS2_Keyboard_IRQHandler(uint32_t irq_vector);
+void k_PIIX3_PS2_Keyboard_IRQHandler(uint32_t irq_vector, void *data);
+
+void k_PIIX3_PS2_Mouse_IRQHandler(uint32_t irq_vector, void *data);
 
 
 
@@ -156,6 +142,6 @@ uint16_t k_PIIX3_ISA_ReadIRReg();
 
 void k_PIIX3_ISA_EndOfInterrupt(uint32_t irq_vector);
 
-void k_PIIX3_ISA_Timer1_IRQHandler(uint32_t irq_vector);
+void k_PIIX3_ISA_Timer1_IRQHandler(uint32_t irq_vector, void *data);
 
 #endif
