@@ -54,9 +54,13 @@ struct k_fs_file_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *m
 
 void k_fs_CloseFile(struct k_fs_file_t *file);
 
-uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
+uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint64_t start, uint64_t count, void *data);
 
-uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data);
+uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint64_t start, uint64_t count, void *data);
+
+struct k_fs_file_t *k_fs_AllocFileHandle();
+
+void k_fs_FreeFileHandle(struct k_fs_file_t *file);
 
 
 #endif

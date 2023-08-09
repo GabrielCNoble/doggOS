@@ -8,6 +8,7 @@
 #include "../sys/sys.h"
 #include "../mem/pmap.h"
 #include "../cpu/k_cpu.h"
+#include "../proc/proc.h"
 #include "fs.h"
 
 // uint32_t k_fs_pup_block_size;
@@ -19,6 +20,8 @@ void k_fs_PupMountVolume(struct k_fs_vol_t *volume)
     volume->data = k_rt_Malloc(sizeof(struct k_fs_pup_vol_t), 4);
     struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
     k_rt_SetBytes(volume->data, sizeof(struct k_fs_pup_vol_t), 0);
+
+    pup_volume->node_info = k_rt_pool_CreateForType(struct k_fs_pup_node_info_t);
     // k_sys_TerminalPrintf("mounting volume...\n");
     pup_volume->cur_entry_page = k_rt_Malloc(sizeof(struct k_fs_pup_centry_page_t), 4);
     k_fs_PupInitCacheEntryPage(volume->data, pup_volume->cur_entry_page);
@@ -108,8 +111,8 @@ uint32_t k_fs_PupFormatVolume(struct k_fs_vol_t *volume, void *args)
     volume_contents.dir.parent = K_FS_PUP_NODE_LINK(1, 0);
     struct k_fs_pup_node_t *root_node = volume_contents.dir.entries;
     root_node->type = K_FS_PUP_NODE_TYPE_DIR;
-    root_node->left = 0xffff;
-    root_node->right = 0xffff;
+    root_node->left = 0xff;
+    root_node->right = 0xff;
     root_node->contents = K_FS_PUP_NULL_LINK;
     k_rt_StrCpy(root_node->name, sizeof(root_node->name), "I'm dat root, mofkr");
     /* write root node */
@@ -712,153 +715,25 @@ void k_fs_PupFreeBlock(struct k_fs_vol_t *volume, struct k_fs_pup_link_t block)
 =========================================================================================
 */
 
-struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_link_t start_node)
+struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address)
 {
     struct k_fs_pup_node_t *node = NULL;
-    struct k_fs_pup_link_t node_link = K_FS_PUP_NULL_LINK;
-    struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
-    uint32_t path_fragment_cursor = 0;
-    uint32_t path_cursor = 0;
-    char path_fragment[256];
+    struct k_fs_pup_centry_t *node_entry = k_fs_PupFindOrLoadCacheEntry(volume, (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(node_address)});
 
-
-    while(path[path_cursor] == ' ' && path[path_cursor] != '\0')
+    if(node_entry != NULL)
     {
-        path_cursor++;
-    }
+        node = k_fs_PupGetNodeOnEntry(volume, node_address, node_entry);
 
-    if(!start_node.link)
-    {
-        start_node = pup_volume->root.root_node;
-    }
-
-    if(path[path_cursor] == '/')
-    {
-        path_cursor++;
-    }
-
-    // if(start_node.link)
-    {
-        node_link = start_node;
-        struct k_fs_pup_link_t node_parent_contents_block = (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(node_link)};
-        struct k_fs_pup_centry_t *node_entry = k_fs_PupFindOrLoadCacheEntry(volume, node_parent_contents_block);
-        union k_fs_pup_content_t *node_parent_contents = k_fs_PupGetBlock(volume, node_parent_contents_block, node_entry);
-        node = k_fs_PupGetNode(volume, node_link, node_entry);
-        // node = node_parent_contents->dir.entries + K_FS_PUP_NODE_INDEX(node_link);
-        // node = k_fs_PupGetNode(volume, node_link, node_entry);
-
-        while(path[path_cursor] && node)
+        if(node == NULL)
         {
-            path_fragment_cursor = 0;
-            while(path[path_cursor] != '/' && path[path_cursor])
-            {
-                path_fragment[path_fragment_cursor] = path[path_cursor];
-                path_fragment_cursor++;
-                path_cursor++;
-            }
-
-            if(path[path_cursor] == '/')
-            {
-                path_cursor++;
-            }
-
-            path_fragment[path_fragment_cursor] = '\0';
-
-            struct k_fs_pup_node_t *next_node = NULL;
-            struct k_fs_pup_link_t next_node_link = K_FS_PUP_NULL_LINK;
-            struct k_fs_pup_link_t next_node_block = K_FS_PUP_NULL_LINK;
-
-            if(node->type == K_FS_PUP_NODE_TYPE_DIR)
-            {
-                if(!k_rt_StrCmp(path_fragment, "."))
-                {
-                    next_node = node;
-                    next_node_link = node_link;
-                }
-                else if(!k_rt_StrCmp(path_fragment, ".."))
-                {
-                    next_node_link = node_parent_contents->dir.parent;
-                    node_parent_contents_block = (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(next_node_link)};
-                    k_fs_PupReleaseEntry(node_entry);
-                    node_entry = k_fs_PupFindOrLoadCacheEntry(volume, node_parent_contents_block);
-                    next_node = k_fs_PupGetNode(volume, next_node_link, node_entry);
-                    node_parent_contents = k_fs_PupGetBlock(volume, node_parent_contents_block, node_entry);
-                }
-                else
-                {
-
-                    next_node = NULL;
-                    next_node_link = K_FS_PUP_NULL_LINK;
-                    struct k_fs_pup_link_t node_contents_block = node->contents;
-
-                    if(node_contents_block.link != 0)
-                    {
-                        struct k_fs_pup_centry_t *node_contents_entry = k_fs_PupFindOrLoadCacheEntry(volume, node->contents);
-                        // k_sys_TerminalPrintf("piss\n");
-                        union k_fs_pup_content_t *node_contents = k_fs_PupGetBlock(volume, node->contents, node_contents_entry);
-                        uint16_t child_node_index = node_contents->dir.first_used;
-
-
-                        // k_sys_TerminalPrintf("contents: %d to %d\n", (uint32_t)node_contents_entry->first_block.link, (uint32_t)node_contents_entry->first_block.link + K_FS_PUP_BLOCKS_PER_ENTRY);
-                        // k_sys_TerminalPrintf("first entry: %d, next free: %d\n", (uint32_t)node_contents->dir.first_used, (uint32_t)node_contents->dir.next_free);
-
-                        // k_sys_TerminalPrintf("%d\n", child_node_index);
-                        struct k_fs_pup_node_t *child_node = node_contents->dir.entries + child_node_index;
-
-                        while(child_node_index != 0xffff)
-                        {
-                            struct k_fs_pup_node_t *child_node = node_contents->dir.entries + child_node_index;
-                            // k_sys_TerminalPrintf("child node: %s %d %d\n", child_node->name, (uint32_t)child_node->left, (uint32_t)child_node->right);
-                            if(child_node->type == K_FS_PUP_NODE_TYPE_LINK)
-                            {
-
-                            }
-                            else
-                            {
-                                int32_t result = k_rt_StrCmp(child_node->name, path_fragment);
-
-                                if(result == 0)
-                                {
-                                    k_fs_PupReleaseEntry(node_entry);
-                                    next_node = child_node;
-                                    next_node_link = K_FS_PUP_NODE_LINK(node_contents_block.link, child_node_index);
-                                    node_entry = node_contents_entry;
-                                    break;
-                                }
-
-                                if(result < 0)
-                                {
-                                    child_node_index = child_node->left;
-                                }
-                                else if(result > 0)
-                                {
-                                    child_node_index = child_node->right;
-                                }
-
-                                if(child_node_index == 0xffff)
-                                {
-                                    k_fs_PupReleaseEntry(node_contents_entry);
-                                    break;
-                                }
-
-                                child_node = node_contents->dir.entries + child_node_index;
-                            }
-                        }            
-                    }
-                }
-            }
-
-            node = next_node;
-            node_link = next_node_link;
+            k_fs_PupReleaseEntry(node_entry);
         }
-
-        k_fs_PupReleaseEntry(node_entry);
     }
 
-    return node_link;
+    return node;
 }
 
-struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_centry_t *entry)
+struct k_fs_pup_node_t *k_fs_PupGetNodeOnEntry(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_centry_t *entry)
 {
     struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
     struct k_fs_pup_node_t *node = NULL;
@@ -868,17 +743,285 @@ struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_p
     uint32_t buffer_offset = (node_block.link - entry->first_block.link) * K_FS_PUP_LOGICAL_BLOCK_SIZE;
     union k_fs_pup_content_t *contents = (union k_fs_pup_content_t *)(entry->buffer + buffer_offset);
 
-    if(node_index < 0xffff)
+    if(contents != NULL && node_index < 0xff)
     {
         node = contents->dir.entries + node_index;
 
-        if(node->type == K_FS_PUP_NODE_TYPE_NONE)
-        {
-            node = NULL;
-        }
-    }
+        k_rt_SpinLock(&node->info_lock);
 
-    return node;
+        if(!(node->flags & K_FS_PUP_NODE_FLAG_INFO))
+        {
+            uint64_t node_size = node->size;
+            node->info = k_rt_pool_AllocObj(&pup_volume->node_info);
+            node->info->node = node_address;
+            node->info->size = node_size;
+            node->info->node_entry = entry;
+        }
+
+        node->info->ref_count++;
+
+        k_rt_SpinUnlock(&node->info_lock);
+        k_fs_PupAcquireEntry(entry);
+    }
+}
+
+// struct k_fs_pup_node_t *k_fs_PupGetNodeOnContents(struct k_fs_vol_t *volume, uint32_t index, union k_fs_pup_content_t *contents)
+// {
+//     struct k_fs_pup_node_t *node = NULL;
+
+//     struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
+
+//     if(contents != NULL && index < 0xff)
+//     {
+//         node = contents->dir.entries + index;
+
+//         k_rt_SpinLock(&node->info_lock);
+
+//         if(!(node->flags & K_FS_PUP_NODE_FLAG_INFO))
+//         {
+//             uint64_t node_size = node->size;
+//             node->info = k_rt_pool_AllocObj(&pup_volume->node_info);
+//             node->info->node = node_address;
+//             node->info->size = node_size;
+//             node->info->node_entry = entry;
+//         }
+
+//         node->info->ref_count++;
+
+//         k_rt_SpinUnlock(&node->info_lock);
+//         // k_fs_PupAcquireNode(node);
+//     }
+
+//     return node;
+// }
+
+// void k_fs_PupAcquireNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node)
+// {
+//     struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
+
+//     k_rt_SpinLock(&node->info_lock);
+
+//     if(!(node->flags & K_FS_PUP_NODE_FLAG_INFO))
+//     {
+//         uint64_t node_size = node->size;
+//         node->info = k_rt_pool_AllocObj(&pup_volume->node_info);
+//         node->info->node = node_address;
+//         node->info->size = node_size;
+//         node->info->node_entry = entry;
+//     }
+
+//     node->info->ref_count++;
+
+//     k_rt_SpinUnlock(&node->info_lock);
+//     // k_rt_SpinWait(node->info->write_lock);
+// }
+
+void k_fs_PupReleaseNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node)
+{
+    struct k_fs_pup_vol_t *pup_volume = volume->data;
+
+    if(node != NULL)
+    {
+        k_rt_SpinLock(&node->info_lock);
+
+        if(node->flags & K_FS_PUP_NODE_FLAG_INFO)
+        {
+            node->info->ref_count--;
+            k_fs_PupReleaseEntry(node->info->node_entry);
+
+            if(node->info->ref_count == 0)
+            {
+                uint64_t node_size = node->info->size;
+                k_rt_pool_FreeObj(&pup_volume->node_info, node);
+                node->size = node_size;
+                node->flags &= ~K_FS_PUP_NODE_FLAG_INFO;
+            }
+        }
+
+        k_rt_SpinUnlock(&node->info_lock);
+    }
+}
+
+struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_link_t start_node)
+{
+    struct k_fs_pup_node_t *cur_node = NULL;
+    struct k_fs_pup_link_t cur_node_link = K_FS_PUP_NULL_LINK;
+    // struct k_fs_pup_vol_t *pup_volume = (struct k_fs_pup_vol_t *)volume->data;
+    // uint32_t path_fragment_cursor = 0;
+    // uint32_t path_cursor = 0;
+    // char path_fragment[256];
+
+
+    // while(path[path_cursor] == ' ' && path[path_cursor] != '\0')
+    // {
+    //     path_cursor++;
+    // }
+
+    // if(!start_node.link)
+    // {
+    //     start_node = pup_volume->root.root_node;
+    // }
+
+    // if(path[path_cursor] == '/')
+    // {
+    //     path_cursor++;
+    // }
+
+    // // if(start_node.link)
+    // // {
+    // cur_node_link = start_node;
+    // struct k_fs_pup_link_t node_parent_contents_block = (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(cur_node_link)};
+    // struct k_fs_pup_centry_t *cur_node_entry = k_fs_PupFindOrLoadCacheEntry(volume, node_parent_contents_block);
+    // union k_fs_pup_content_t *node_parent_contents = k_fs_PupGetBlock(volume, node_parent_contents_block, cur_node_entry);
+    // cur_node = k_fs_PupGetNodeOnEntry(volume, cur_node_link, cur_node_entry);
+
+    // /* release ref acquired by k_fs_PupFindOrLoadCacheEntry, leave only the one acquired by k_fs_PupGetNodeOnEntry */
+    // k_fs_PupReleaseEntry(cur_node_entry);
+
+    // while(path[path_cursor] && cur_node != NULL)
+    // {
+    //     path_fragment_cursor = 0;
+    //     while(path[path_cursor] != '/' && path[path_cursor])
+    //     {
+    //         path_fragment[path_fragment_cursor] = path[path_cursor];
+    //         path_fragment_cursor++;
+    //         path_cursor++;
+    //     }
+
+    //     if(path[path_cursor] == '/')
+    //     {
+    //         path_cursor++;
+    //     }
+
+    //     path_fragment[path_fragment_cursor] = '\0';
+
+    //     struct k_fs_pup_node_t *next_node = NULL;
+    //     struct k_fs_pup_link_t next_node_link = K_FS_PUP_NULL_LINK;
+    //     // struct k_fs_pup_link_t next_node_block = K_FS_PUP_NULL_LINK;
+
+    //     if(cur_node->type == K_FS_PUP_NODE_TYPE_DIR)
+    //     {
+    //         if(!k_rt_StrCmp(path_fragment, "."))
+    //         {
+    //             next_node = cur_node;
+    //             next_node_link = cur_node_link;
+    //         }
+    //         else if(!k_rt_StrCmp(path_fragment, ".."))
+    //         {
+    //             next_node_link = node_parent_contents->dir.parent;
+    //             node_parent_contents_block = (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(next_node_link)};
+    //             // k_fs_PupReleaseEntry(node_entry);
+    //             k_fs_PupReleaseNode(volume, cur_node);
+    //             cur_node_entry = k_fs_PupFindOrLoadCacheEntry(volume, node_parent_contents_block);
+    //             next_node = k_fs_PupGetNodeOnEntry(volume, next_node_link, cur_node_entry);
+    //             /* release ref acquired by k_fs_PupFindOrLoadCacheEntry, leave only the one acquired by k_fs_PupGetNodeOnEntry */
+    //             k_fs_PupReleaseEntry(cur_node_entry);
+    //             node_parent_contents = k_fs_PupGetBlock(volume, node_parent_contents_block, cur_node_entry);
+    //         }
+    //         else
+    //         {
+    //             next_node = NULL;
+    //             next_node_link = K_FS_PUP_NULL_LINK;
+    //             struct k_fs_pup_link_t cur_node_contents_block = cur_node->contents;
+
+    //             if(cur_node_contents_block.link != K_FS_PUP_NULL_LINK.link)
+    //             {
+    //                 struct k_fs_pup_centry_t *cur_node_contents_entry = k_fs_PupFindOrLoadCacheEntry(volume, cur_node_contents_block);
+    //                 union k_fs_pup_content_t *cur_node_contents = k_fs_PupGetBlock(volume, node->contents, cur_node_contents_entry);
+    //                 uint8_t child_node_index = cur_node_contents->dir.first_used;
+
+
+    //                 // k_sys_TerminalPrintf("contents: %d to %d\n", (uint32_t)node_contents_entry->first_block.link, (uint32_t)node_contents_entry->first_block.link + K_FS_PUP_BLOCKS_PER_ENTRY);
+    //                 // k_sys_TerminalPrintf("first entry: %d, next free: %d\n", (uint32_t)node_contents->dir.first_used, (uint32_t)node_contents->dir.next_free);
+
+    //                 // k_sys_TerminalPrintf("%d\n", child_node_index);
+    //                 // struct k_fs_pup_node_t *child_node = cur_node_contents->dir.entries + child_node_index;
+
+    //                 // struct k_fs_pup_node_t *child_node = k_fs_PupGetNodeOnContents(volume, child_node_index, cur_node_contents);
+
+    //                 while(child_node_index != 0xff)
+    //                 {
+    //                     // struct k_fs_pup_node_t *child_node = node_contents->dir.entries + child_node_index;
+
+    //                     // struct k_fs_pup_node_t *child_node = k_fs_PupGetNodeOnContents(volume, child_node_index, cur_node_contents);
+    //                     struct k_fs_pup_link_t child_node_link = K_FS_PUP_NODE_LINK(cur_node_contents_block, child_node_index);
+    //                     struct k_fs_pup_node_t *child_node = k_fs_PupGetNodeOnEntry(volume, child_node_link, cur_node_contents_entry);
+
+    //                     if(child_node->type == K_FS_PUP_NODE_TYPE_LINK)
+    //                     {
+
+    //                     }
+    //                     else
+    //                     {
+    //                         int32_t result = k_rt_StrCmp(child_node->name, path_fragment);
+
+    //                         if(result == 0)
+    //                         {
+    //                             // k_fs_PupReleaseEntry(node_entry);
+    //                             k_fs_PupReleaseNode(volume, cur_node);
+    //                             next_node = child_node;
+    //                             // next_node_link = K_FS_PUP_NODE_LINK(node_contents_block.link, child_node_index);
+    //                             next_node_link = child_node_link;
+    //                             cur_node_entry = cur_node_contents_entry;
+    //                             /* release ref acquired by k_fs_PupFindOrLoadCacheEntry, leave only the one acquired by k_fs_PupGetNodeOnEntry */
+    //                             k_fs_PupReleaseEntry(cur_node_contents_entry);
+    //                             break;
+    //                         }
+
+    //                         if(result < 0)
+    //                         {
+    //                             child_node_index = child_node->left;
+    //                         }
+    //                         else if(result > 0)
+    //                         {
+    //                             child_node_index = child_node->right;
+    //                         }
+
+    //                         k_fs_PupReleaseNode(volume, child_node);
+
+    //                         if(child_node_index == 0xff)
+    //                         {
+    //                             k_fs_PupReleaseEntry(cur_node_contents_entry);
+    //                             break;
+    //                         }
+
+    //                         // child_node = node_contents->dir.entries + child_node_index;
+    //                     }
+    //                 }            
+    //             }
+    //         }
+    //     }
+
+    //     cur_node = next_node;
+    //     cur_node_link = next_node_link;
+    // }
+
+    // k_fs_PupReleaseEntry(cur_node_entry);
+    // }
+
+    return cur_node_link;
+}
+
+
+
+void k_fs_PupLockNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node)
+{
+    // struct k_fs_pup_vol_t *pup_volume = volume->data;
+
+    // if(node != NULL)
+    // {
+    //     k_rt_SpinLock(&node->info_lock);
+    //     if(node->flags & K_FS_PUP_NODE_FLAG_INFO)
+    //     {
+            
+    //     }
+    //     k_rt_SpinUnlock(&node->info_lock);
+    // }
+}
+
+void k_fs_PupUnlockNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node)
+{
+    
 }
 
 struct k_fs_pup_link_t k_fs_PupAddNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t start_node, const char *path, const char *name, uint32_t type)
@@ -887,140 +1030,146 @@ struct k_fs_pup_link_t k_fs_PupAddNode(struct k_fs_vol_t *volume, struct k_fs_pu
     struct k_fs_pup_link_t parent = k_fs_PupFindNode(volume, path, start_node);
     struct k_fs_pup_link_t new_node_link = K_FS_PUP_NULL_LINK;
 
-    if(parent.link != 0)
-    {
-        struct k_fs_pup_centry_t *parent_entry = k_fs_PupFindOrLoadCacheEntry(volume, (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(parent)});
-        struct k_fs_pup_node_t *parent_node = k_fs_PupGetNode(volume, parent, parent_entry);
-        uint32_t init_contents = 0;
+    // if(parent.link != 0)
+    // {
+    //     struct k_fs_pup_centry_t *parent_entry = k_fs_PupFindOrLoadCacheEntry(volume, (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(parent)});
+    //     struct k_fs_pup_node_t *parent_node = k_fs_PupGetNodeOnEntry(volume, parent, parent_entry);
+    //     k_fs_PupReleaseEntry(parent_entry);
+    //     uint32_t init_contents = 0;
 
-        // k_sys_TerminalPrintf("parent entry goes from block %d to block %d\n", (uint32_t)parent_entry->first_block.link, (uint32_t)parent_entry->first_block.link + K_FS_PUP_BLOCKS_PER_ENTRY);
+    //     // k_sys_TerminalPrintf("parent entry goes from block %d to block %d\n", (uint32_t)parent_entry->first_block.link, (uint32_t)parent_entry->first_block.link + K_FS_PUP_BLOCKS_PER_ENTRY);
 
-        if(!parent_node->contents.link)
-        {
-            parent_node->contents = k_fs_PupAllocBlock(volume);
-            init_contents = 1;
-        }
+    //     if(!parent_node->contents.link)
+    //     {
+    //         parent_node->contents = k_fs_PupAllocBlock(volume);
+    //         init_contents = 1;
+    //     }
 
+    //     struct k_fs_pup_link_t node_containing_block = parent_node->contents;
+    //     struct k_fs_pup_centry_t *node_containing_entry = k_fs_PupFindOrLoadCacheEntry(volume, node_containing_block);
+    //     union k_fs_pup_content_t *node_containing_contents = k_fs_PupGetBlock(volume, parent_node->contents, node_containing_entry);
 
-        struct k_fs_pup_centry_t *contents_entry = k_fs_PupFindOrLoadCacheEntry(volume, parent_node->contents);
-        union k_fs_pup_content_t *contents = k_fs_PupGetBlock(volume, parent_node->contents, contents_entry);
+    //     if(init_contents)
+    //     {
+    //         k_fs_PupInitContents(node_containing_contents, parent, K_FS_PUP_CONTENT_TYPE_DIR);
+    //     }
 
-        if(init_contents)
-        {
-            k_fs_PupInitContents(contents, parent, K_FS_PUP_CONTENT_TYPE_DIR);
-        }
+    //     uint8_t next_node_index = node_containing_contents->dir.first_used;
+    //     struct k_fs_pup_node_t *node = NULL;
+    //     int32_t compare_result = 0xffff;
+        
+    //     while(next_node_index != 0xff)
+    //     {
+    //         node = k_fs_PupGetNodeOnEntry(volume, K_FS_PUP_NODE_LINK(node_containing_block.link, next_node_index), node_containing_entry);
 
-        uint16_t next_node_index = contents->dir.first_used;
-        struct k_fs_pup_node_t *prev_node = NULL;
-        int32_t compare_result = 0xffff;
+    //         if(node->type == K_FS_PUP_NODE_TYPE_LINK)
+    //         {
+    //             node_containing_block = node->contents;
+    //             k_fs_PupReleaseEntry(node_containing_entry);
+    //             k_fs_PupReleaseNode(volume, node);
+    //             node_containing_entry = k_fs_PupFindOrLoadCacheEntry(volume, node_containing_block);
+    //             node_containing_contents = k_fs_PupGetBlock(volume, node_containing_block, node_containing_entry);
+    //             next_node_index = node_containing_contents->dir.first_used;
+    //             node = NULL;
+    //             continue;
+    //         }
 
-        while(next_node_index != 0xffff)
-        {
-            prev_node = contents->dir.entries + next_node_index;
+    //         compare_result = k_rt_StrCmp(node->name, name);
 
-            if(prev_node->type == K_FS_PUP_NODE_TYPE_LINK)
-            {
-                struct k_fs_pup_link_t contents_link = prev_node->contents;
-                k_fs_PupReleaseEntry(contents_entry);
-                contents_entry = k_fs_PupFindOrLoadCacheEntry(volume, contents_link);
-                contents = k_fs_PupGetBlock(volume, contents_link, contents_entry);
-                next_node_index = contents->dir.first_used;
-                prev_node = NULL;
-                continue;
-            }
+    //         if(compare_result < 0)
+    //         {
+    //             next_node_index = node->left;
+    //         }
+    //         else if(compare_result > 0)
+    //         {
+    //             next_node_index = node->right;
+    //         }
+    //         else
+    //         {
+    //             /* node already exists, so return a link to it */
+    //             new_node_link = K_FS_PUP_NODE_LINK(node_containing_block.link, next_node_index);
+    //             k_fs_PupReleaseEntry(node_containing_entry);
+    //             next_node_index = 0xff;
+    //         }
 
-            compare_result = k_rt_StrCmp(prev_node->name, name);
+    //         k_fs_PupReleaseNode(volume, node);
+    //     }
 
-            if(compare_result < 0)
-            {
-                next_node_index = (uint16_t)prev_node->left;
-            }
-            else if(compare_result > 0)
-            {
-                next_node_index = (uint16_t)prev_node->right;
-            }
-            else
-            {
-                /* node already exists, so return a link to it */
-                new_node_link = K_FS_PUP_NODE_LINK(parent_node->contents.link, next_node_index);
-                break;
-            }
-        }
-
-        if(compare_result != 0)
-        {
-            /* node doesn't exist, so create one */
-            struct k_fs_pup_node_t *new_node = NULL;
-            uint16_t node_index = contents->dir.next_free;
-            new_node = contents->dir.entries + node_index;
-            contents->dir.next_free = new_node->right;
-            contents->dir.free_count--;
-            k_rt_SetBytes(new_node, sizeof(struct k_fs_pup_node_t), 0);
+    //     if(compare_result != 0)
+    //     {
+    //         /* node doesn't exist, so create one */            
+    //         uint8_t node_index = node_containing_contents->dir.next_free;
+    //         // new_node = contents->dir.entries + node_index;
+    //         struct k_fs_pup_node_t *new_node = k_fs_PupGetNodeOnEntry(volume, K_FS_PUP_NODE_LINK(node_containing_block.link, node_index), node_containing_entry);
+    //         node_containing_contents->dir.next_free = new_node->right;
+    //         node_containing_contents->dir.free_count--;
+    //         k_rt_SetBytes(new_node, sizeof(struct k_fs_pup_node_t), 0);
             
-            if(contents->dir.free_count == 0)
-            {
-                /* there's a single node left in this content buffer, so we'll allocate a new buffer, make it point to it,
-                and then store our actual node in the new buffer */
+    //         if(node_containing_contents->dir.free_count == 0)
+    //         {
+    //             /* there's a single node left in this content buffer, so we'll allocate a new buffer, make it point to it,
+    //             and then store our actual node in the new buffer */
 
-                new_node->contents = k_fs_PupAllocBlock(volume);
-                new_node->type = K_FS_PUP_NODE_TYPE_LINK;
-                contents->dir.free_count--;
-                struct k_fs_pup_centry_t *new_contents_entry = k_fs_PupFindOrLoadCacheEntry(volume, new_node->contents);
-                union k_fs_pup_content_t *new_contents = k_fs_PupGetBlock(volume, new_node->contents, new_contents_entry);
-                k_fs_PupInitContents(new_contents, K_FS_PUP_NODE_LINK(parent_node->contents.link, node_index), K_FS_PUP_CONTENT_TYPE_DIR);
+    //             new_node->contents = k_fs_PupAllocBlock(volume);
+    //             new_node->type = K_FS_PUP_NODE_TYPE_LINK;
+    //             node_containing_contents->dir.free_count--;
+    //             struct k_fs_pup_centry_t *new_contents_entry = k_fs_PupFindOrLoadCacheEntry(volume, new_node->contents);
+    //             union k_fs_pup_content_t *new_contents = k_fs_PupGetBlock(volume, new_node->contents, new_contents_entry);
+    //             k_fs_PupInitContents(new_contents, K_FS_PUP_NODE_LINK(parent_node->contents.link, node_index), K_FS_PUP_CONTENT_TYPE_DIR);
 
-                if(compare_result > 0)
-                {
-                    prev_node->right = node_index;
-                }
-                else if(compare_result < 0)
-                {
-                    prev_node->left = node_index;
-                }
+    //             if(compare_result > 0)
+    //             {
+    //                 prev_node->right = node_index;
+    //             }
+    //             else if(compare_result < 0)
+    //             {
+    //                 prev_node->left = node_index;
+    //             }
                 
-                /* there's no prev node in this new contents block */
-                prev_node = NULL;
+    //             /* there's no prev node in this new contents block */
+    //             prev_node = NULL;
 
-                contents_entry->flags |= K_FS_PUP_CENTRY_FLAG_DIRTY;
-                k_fs_PupReleaseEntry(contents_entry);
-                contents_entry = new_contents_entry;
-                contents = new_contents;
+    //             contents_entry->flags |= K_FS_PUP_CENTRY_FLAG_DIRTY;
+    //             k_fs_PupReleaseEntry(contents_entry);
+    //             contents_entry = new_contents_entry;
+    //             contents = new_contents;
                 
-                node_index = contents->dir.next_free;
-                new_node = contents->dir.entries + node_index;
-                contents->dir.next_free = new_node->right;
-                k_rt_SetBytes(new_node, sizeof(struct k_fs_pup_node_t), 0);
-            }
+    //             node_index = contents->dir.next_free;
+    //             new_node = contents->dir.entries + node_index;
+    //             contents->dir.next_free = new_node->right;
+    //             k_rt_SetBytes(new_node, sizeof(struct k_fs_pup_node_t), 0);
+    //         }
 
-            new_node->type = type;
-            new_node->left = 0xffff;
-            new_node->right = 0xffff;
+    //         new_node->type = type;
+    //         new_node->left = 0xff;
+    //         new_node->right = 0xff;
 
-            k_rt_StrCpy(new_node->name, sizeof(new_node->name), name);
-            if(prev_node == NULL)
-            {
-                /* no entries in this content buffer, so set this node as the first */
-                contents->dir.first_used = node_index;
-            }
-            else
-            {
-                if(compare_result > 0)
-                {
-                    prev_node->right = node_index;
-                }
-                else if(compare_result < 0)
-                {
-                    prev_node->left = node_index;
-                }
-            }
+    //         k_rt_StrCpy(new_node->name, sizeof(new_node->name), name);
+    //         if(prev_node == NULL)
+    //         {
+    //             /* no entries in this content buffer, so set this node as the first */
+    //             contents->dir.first_used = node_index;
+    //         }
+    //         else
+    //         {
+    //             if(compare_result > 0)
+    //             {
+    //                 prev_node->right = node_index;
+    //             }
+    //             else if(compare_result < 0)
+    //             {
+    //                 prev_node->left = node_index;
+    //             }
+    //         }
 
-            new_node_link = K_FS_PUP_NODE_LINK(parent_node->contents.link, node_index);
-            contents_entry->flags |= K_FS_PUP_CENTRY_FLAG_DIRTY;
-        }
+    //         new_node_link = K_FS_PUP_NODE_LINK(parent_node->contents.link, node_index);
+    //         contents_entry->flags |= K_FS_PUP_CENTRY_FLAG_DIRTY;
+    //     }
 
-        k_fs_PupReleaseEntry(contents_entry);
-        k_fs_PupReleaseEntry(parent_entry);
-    }
+    //     k_fs_PupReleaseEntry(contents_entry);
+    //     k_fs_PupReleaseNode(pup_volume, parent_node);
+    //     // k_fs_PupReleaseEntry(parent_entry);
+    // }
 
     return new_node_link;
 }
@@ -1051,7 +1200,7 @@ void k_fs_PupInitContents(union k_fs_pup_content_t *contents, struct k_fs_pup_li
     {
         case K_FS_PUP_CONTENT_TYPE_DATA:
             contents->file.next_free = 0;
-            contents->file.first_used = 0xffff;
+            // contents->file.first_used = 0xff;
             for(uint32_t index = K_FS_PUP_DATA_CONTENT_ENTRY_COUNT; index > 0;)
             {
                 index--;
@@ -1065,7 +1214,7 @@ void k_fs_PupInitContents(union k_fs_pup_content_t *contents, struct k_fs_pup_li
         case K_FS_PUP_CONTENT_TYPE_DIR:
             contents->dir.parent = node;
             contents->dir.next_free = 0;
-            contents->dir.first_used = 0xffff;
+            contents->dir.first_used = 0xff;
             contents->dir.free_count = K_FS_PUP_DIR_CONTENT_ENTRY_COUNT;
             for(uint32_t index = K_FS_PUP_DIR_CONTENT_ENTRY_COUNT; index > 0;)
             {
@@ -1198,11 +1347,67 @@ void k_fs_PupGetPathToNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t sta
     k_fs_PupReleaseEntry(node_entry);
 }
 
-// void k_fs_PupFlushCache(struct k_fs_vol_t *volume)
-// {
+/*
+=========================================================================================
+=========================================================================================
+=========================================================================================
+*/
 
-// }
-
-void k_fs_PrintPupVolume(struct k_fs_vol_t *volume)
+struct k_fs_file_t *k_fs_PupOpenFile(struct k_fs_vol_t *volume, const char *path, const char *mode)
 {
+    struct k_fs_pup_link_t file_node = k_fs_PupFindNode(volume, path, K_FS_PUP_NULL_LINK);
+    struct k_fs_file_t *file_handle = NULL;
+
+    if(file_node.link != K_FS_PUP_NULL_LINK.link)
+    {
+        struct k_fs_pup_node_t *node = k_fs_PupGetNode(volume, file_node);
+
+        if(node != NULL && node->type == K_FS_PUP_NODE_TYPE_FILE)
+        {
+            file_handle = k_fs_AllocFileHandle();
+            file_handle->handle = file_node.link;
+        }
+    }
+
+    return file_handle;
+}
+
+void k_fs_PupCloseFile(struct k_fs_vol_t *volume, struct k_fs_file_t *file)
+{
+    
+}
+
+struct k_fs_pup_link_t k_fs_PupOpenFileNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t start_node, const char *path)
+{
+    struct k_fs_pup_link_t file_node = k_fs_PupFindNode(volume, path, start_node);
+    // struct k_fs_pup_node_t *file_node = NULL;
+
+    if(file_node.link != K_FS_PUP_NULL_LINK.link)
+    {
+        struct k_fs_pup_centry_t *entry = k_fs_PupFindOrLoadCacheEntry(volume, (struct k_fs_pup_link_t){K_FS_PUP_NODE_BLOCK(file_node)});
+        struct k_fs_pup_node_t *node = k_fs_PupGetNodeOnEntry(volume, file_node, entry);
+
+        if(node == NULL || node->type != K_FS_PUP_NODE_TYPE_FILE)
+        {
+            k_fs_PupReleaseEntry(entry);
+            file_node = K_FS_PUP_NULL_LINK;
+        }
+    }
+
+    return file_node;
+}
+ 
+void k_fs_PupCloseFileNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t file_node)
+{
+    // k_fs_PupReleaseNode(volume, file_node);
+}
+
+void k_fs_PupWriteFileData(struct k_fs_vol_t *volume, struct k_fs_pup_link_t file_node, uint64_t offset, uint64_t size, void *data)
+{
+    
+}
+
+void k_fs_PupReadFileData(struct k_fs_vol_t *volume, struct k_fs_pup_link_t file_node, uint64_t offset, uint64_t size, void *data)
+{
+
 }

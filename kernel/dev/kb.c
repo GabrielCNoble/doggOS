@@ -2,9 +2,9 @@
 #include "../rt/mem.h"
 #include "../rt/atm.h"
 #include "../cpu/k_cpu.h"
-#include "8042.h"
+// #include "8042.h"
 #include "../proc/proc.h"
-#include "soc/piix3/piix3.h"
+// #include "soc/piix3/piix3.h"
 // #include "dev/pci/piix3/isa.h"
 
 // char k_kb_scancode_lut[256] =
@@ -205,46 +205,9 @@ char k_kb_shift_key_lut[] = {
 //     [0x35] = '?',
 // };
 
-// uint8_t k_kb_lshift_down = 0;
-// uint8_t k_kb_rshift_down = 0;
-
-// uint32_t k_keyboard_buffer_cursor = 0;
-// unsigned char k_keyboard_buffer[K_KEYBOARD_MAX_CHARS];
-
-// extern void *k_dev_kb_KeyboardHandler_a;
-// extern struct k_int_desc_t k_int_idt[];
-
-void k_dev_kb_Init()
-{
-    // k_int_SetInterruptHandler(K_PIIX3_82C59_IRQ_BASE + K_DEV_KEYBOARD_IRQ_VECTOR, &k_dev_kb_KeyboardHandler_a, K_CPU_SEG_SEL(2, 3, 0), 3);
-}
-
-uint32_t k_dev_kb_ReadKeyboard(unsigned char *out_buffer, uint32_t buffer_size)
-{
-    // if(k_keyboard_buffer_cursor)
-    // {
-    //     uint32_t copy_size = k_keyboard_buffer_cursor;
-
-    //     if(copy_size > buffer_size)
-    //     {
-    //         copy_size = buffer_size - 1;
-    //     }
-
-    //     k_rt_CopyBytes(out_buffer, k_keyboard_buffer, copy_size);
-    //     k_keyboard_buffer_cursor -= copy_size;
-    //     out_buffer[copy_size] = '\0';
-
-    //     return copy_size;
-    // }
-
-    // return 0;
-}
 
 void k_dev_kb_KeyboardHandler(struct k_dev_keyboard_t *keyboard, struct k_dev_keyboard_event_t *event)
 {
-    // char ch;
-    // k_sys_TerminalPrintf("fuck\n");
-
     switch(event->key)
     {
         case K_DEV_KEYBOARD_LSHIFT_KEY:
@@ -264,9 +227,9 @@ void k_dev_kb_KeyboardHandler(struct k_dev_keyboard_t *keyboard, struct k_dev_ke
 
         default:
         {
-            struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+            // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
+            struct k_proc_process_t *focused_procescs = k_proc_GetFocusedProcess();
             char ch;
-
             if(event->type == K_DEV_KEYBOARD_EVENT_KEY_DOWN)
             {
                 if(keyboard->left_shift || keyboard->right_shift || keyboard->caps_lock)
@@ -278,69 +241,16 @@ void k_dev_kb_KeyboardHandler(struct k_dev_keyboard_t *keyboard, struct k_dev_ke
                     ch = k_kb_key_lut[event->key];
                 }
 
-                if(current_process->terminal)
+                if(focused_procescs && focused_procescs->terminal)
                 {
                     // k_sys_TerminalPrintf("%d\n", event->key);
-                    k_io_WriteStreamData(current_process->terminal, &ch, sizeof(char));
-                    k_io_SignalStream(current_process->terminal);
+                    k_io_WriteStreamData(focused_procescs->terminal, &ch, sizeof(char));
+                    k_io_SignalStream(focused_procescs->terminal);
                 }
             }
         }
         break;
     }
-    
-    // do
-    // {
-    //     // struct k_proc_process_t *current_process = k_proc_GetCurrentProcess();
-    //     current_process = k_proc_GetFocusedProcess();
-    //     uint8_t scan_code = k_8042_ReadScancode();
-    //     ch = '\0';
-
-    //     switch(scan_code)
-    //     {
-    //         case 0x2a:
-    //             k_kb_lshift_down = 1;
-    //         break;
-
-    //         case 0xaa:
-    //             k_kb_lshift_down = 0;
-    //         break;
-
-    //         case 0x36:
-    //             k_kb_rshift_down = 1;
-    //         break;
-
-    //         case 0x59:
-    //             k_kb_rshift_down = 0;
-    //         break;
-
-    //         default:
-    //             ch = k_kb_scancode_lut[scan_code];
-
-    //             if(ch)
-    //             {
-    //                 if(k_kb_rshift_down || k_kb_lshift_down)
-    //                 {
-    //                     if(ch >= 'a' && ch <= 'z')
-    //                     {
-    //                         ch &= ~0x20;
-    //                     }
-    //                     else if(ch != ' ')
-    //                     {
-    //                         ch = k_kb_scancode_shift_lut[scan_code];
-    //                     }
-    //                 }
-
-    //                 if(current_process->terminal)
-    //                 {
-    //                     k_io_WriteStreamData(current_process->terminal, &ch, sizeof(char));
-    //                     k_io_SignalStream(current_process->terminal);
-    //                 }
-    //             }
-    //         break;
-    //     }
-    // }
-    // while((k_8042_ReadStatus() & K_DEV_PS2_STATUS_OUT_BUFFER_FULL) && ch);
 }
 
 struct k_io_stream_t *k_kb_OpenStream()

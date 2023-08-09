@@ -543,29 +543,30 @@ struct k_proc_thread_pool_t
 #define K_PROC_DATA_SEG_SEL 0x00000008
 #define K_PROC_STACK_SEG_SEL 0x00000010
 
-#define K_PROC_NULL_SEG 0
-#define K_PROC_R0_DATA_SEG 1
-#define K_PROC_R0_CODE_SEG 2
-#define K_PROC_R3_DATA_SEG 3
-#define K_PROC_R3_CODE_SEG 4
-#define K_PROC_TSS_SEG 5
-#define K_PROC_R0_C_CODE_SEG 6
+#define K_PROC_NULL_SEG             0
+#define K_PROC_R0_DATA_SEG          1
+#define K_PROC_R0_CODE_SEG          2
+#define K_PROC_R3_DATA_SEG          3
+#define K_PROC_R3_CODE_SEG          4
+#define K_PROC_REAL_MODE_CODE_SEG   5
+#define K_PROC_TSS_SEG              6
+#define K_PROC_R0_C_CODE_SEG        7
 
 
 struct k_proc_process_t
 {
-    uint32_t page_map;
-    struct k_proc_process_t *next;
-    struct k_proc_process_t *prev;
-    struct k_proc_thread_t *threads;
-    struct k_proc_thread_t *last_thread;
-    struct k_proc_thread_t *main_thread;
-    struct k_io_stream_t *streams;
-    struct k_io_stream_t *terminal;
-    struct k_rt_bheap_t heap;
-    uint32_t generation;
-    uint32_t pid : 30;
-    uint32_t ring : 2;
+    uint32_t                    page_map;
+    struct k_proc_process_t *   next;
+    struct k_proc_process_t *   prev;
+    struct k_proc_thread_t *    threads;
+    struct k_proc_thread_t *    last_thread;
+    struct k_proc_thread_t *    main_thread;
+    struct k_io_stream_t *      streams;
+    struct k_io_stream_t *      terminal;
+    struct k_rt_bheap_t         heap;
+    uint32_t                    generation;
+    uint32_t                    pid : 30;
+    uint32_t                    ring : 2;
 };
 
 struct k_proc_phandle_t

@@ -185,6 +185,7 @@ uint32_t k_dev_DiskRead(struct k_dev_disk_t *disk, uint64_t start, uint64_t coun
     switch(disk->type)
     {
         case K_DEV_DSK_TYPE_RAM:
+        case K_DEV_DSK_TYPE_BOOT:
         {
             struct k_dev_dsk_cmd_t cmd = {};            
             cmd.buffer = data;

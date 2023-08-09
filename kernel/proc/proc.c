@@ -116,6 +116,7 @@ void k_proc_Init()
     k_proc_shared_data->gdt[K_PROC_R0_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
     k_proc_shared_data->gdt[K_PROC_R3_DATA_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_DSEG_TYPE_RW, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
     k_proc_shared_data->gdt[K_PROC_R3_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EO, 3, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1),
+    k_proc_shared_data->gdt[K_PROC_REAL_MODE_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffff, K_CPU_CSEG_TYPE_ER, 0, K_CPU_SEG_GRAN_BYTE, K_CPU_SEG_OP_SIZE_16, 1);
     k_proc_shared_data->gdt[K_PROC_TSS_SEG] = K_CPU_SEG_DESC(0x00000000u, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
     k_proc_shared_data->gdt[K_PROC_R0_C_CODE_SEG] = K_CPU_SEG_DESC(0x00000000u, 0xffffffu, K_CPU_CSEG_TYPE_EOC, 0, K_CPU_SEG_GRAN_4KB, K_CPU_SEG_OP_SIZE_32, 1);
 
@@ -149,7 +150,7 @@ void k_proc_Init()
     k_proc_core_state.tss = k_rt_Malloc(sizeof(struct k_cpu_tss_t), 8);
     k_proc_core_state.tss->ss0 = K_CPU_SEG_SEL(K_PROC_R0_DATA_SEG, 0, 0);
     k_proc_shared_data->gdt[K_PROC_TSS_SEG] = K_CPU_SEG_DESC((uint32_t)k_proc_core_state.tss, 0x67u, K_CPU_SSEG_TYPE_TSS32_AVAL, 0, K_CPU_SEG_GRAN_BYTE, 0, 1);
-    k_cpu_Lgdt(k_proc_shared_data->gdt, 7, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
+    k_cpu_Lgdt(k_proc_shared_data->gdt, 8, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0));
     k_cpu_Ltr(K_CPU_SEG_SEL(K_PROC_TSS_SEG, 3, 0));
 
     k_irq_SetIDTEntry(K_PROC_PREEMPT_THREAD_IRQ_VECTOR, (uintptr_t)&k_proc_PreemptThread_a, K_CPU_SEG_SEL(K_PROC_R0_CODE_SEG, 0, 0), 3);

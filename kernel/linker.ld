@@ -12,7 +12,8 @@ SECTIONS
     .kernel 0x7c00 : AT (k_kernel_sector * 0x200)
     {
         k_kernel_start = .;
-        ./init/k_init_a.o
+        ./init/init_a.o
+        ./dev/boot/boot_a.o
         . = ALIGN(0x1000);
         k_shared_start = .;
         ./proc/proc_a.o

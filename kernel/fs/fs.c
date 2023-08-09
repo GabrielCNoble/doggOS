@@ -1,8 +1,9 @@
 #include "fs.h"
 #include "../mem/mem.h"
 #include "../rt/alloc.h"
-#include "../dsk/dsk.h"
 #include "../dev/dsk.h"
+#include "../rt/mem.h"
+#include "../rt/string.h"
 #include "../sys/term.h"
 #include "pup.h"
 // #include "../../libdg/container/dg_slist.h"
@@ -16,13 +17,26 @@
 
 struct k_fs_fsys_t k_fs_file_systems[K_FS_FILE_SYSTEM_LAST] = {
     [K_FS_FILE_SYSTEM_PUP] = {
-        .mount_volume = k_fs_PupMountVolume,
-        .format_volume = k_fs_PupFormatVolume,
-        .unmount_volume = k_fs_PupUnmountVolume
+        .MountVolume        = k_fs_PupMountVolume,
+        .FormatVolume       = k_fs_PupFormatVolume,
+        .UnmountVolume      = k_fs_PupUnmountVolume,
+        .OpenFile           = k_fs_PupOpenFile,
+        .CloseFile          = k_fs_PupCloseFile
     }
 };
 
-struct k_fs_vol_t *k_fs_volumes = NULL;
+struct k_fs_vol_t *             k_fs_volumes = NULL;
+
+k_rt_spnl_t                     k_fs_open_files_lock = 0;
+struct k_fs_file_t *            k_fs_open_files = NULL;
+struct k_fs_file_t *            k_fs_last_open_file = NULL;
+
+uint32_t                        k_fs_file_handle_page_index = 0;
+uint32_t                        k_fs_file_handle_page_count = 0;
+k_rt_spnl_t                     k_fs_file_page_lock = 0;
+struct k_fs_file_handle_page_t *k_fs_file_handle_pages = NULL;
+struct k_fs_file_handle_page_t *k_fs_cur_file_handle_page = NULL;
+struct k_fs_file_handle_page_t *k_fs_last_file_handle_page = NULL;
 
 void k_fs_Init()
 {
@@ -87,7 +101,7 @@ void k_fs_Init()
 
 struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
 {
-    struct k_fs_vol_t *volume = k_rt_Malloc(sizeof(struct k_fs_vol_t), 4);
+    struct k_fs_vol_t *volume = k_rt_Malloc(sizeof(struct k_fs_vol_t), 0);
     
     volume->next = k_fs_volumes;
     k_fs_volumes = volume;
@@ -96,26 +110,26 @@ struct k_fs_vol_t *k_fs_MountVolume(struct k_fs_part_t *partition)
     volume->partition.first_block = partition->first_block;
     volume->partition.block_count = partition->block_count;
     volume->file_system = &k_fs_file_systems[K_FS_FILE_SYSTEM_PUP];
-    volume->file_system->mount_volume(volume);
+    volume->file_system->MountVolume(volume);
     
     return volume;
 }
 
 void k_fs_UnmountVolume(struct k_fs_vol_t *volume)
 {
-    volume->file_system->unmount_volume(volume);
+    volume->file_system->UnmountVolume(volume);
 }
 
 void k_fs_FormatVolume(struct k_fs_vol_t *volume, void *args)
 {
-    volume->file_system->unmount_volume(volume);
-    volume->file_system->format_volume(volume, args);
-    volume->file_system->mount_volume(volume);
+    volume->file_system->UnmountVolume(volume);
+    volume->file_system->FormatVolume(volume, args);
+    volume->file_system->MountVolume(volume);
 }
 
 struct k_fs_vol_t *k_fs_FormatPartition(struct k_fs_part_t *partition, uint32_t file_system, void *args)
 {
-    struct k_fs_vol_t *volume = k_rt_Malloc(sizeof(struct k_fs_vol_t), 4);
+    struct k_fs_vol_t *volume = k_rt_Malloc(sizeof(struct k_fs_vol_t), 0);
     
     volume->next = k_fs_volumes;
     k_fs_volumes = volume;
@@ -125,8 +139,8 @@ struct k_fs_vol_t *k_fs_FormatPartition(struct k_fs_part_t *partition, uint32_t 
     volume->partition.block_count = partition->block_count;
     volume->file_system = &k_fs_file_systems[file_system];
 
-    volume->file_system->format_volume(volume, args);
-    volume->file_system->mount_volume(volume);
+    volume->file_system->FormatVolume(volume, args);
+    volume->file_system->MountVolume(volume);
 
     return volume;
 }
@@ -199,19 +213,69 @@ void k_fs_ClearVolumeBlocks(struct k_fs_vol_t *volume, uint32_t block_size, uint
 
 struct k_fs_file_t *k_fs_OpenFile(struct k_fs_vol_t *volume, char *path, char *mode)
 {
-    (void)volume;
-    (void)path;
     (void)mode;
 
-    return NULL;
+
+    struct k_fs_file_t *file_handle = k_fs_open_files;
+
+    k_rt_SpinLock(&k_fs_open_files_lock);
+
+    while(file_handle)
+    {
+        if(!k_rt_StrCmp(path, file_handle->path))
+        {
+            file_handle->refs++;
+            file_handle->volume = volume;
+            break;
+        }
+        file_handle = file_handle->next;
+    }
+
+    if(file_handle == NULL)
+    {
+        file_handle = volume->file_system->OpenFile(volume, path);
+
+        if(file_handle != NULL)
+        {
+            if(k_fs_open_files == NULL)
+            {
+                k_fs_open_files = file_handle;
+            }
+            else
+            {
+                k_fs_last_open_file->next = file_handle;
+                file_handle->prev = k_fs_last_open_file;
+            }
+
+            k_fs_last_open_file = file_handle;
+        }    
+
+        file_handle->refs = 1;
+        file_handle->volume = volume;
+    }
+
+    k_rt_SpinUnlock(&k_fs_open_files_lock);
+
+    return file_handle;
 }
 
 void k_fs_CloseFile(struct k_fs_file_t *file)
 {
-    (void)file;
+    if(file != NULL && file->handle != 0 && file->refs > 0)
+    {
+        k_rt_SpinLock(&k_fs_open_files_lock);
+        file->refs--;
+        if(file->refs == 0)
+        {
+            file->volume->file_system->CloseFile(file);            
+            file->handle = 0;
+            k_fs_FreeFileHandle(file);
+        }
+        k_rt_SpinUnlock(&k_fs_open_files_lock);
+    }
 }
 
-uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data)
+uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint64_t start, uint64_t count, void *data)
 {
     (void)file;
     (void)start;
@@ -221,7 +285,7 @@ uint32_t k_fs_ReadFile(struct k_fs_file_t *file, uint32_t start, uint32_t count,
     return 0;
 }
 
-uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint32_t start, uint32_t count, void *data)
+uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint64_t start, uint64_t count, void *data)
 {
     (void)file;
     (void)start;
@@ -229,4 +293,72 @@ uint32_t k_fs_WriteFile(struct k_fs_file_t *file, uint32_t start, uint32_t count
     (void)data;
 
     return 0;
+}
+
+struct k_fs_file_t *k_fs_AllocFileHandle()
+{
+    struct k_fs_file_t *file_handle = NULL;
+
+    if(k_fs_cur_file_handle_page == NULL)
+    {
+        k_fs_cur_file_handle_page = k_rt_Malloc(K_FS_FILE_HANDLE_PAGE_SIZE, 0);
+        k_rt_SetBytes(k_fs_cur_file_handle_page, K_FS_FILE_HANDLE_PAGE_SIZE, 0);
+        k_fs_cur_file_handle_page->index = k_fs_file_handle_page_index;
+        k_fs_cur_file_handle_page->next_free = k_fs_cur_file_handle_page->entries;
+        k_fs_file_handle_page_index++;
+        struct k_fs_file_t *next_entry = NULL;
+        
+        for(uint32_t index = K_FS_FILE_HANDLE_PAGE_ENTRY_COUNT; index > 0;)
+        {
+            index--;
+            struct k_fs_file_t *entry = k_fs_cur_file_handle_page->entries + index;
+            entry->next = next_entry;
+            entry->page = k_fs_cur_file_handle_page;
+            next_entry = entry;
+        }
+
+        if(k_fs_file_handle_pages == NULL)
+        {
+            k_fs_file_handle_pages = k_fs_cur_file_handle_page;
+        }
+        else
+        {
+            k_fs_last_file_handle_page->next_page = k_fs_cur_file_handle_page;
+            k_fs_cur_file_handle_page->prev_page = k_fs_last_file_handle_page;
+        }
+
+        k_fs_last_file_handle_page = k_fs_cur_file_handle_page;
+        k_fs_file_handle_page_count++;
+    }
+
+    file_handle = k_fs_cur_file_handle_page->next_free;
+    k_fs_cur_file_handle_page->next_free = file_handle->next;
+    k_fs_cur_file_handle_page->used_count++;
+    file_handle->next = NULL;
+    file_handle->prev = NULL;
+
+    if(k_fs_cur_file_handle_page->next_free = NULL)
+    {
+        k_fs_cur_file_handle_page = k_fs_cur_file_handle_page->next_page;
+    }
+
+    return file_handle;
+}
+
+void k_fs_FreeFileHandle(struct k_fs_file_t *file)
+{
+    struct k_fs_file_handle_page_t *handle_page = file->page;
+    file->next = handle_page->next_free;
+    handle_page->next_free = file;
+    handle_page->used_count--;
+
+    // if(handle_page->used_count == 0 && k_fs_file_handle_page_count > 1)
+    // {
+
+    // }
+    // else 
+    if(k_fs_cur_file_handle_page == NULL || handle_page->index < k_fs_cur_file_handle_page->index)
+    {
+        k_fs_cur_file_handle_page = handle_page;
+    }
 }

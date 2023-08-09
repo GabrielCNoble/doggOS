@@ -2,6 +2,7 @@
 #include "../sys/sys.h"
 #include "../sys/term.h"
 #include "../rt/mem.h"
+#include "../proc/defs.h"
 // #include "../proc/proc.h"
 // #include "../sys/syscall.h"
 #include "../cpu/k_cpu.h"
@@ -50,7 +51,7 @@ void k_int_Init()
     for(uint32_t index = 32; index < K_IRQ_HANDLER_LAST; index++)
     {
         uintptr_t offset = ((uintptr_t)&k_irq_IrqJumpTable_a) + (index - 32) * 16;
-        k_irq_idt[index] = K_IRQ_DESCRIPTOR(offset, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+        k_irq_idt[index] = K_IRQ_DESCRIPTOR(offset, K_CPU_SEG_SEL(K_PROC_R0_C_CODE_SEG, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
         k_irq_handler_table[index].handler = NULL;
         k_irq_handler_table[index].data = NULL;
     }
@@ -68,7 +69,7 @@ void k_irq_SetInterruptHandler(uint32_t vector, k_irq_handler_func_t *handler, v
     if(vector >= 32 && vector < K_IRQ_HANDLER_LAST)
     {   
         uintptr_t offset = ((uintptr_t)&k_irq_IrqJumpTable_a) + (vector - 32) * 16;
-        struct k_irq_desc_t desc = K_IRQ_DESCRIPTOR(offset, K_CPU_SEG_SEL(6, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
+        struct k_irq_desc_t desc = K_IRQ_DESCRIPTOR(offset, K_CPU_SEG_SEL(K_PROC_R0_C_CODE_SEG, 3, 0), 3, K_IRQ_DESC_TYPE_INT_GATE, K_IRQ_DESC_FLAG_32BIT);
 
         if(k_irq_idt[vector].dw0 == desc.dw0 && k_irq_idt[vector].dw1 == desc.dw1)
         {

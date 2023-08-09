@@ -19,6 +19,7 @@
 
 #include "defs.h"
 #include "../rt/atm.h"
+#include "../rt/pool.h"
 
 /* 4096 fixed size block */
 #define K_FS_PUP_LOGICAL_BLOCK_SIZE 0x1000
@@ -35,17 +36,17 @@
 bitmaps for blocks used to store data and blocks used for nodes. */
 
 /* TODO: rename this to something better!!!!! */
-enum K_FS_PUP_BLOCK_TYPE 
-{
-    /* free block */
-    K_FS_PUP_BLOCK_TYPE_FREE = 0,
-    /* block allocated to file or dir data */
-    K_FS_PUP_BLOCK_TYPE_CONTENT,
-    /* block allocated to nodes, with space available */
-    K_FS_PUP_BLOCK_TYPE_NODE,
-    /* block allocated to nodes, without space available */
-    K_FS_PUP_BLOCK_TYPE_FULL,
-};
+// enum K_FS_PUP_BLOCK_TYPE 
+// {
+//     /* free block */
+//     K_FS_PUP_BLOCK_TYPE_FREE = 0,
+//     /* block allocated to file or dir data */
+//     K_FS_PUP_BLOCK_TYPE_CONTENT,
+//     /* block allocated to nodes, with space available */
+//     K_FS_PUP_BLOCK_TYPE_NODE,
+//     /* block allocated to nodes, without space available */
+//     K_FS_PUP_BLOCK_TYPE_FULL,
+// };
 
 struct k_fs_pup_link_t
 {
@@ -127,6 +128,11 @@ enum K_FS_PUP_NODE_TYPE
 //     // K_FS_PUP_NODE_CONTENT_LINK,
 // };
 
+enum K_FS_PUP_NODE_FLAGS
+{
+    K_FS_PUP_NODE_FLAG_INFO = 1,
+};
+
 #define K_FS_PUP_NODE_INDEX_BITS 8
 #define K_FS_PUP_NODE_LINK(block_index, node_index) ((struct k_fs_pup_link_t){ ((block_index) << K_FS_PUP_NODE_INDEX_BITS) | \
                                                         ((node_index) & ((1 << (K_FS_PUP_NODE_INDEX_BITS - 1)) - 1)) })
@@ -134,12 +140,24 @@ enum K_FS_PUP_NODE_TYPE
 #define K_FS_PUP_NODE_BLOCK(pup_link) ((pup_link.link) >> K_FS_PUP_NODE_INDEX_BITS)
 #define K_FS_PUP_NODE_INDEX(pup_link) ((pup_link.link) & ((1 << K_FS_PUP_NODE_INDEX_BITS) - 1))
 
-#define K_FS_PUP_NODE_FIELDS                    \
-    struct k_fs_pup_link_t  contents;           \
-    uint16_t                left;               \
-    uint16_t                right;              \
-    uint8_t                 type;               \
-    uint8_t                 flags;              \
+#define K_FS_PUP_NODE_FIELDS                            \
+    struct k_fs_pup_link_t              contents;       \
+    union                                               \
+    {                                                   \
+        uint64_t                        size;           \
+        struct k_fs_pup_node_info_t *   info;           \
+    };                                                  \
+                                                        \
+    union                                               \
+    {                                                   \
+        k_rt_spnl_t                     info_lock;      \
+        uint32_t                        unused0;        \
+    };                                                  \
+                                                        \
+    uint8_t                     left;                   \
+    uint8_t                     right;                  \
+    uint8_t                     type;                   \
+    uint8_t                     flags;                  \
 
 #define K_FS_PUP_NODE_NAME_MAX_LEN (256 - sizeof(struct {K_FS_PUP_NODE_FIELDS;}))
 
@@ -149,20 +167,56 @@ struct k_fs_pup_node_t
     uint8_t     name[K_FS_PUP_NODE_NAME_MAX_LEN];
 };
 
-struct k_fs_pup_node_lock_t
+struct k_fs_pup_node_info_t
 {
-    struct k_fs_pup_node_lock_t *       left;
-    struct k_fs_pup_node_lock_t *       right;
-    struct k_fs_pup_node_lock_t *       children;
-    struct k_fs_pup_link_t              node;
-    uint32_t                            read_count;
+    K_RT_POOL_NODE;
+    struct k_fs_pup_link_t      node;
+    uint64_t                    size;
+    uint64_t                    ref_count;
+    struct k_fs_pup_centry_t *  node_entry;
+    k_rt_spnl_t                 write_lock;
 };
 
-
-struct k_fs_pup_node_lock_page_t
+struct k_fs_pup_node_list_item_t
 {
-    
+    K_RT_POOL_NODE;
+    struct k_fs_pup_node_list_item_t *  next;
+    struct k_fs_pup_node_t *            node;
 };
+
+struct k_fs_pup_node_list_t
+{
+    struct k_rt_pool_t                  entry_pool;
+    struct k_fs_pup_node_list_item_t *  nodes;
+};
+/* forward declaration */
+// struct k_fs_pup_node_info_page_t;
+
+// struct k_fs_pup_node_info_t
+// {
+//     struct k_fs_pup_node_info_t *       next;
+//     struct k_fs_pup_node_info_t *       prev;
+//     struct k_fs_pup_node_info_page_t *  page;
+//     struct k_fs_pup_link_t              node;
+//     uint64_t                            size;
+//     uint32_t                            read_count;
+// };
+
+// #define K_FS_PUP_NODE_INFO_PAGE_FIELDS                 \
+//     struct k_fs_pup_node_info_page_t * next_page;      \
+//     struct k_fs_pup_node_info_page_t * prev_page;      \
+//     struct k_fs_pup_node_info_t *      first_free;     \
+//     uint32_t                           index;          \
+//     uint32_t                           used_count;     \
+
+// #define K_FS_PUP_NODE_INFO_PAGE_SIZE 4096
+// #define K_FS_PUP_NODE_INFO_PAGE_ENTRY_COUNT ((K_FS_PUP_NODE_INFO_PAGE_SIZE - sizeof(struct {K_FS_PUP_NODE_INFO_PAGE_FIELDS;})) / sizeof(struct k_fs_pup_node_info_t))
+
+// struct k_fs_pup_node_info_page_t
+// {
+//     K_FS_PUP_NODE_INFO_PAGE_FIELDS;
+//     struct k_fs_pup_node_info_t entries[K_FS_PUP_NODE_INFO_PAGE_ENTRY_COUNT];
+// };
 
 /* node content block. This contains directory entries, in case of a directory node, or
 data entries, in case of a file node. */
@@ -179,10 +233,10 @@ data entries, in case of a file node. */
 
 #define K_FS_PUP_DIR_CONTENT_FIELDS         \
     struct k_fs_pup_link_t  parent;         \
-    uint16_t                first_used;     \
-    uint16_t                next_free;      \
+    uint8_t                 first_used;     \
+    uint8_t                 next_free;      \
     uint16_t                free_count;     \
-    uint16_t                pad[1];         \
+    uint16_t                pad[2];         \
 
 #define K_FS_PUP_DIR_CONTENT_ENTRY_COUNT    \
     (K_FS_PUP_LOGICAL_BLOCK_SIZE / ((K_FS_PUP_LOGICAL_BLOCK_SIZE - sizeof(struct {K_FS_PUP_DIR_CONTENT_FIELDS;})) / sizeof(struct k_fs_pup_node_t)))
@@ -214,6 +268,11 @@ union k_fs_pup_content_t
     /* file data if file size <= 4KB */
     uint8_t data[K_FS_PUP_LOGICAL_BLOCK_SIZE];
 };
+
+// struct k_fs_pup_lcontent_t
+// {
+//     struct k_fs_pup_content_t *contents;
+// };
 
 struct k_fs_pup_dirent_t
 {
@@ -256,10 +315,7 @@ struct k_fs_pup_centry_t
     struct k_fs_pup_centry_t *          next;
     struct k_fs_pup_centry_t *          prev;
     struct k_fs_pup_centry_page_t *     page;
-    // k_rt_spnl_t               touch_lock;
-
-    /* how many threads are currently touching this entry. Used by the eviction 
-    code to not drop this entry until everyone is done with it. */
+    
     uint32_t                            ref_count;
     k_rt_spnl_t                         lock;
     k_rt_spnl_t                         init_lock;
@@ -336,13 +392,13 @@ struct k_fs_pup_root_t
 
 struct k_fs_pup_vol_t
 {
-    struct k_fs_pup_root_t          root;
+    struct k_fs_pup_root_t                  root;
     /* LRU bitmask, used for finding which set has been touched last. The
     last entry in a set's entry linked list is the least recently accessed entry */
-    uint32_t                        lru_bitmask;
+    uint32_t                                lru_bitmask;
 
 
-    k_rt_spnl_t                     node_lock_info_lock;
+    // k_rt_spnl_t                             node_lock_info_lock;
 
     /* how much virtual memory is dedicated to this cache. It'll keep growing
     until hitting the max memory allowed for a disk cache. No entry evicion will
@@ -351,18 +407,21 @@ struct k_fs_pup_vol_t
 
     /* disk cache. It's a N-way set-associative cache. The number of ways 
     per set is variable. */
-    struct k_fs_pup_cset_t          cache_sets[K_FS_PUP_CACHE_SET_COUNT];
+    struct k_fs_pup_cset_t                  cache_sets[K_FS_PUP_CACHE_SET_COUNT];
 
-    struct k_fs_pup_centry_page_t * entry_pages;
-    struct k_fs_pup_centry_page_t * last_entry_page;
-    struct k_fs_pup_centry_page_t * cur_entry_page;
-    struct k_fs_pup_centry_page_t * freeable_entry_pages;
-    k_rt_spnl_t                     entry_page_lock;
-    uint32_t                        entry_page_count;
+    struct k_fs_pup_centry_page_t *         entry_pages;
+    struct k_fs_pup_centry_page_t *         last_entry_page;
+    struct k_fs_pup_centry_page_t *         cur_entry_page;
+    struct k_fs_pup_centry_page_t *         freeable_entry_pages;
+    k_rt_spnl_t                             entry_page_lock;
+    uint32_t                                entry_page_count;
 
-    /* pool of cache entries, kept to avoid touching the kernel memory
-    allocator. */
-    // struct k_fs_pup_centry_t *      entry_pool;
+    struct k_rt_pool_t                      node_info;
+    k_rt_spnl_t                             node_info_lock;
+
+
+
+    k_rt_spnl_t                             lock;
 
     /* in-memory block bitmask, to avoid touching the disk when allocating
     blocks. Each byte keeps allocation state for 4 consecutive blocks */
@@ -376,7 +435,7 @@ struct k_fs_pup_vol_t
     of bytes, and some additional bit twiddling per byte. Something similar
     to the kernel allocator could be used for this when the volume is mounted,
     and the bitmask representation would be used only on disk. */
-    uint8_t *                       block_bitmask;
+    uint8_t *                               block_bitmask;
 };
 
 enum K_FS_PUP_PATH_TYPE
@@ -496,15 +555,27 @@ void k_fs_PupFreeBlock(struct k_fs_vol_t *volume, struct k_fs_pup_link_t block);
 
 // void k_fs_PupFreeNode(struct k_fs_pup_link_t link);
 
-struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_centry_t *entry);
+struct k_fs_pup_node_t *k_fs_PupGetNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address);
+
+struct k_fs_pup_node_t *k_fs_PupGetNodeOnEntry(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address, struct k_fs_pup_centry_t *entry);
+
+// struct k_fs_pup_node_t *k_fs_PupGetNodeOnContents(struct k_fs_vol_t *volume, uint32_t index, union k_fs_pup_content_t *contents);
+
+// void k_fs_PupAcquireNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node_address);
+
+// void k_fs_PupAcquireNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node);
+
+void k_fs_PupReleaseNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node);
+
+void k_fs_PupLockNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node);
+
+void k_fs_PupUnlockNode(struct k_fs_vol_t *volume, struct k_fs_pup_node_t *node);
 
 struct k_fs_pup_link_t k_fs_PupFindNode(struct k_fs_vol_t *volume, const char *path, struct k_fs_pup_link_t start_node);
 
 struct k_fs_pup_link_t k_fs_PupAddNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t start_node, const char *path, const char *name, uint32_t type);
 
 void k_fs_PupRemoveNode(struct k_fs_vol_t *volume, const char *path);
-
-void k_fs_PupLockNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t node);
 
 void k_fs_PupInitContents(union k_fs_pup_content_t *contents, struct k_fs_pup_link_t node, uint32_t type);
 
@@ -519,6 +590,18 @@ void k_fs_PupGetPathToNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t sta
 =========================================================================================
 =========================================================================================
 */
+
+struct k_fs_file_t *k_fs_PupOpenFile(struct k_fs_vol_t *volume, const char *path, const char *mode);
+
+void k_fs_PupCloseFile(struct k_fs_vol_t *volume, struct k_fs_file_t *file);
+
+struct k_fs_pup_link_t k_fs_PupOpenFileNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t start_node, const char *path);
+
+void k_fs_PupCloseFileNode(struct k_fs_vol_t *volume, struct k_fs_pup_link_t file_node);
+
+void k_fs_PupWriteFileData(struct k_fs_vol_t *volume, struct k_fs_pup_link_t file_node, uint64_t offset, uint64_t size, void *data);
+
+void k_fs_PupReadFileData(struct k_fs_vol_t *volume, struct k_fs_pup_link_t file_node, uint64_t offset, uint64_t size, void *data);
 
 
 // struct k_fs_pup_slot_t *k_fs_PupFindSlot(struct k_fS_vol_t *volume, uint32_t block_address);

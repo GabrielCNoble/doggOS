@@ -238,6 +238,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     }
 
     k_mem_available = k_mem_total;
+
     /*
         virtual memory ranges
     */
@@ -277,7 +278,6 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     k_mem_virtual_ranges.free_count = 1;
     k_mem_virtual_ranges.range_count = 1;
     k_mem_virtual_ranges.ranges = k_mem_BestFitRange(ranges, &range_count, vrange_bytes);
-
     if(!k_mem_virtual_ranges.ranges)
     {
         // k_int_HaltAndCatchFire();
@@ -285,12 +285,11 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
 
     k_mem_virtual_ranges.ranges[0].start = 0x00001000;
     k_mem_virtual_ranges.ranges[0].size = (0xffffffff - 0x1000) >> K_MEM_4KB_ADDRESS_SHIFT;
-    
 
     /*
         physical memory ranges
     */
-
+    
     k_mem_physical_ranges.ranges = k_mem_BestFitRange(ranges, &range_count, sizeof(struct k_mem_prange_t) * range_count);
     k_mem_physical_ranges.range_count = range_count;
 
@@ -323,6 +322,7 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
                 range_start += align;
                 range_size -= align;
             }
+
 
             uint32_t page_count = range_size / 4096;
             // k_printf("%d\n", range_size);
@@ -373,7 +373,6 @@ void k_mem_Init(struct k_mem_range_t *ranges, uint32_t range_count)
     uint32_t flags = K_MEM_PENTRY_FLAG_USED | K_MEM_PENTRY_FLAG_READ_WRITE | K_MEM_PENTRY_FLAG_PRESENT | K_MEM_PENTRY_FLAG_PAGE_CACHE_DISABLE;
     struct k_mem_pentry_t *pdir = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
     struct k_mem_pentry_t *ptable = (struct k_mem_pentry_t *)k_mem_AllocPhysicalPage(K_MEM_PAGE_FLAG_PINNED);
-
     
     for(uint32_t index = 0; index < 1024; index++)
     {

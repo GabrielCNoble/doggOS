@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../defs.h"
-#include "k_defs.h"
+#include "defs.h"
 #include "../mem/mem.h"
 #include "../gfx/k_gfx.h"
 // #include "../k_term.h"

@@ -5,6 +5,7 @@
 #include "../rt/alloc.h"
 #include "../rt/mem.h"
 #include "../rt/string.h"
+#include "../rt/pool.h"
 #include "../proc/proc.h"
 #include "../proc/defs.h"
 #include "../dsk/dsk.h"
@@ -56,6 +57,13 @@ void k_sys_Crash()
     k_sys_TerminalPrintf("Phew... (%s)\n", keyboard_buffer);
 }
 
+// struct test_t
+// {
+//     union k_rt_obj_node_t   obj_node;
+//     uint32_t                a;
+//     uint32_t                b;
+// };
+
 uintptr_t k_sys_ShellMain(void *data)
 {
     char keyboard_buffer[512];
@@ -94,9 +102,27 @@ uintptr_t k_sys_ShellMain(void *data)
     
     // struct k_fs_pup_link_t cur_dir_node;    
     struct k_fs_pup_link_t cur_dir_node = k_fs_PupFindNode(pup_volume, "/", K_FS_PUP_NULL_LINK);
-    k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
+    // k_fs_PupGetPathToNode(pup_volume, cur_dir_node, current_path, sizeof(current_path));
     // k_sys_TerminalClear();
-    
+
+    // struct k_rt_obj_plist_t page_list = k_rt_plist_CreateForType(struct test_t);   
+    // struct test_t *test0 = k_rt_plist_AllocObj(&page_list); 
+    // k_sys_TerminalPrintf("object at %x\n", (uint32_t)test0);
+
+    // struct test_t *test1 = k_rt_plist_AllocObj(&page_list); 
+    // k_sys_TerminalPrintf("object at %x\n", (uint32_t)test1);
+
+    // struct test_t *test2 = k_rt_plist_AllocObj(&page_list); 
+    // k_sys_TerminalPrintf("object at %x\n", (uint32_t)test2);
+
+    // // k_rt_DestroyObjPageList(&page_list);
+
+    // k_rt_plist_FreeObj(&page_list, test2);
+    // k_rt_plist_FreeObj(&page_list, test0);
+    // k_rt_plist_FreeObj(&page_list, test1);
+
+    // test2 = k_rt_plist_AllocObj(&page_list); 
+    // k_sys_TerminalPrintf("object at %x\n", (uint32_t)test2);
 
     while(1)
     {

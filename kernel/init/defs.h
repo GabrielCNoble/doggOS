@@ -1,6 +1,8 @@
 #ifndef K_INIT_DEFS_H
 #define K_INIT_DEFS_H
 
+#include "../mem/defs.h"
+
 struct k_init_data_t
 {
     struct k_mem_range_t *ranges;

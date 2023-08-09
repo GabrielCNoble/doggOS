@@ -3,6 +3,7 @@
 #include "../irq/irq.h"
 #include "../cpu/k_cpu.h"
 #include "../rt/alloc.h"
+#include "../rt/mem.h"
 #include "defs.h"
 #include "syscall.h"
 #include "../proc/defs.h"
@@ -215,19 +216,19 @@ void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)
     // k_sys_TerminalPrintf("\n\n");
     // k_sys_TerminalPrintf("      The system will now halt and catch fire...\n");
 
-    // uint8_t fire_buffer[80 * 25] = {};
+    uint8_t fire_buffer[80 * 25] = {};
 
-    // uint16_t colors[] = 
-    // {
-    //     k_sys_TerminalChar(178, (K_SYS_TERM_COLOR_BLACK << 4) | K_SYS_TERM_COLOR_BLACK),
-    //     k_sys_TerminalChar(178, (K_SYS_TERM_COLOR_BLACK << 4) | K_SYS_TERM_COLOR_BROWN),
-    //     k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_BLACK << 4) | K_SYS_TERM_COLOR_BROWN),
-    //     k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_GREEN << 4) | K_SYS_TERM_COLOR_LIGHT_RED),
-    //     k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_LIGHT_BROWN << 4) | K_SYS_TERM_COLOR_LIGHT_RED),
-    //     k_sys_TerminalChar(219, (K_SYS_TERM_COLOR_LIGHT_BROWN << 4) | K_SYS_TERM_COLOR_LIGHT_BROWN),
-    //     k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_WHITE << 4) | K_SYS_TERM_COLOR_LIGHT_BROWN),
-    //     k_sys_TerminalChar(219, (K_SYS_TERM_COLOR_WHITE << 4) | K_SYS_TERM_COLOR_WHITE),
-    // };
+    uint16_t colors[] = 
+    {
+        k_sys_TerminalChar(178, (K_SYS_TERM_COLOR_BLACK << 4) | K_SYS_TERM_COLOR_BLACK),
+        k_sys_TerminalChar(178, (K_SYS_TERM_COLOR_BLACK << 4) | K_SYS_TERM_COLOR_BROWN),
+        k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_BLACK << 4) | K_SYS_TERM_COLOR_BROWN),
+        k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_GREEN << 4) | K_SYS_TERM_COLOR_LIGHT_RED),
+        k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_LIGHT_BROWN << 4) | K_SYS_TERM_COLOR_LIGHT_RED),
+        k_sys_TerminalChar(219, (K_SYS_TERM_COLOR_LIGHT_BROWN << 4) | K_SYS_TERM_COLOR_LIGHT_BROWN),
+        k_sys_TerminalChar(177, (K_SYS_TERM_COLOR_WHITE << 4) | K_SYS_TERM_COLOR_LIGHT_BROWN),
+        k_sys_TerminalChar(219, (K_SYS_TERM_COLOR_WHITE << 4) | K_SYS_TERM_COLOR_WHITE),
+    };
 
     // for(uint32_t column_index = 0; column_index < k_gfx_vga_width; column_index++)
     // {
@@ -237,56 +238,58 @@ void k_sys_HaltAndCatchFire(uint32_t exception, uint32_t eip, uint32_t cs, ...)
     //     }
     // }
 
-    // for(uint32_t delay = 0; delay < 0x7fffffff; delay++);
+    k_rt_SetBytes(fire_buffer, sizeof(fire_buffer), 0);
 
-    // for(uint32_t column_index = 0; column_index < k_gfx_vga_width; column_index++)
-    // {
-    //     fire_buffer[k_gfx_vga_width * (k_gfx_vga_height - 1) + column_index] = 7;
-    // }
+    for(uint32_t delay = 0; delay < 0x7fffffff; delay++);
 
-    // uint32_t rand_var = 2;
-    // uint32_t rand_timer = 0;
+    for(uint32_t column_index = 0; column_index < k_gfx_vga_width; column_index++)
+    {
+        fire_buffer[k_gfx_vga_width * (k_gfx_vga_height - 1) + column_index] = 7;
+    }
 
-    // while(1)
-    // {
-    //     for(uint32_t column_index = 0; column_index < k_gfx_vga_width; column_index++)
-    //     {
-    //         for(uint32_t row_index = 0; row_index < k_gfx_vga_height; row_index++)
-    //         {
-    //             uint32_t from = row_index * k_gfx_vga_width + column_index;
+    uint32_t rand_var = 2;
+    uint32_t rand_timer = 0;
 
-    //             if(fire_buffer[from] > 0)
-    //             {
-    //                 // uint32_t v = 3 + (k_rng_Rand() % 3);
-    //                 uint32_t rand = k_rng_Rand() % rand_var;
-    //                 uint32_t to = from - k_gfx_vga_width - (rand % 3);
-    //                 if(to < k_gfx_vga_width * k_gfx_vga_height)
-    //                 {
-    //                     fire_buffer[to] = fire_buffer[from] - (rand & 1);
-    //                 }
-    //             }
+    while(1)
+    {
+        for(uint32_t column_index = 0; column_index < k_gfx_vga_width; column_index++)
+        {
+            for(uint32_t row_index = 0; row_index < k_gfx_vga_height; row_index++)
+            {
+                uint32_t from = row_index * k_gfx_vga_width + column_index;
 
-    //             uint16_t fire_color = colors[fire_buffer[k_gfx_vga_width * row_index + column_index]];
-    //             uint8_t screen_color = (k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index] >> 8);
+                if(fire_buffer[from] > 0)
+                {
+                    // uint32_t v = 3 + (k_rng_Rand() % 3);
+                    uint32_t rand = k_rng_Rand() % rand_var;
+                    uint32_t to = from - k_gfx_vga_width - (rand % 3);
+                    if(to < k_gfx_vga_width * k_gfx_vga_height)
+                    {
+                        fire_buffer[to] = fire_buffer[from] - (rand & 1);
+                    }
+                }
 
-    //             if((fire_color & 0xff00) != 0 || ((screen_color >> 4) != K_SYS_TERM_COLOR_BLUE && (screen_color & 0x0f) != K_SYS_TERM_COLOR_BLUE))
-    //             {
-    //                 k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index] = fire_color;
-    //             }
+                uint16_t fire_color = colors[fire_buffer[k_gfx_vga_width * row_index + column_index]];
+                uint8_t screen_color = (k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index] >> 8);
 
-    //             rand_timer++;
-    //             if(rand_timer > 19)
-    //             {
-    //                 rand_timer = 0;
-    //                 rand_var = 3 - (k_rng_Rand() % 2);
-    //             }
-    //             // if((color & 0xff00) != 0 || ((color & 0xff00) == 0 && k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index]))
-    //             // k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index] = colors[fire_buffer[k_gfx_vga_width * row_index + column_index]];
-    //         }
-    //     }
+                if((fire_color & 0xff00) != 0 || ((screen_color >> 4) != K_SYS_TERM_COLOR_BLUE && (screen_color & 0x0f) != K_SYS_TERM_COLOR_BLUE))
+                {
+                    k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index] = fire_color;
+                }
 
-    //     for(uint32_t delay = 0; delay < 0xffffff; delay++);
-    // }
+                rand_timer++;
+                if(rand_timer > 19)
+                {
+                    rand_timer = 0;
+                    rand_var = 3 - (k_rng_Rand() % 2);
+                }
+                // if((color & 0xff00) != 0 || ((color & 0xff00) == 0 && k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index]))
+                // k_gfx_vga_cur_mem_map[k_gfx_vga_width * row_index + column_index] = colors[fire_buffer[k_gfx_vga_width * row_index + column_index]];
+            }
+        }
+
+        for(uint32_t delay = 0; delay < 0xffffff; delay++);
+    }
 
 
     k_cpu_Halt();
